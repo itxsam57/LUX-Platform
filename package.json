@@ -1,0 +1,12 @@
+{
+  "name": "lux-platform",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @lux/web dev",
+    "build": "pnpm --filter @lux/web build",
+    "lint": "pnpm --filter @lux/web lint",
+    "typecheck": "pnpm --filter @lux/web typecheck",
+    "test": "pnpm --filter @lux/web test"
+  }
+}
