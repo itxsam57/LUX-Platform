@@ -44,7 +44,7 @@ const status = gateStatus !== "pass"
 
 const steps = [];
 if (visibleFeatures.some((item) => ["Foundation home page", "Global layout and responsive presentation"].includes(item))) {
-  steps.push("Open `http://localhost:3000/` in desktop Chrome and at a narrow mobile width. Confirm the LUX foundation card is readable, balanced, and free of horizontal scrolling.");
+  steps.push("Open `http://localhost:30002/` in desktop Chrome and at a narrow mobile width. Confirm the LUX foundation card is readable, balanced, and free of horizontal scrolling.");
 }
 if (visibleFeatures.some((item) => ["Design-system catalogue", "Design system and application shell"].includes(item))) {
   steps.push("Use the primary link on `/` to open `/design-system`. On desktop, confirm the sidebar and top bar are clear; at a narrow mobile width, confirm the bottom navigation replaces the sidebar without covering controls.");
@@ -54,10 +54,10 @@ if (visibleFeatures.includes("Route loading and error states")) {
   steps.push("While moving between `/` and `/design-system`, confirm any brief loading state is controlled and no blank or white screen appears.");
 }
 if (visibleFeatures.includes("Health endpoint")) {
-  steps.push(`Open \`http://localhost:3000/health\` and confirm the JSON contains \`service: lux-web\`, \`status: ok\`, and \`buildSlice: ${slice.number}\`.`);
+  steps.push(`Open \`http://localhost:30002/health\` and confirm the JSON contains \`service: lux-web\`, \`status: ok\`, and \`buildSlice: ${slice.number}\`.`);
 }
 if (visibleFeatures.includes("Controlled 404 recovery")) {
-  steps.push("Open `http://localhost:3000/route-that-must-not-exist`, confirm the controlled **Not found** screen appears, then use **Return home**.");
+  steps.push("Open `http://localhost:30002/route-that-must-not-exist`, confirm the controlled **Not found** screen appears, then use **Return home**.");
 }
 
 const requestedChange = process.env.HANDOFF_REQUEST
@@ -73,7 +73,7 @@ const report = `${status}
 - **Branch:** ${currentBranch()}
 - **Commit:** ${currentCommit()}
 - **Active slice:** ${slice.number} — ${slice.name}
-- **Preview URL:** Not configured; local application uses \`http://localhost:3000\` when manual testing is required.
+- **Preview URL:** Not configured; local application uses \`http://localhost:30002\` when manual testing is required.
 
 ## Requested change
 
