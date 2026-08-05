@@ -12,13 +12,23 @@ const catalogueLinks = [
   ["Overlays", "#overlays"],
 ] as const;
 
+const alignedNavText = {
+  display: "inline-flex",
+  alignItems: "center",
+  lineHeight: 1,
+} as const;
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <aside className="app-sidebar" aria-label="Design system sections">
         <Link className="app-brand" href="/">
-          <span className="app-brand__mark" aria-hidden="true">L</span>
+          <span className="app-brand__mark" aria-hidden="true">
+            L
+          </span>
           <span>
             <strong>LUX</strong>
             <small>System</small>
@@ -26,9 +36,24 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="app-sidebar__nav">
           {catalogueLinks.map(([label, href], index) => (
-            <a className={index === 0 ? "app-nav-link app-nav-link--active" : "app-nav-link"} href={href} key={href}>
-              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-              {label}
+            <a
+              className={index === 0 ? "app-nav-link app-nav-link--active" : "app-nav-link"}
+              href={href}
+              key={href}
+            >
+              <span aria-hidden="true" style={alignedNavText}>
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span
+                style={{
+                  ...alignedNavText,
+                  color: "inherit",
+                  fontSize: "inherit",
+                  fontVariantNumeric: "normal",
+                }}
+              >
+                {label}
+              </span>
             </a>
           ))}
         </nav>
@@ -45,7 +70,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="app-topbar__actions">
             <Badge tone="accent">Keyboard ready</Badge>
-            <Link className="app-topbar__home" href="/">Home</Link>
+            <Link className="app-topbar__home" href="/">
+              Home
+            </Link>
           </div>
         </header>
         {children}
