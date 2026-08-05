@@ -3,7 +3,8 @@ import { FOUNDATION_SLICE, isFoundationRoute } from "./foundation";
 
 describe("foundation contracts", () => {
   it("identifies the active build slice", () => {
-    expect(FOUNDATION_SLICE.id).toBe("slice-0");
+    expect(FOUNDATION_SLICE.id).toBe("slice-1");
+    expect(FOUNDATION_SLICE.number).toBe(1);
     expect(FOUNDATION_SLICE.healthStatus).toBe("ok");
   });
 

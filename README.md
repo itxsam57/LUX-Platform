@@ -23,7 +23,7 @@ The next slice does not begin while the current slice has unresolved critical de
 ## Current repository layout
 
 ```text
-apps/web                  Next.js web application
+apps/web                  Next.js web application and shared UI system
 docs/product              Canonical product lock
 docs/engineering          Engineering standards, project profile, matrix and register
 docs/testing              Hard-test and acceptance protocols
@@ -47,6 +47,16 @@ pnpm report:handoff
 
 ## Current status
 
-Build Slice 0: repository and quality foundation.
+**Build Slice 1: Design System and Application Shell.**
 
-No marketplace production feature should be considered complete yet. The current code establishes the public application shell, health route, design-system preview, strict engineering gate, and canonical specifications required before feature implementation begins.
+Implemented and automatically verified:
+
+- public foundation home and health contract;
+- responsive desktop sidebar/top bar and mobile bottom navigation;
+- complete shared-component catalogue;
+- buttons, fields, selection controls, data display, navigation, loading/error/empty states, dialogs, drawers, menus, tooltips, and toasts;
+- controlled route loading, error, and 404 recovery;
+- strict accessibility, touch-target, route-synchronization, and document-overflow checks;
+- 18 Playwright workflows across desktop Chromium and Pixel 7.
+
+No marketplace production feature should be considered complete yet. Authentication, database/RLS, uploads, payments, consent, creator workspaces, moderation, secure media, and payouts remain future build slices and are explicitly recorded as blocked.
