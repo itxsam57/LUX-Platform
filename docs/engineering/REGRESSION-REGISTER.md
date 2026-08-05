@@ -18,16 +18,20 @@ Stable IDs remain permanent. Do not remove or weaken a protection without explic
 | REG-012 | Queue item disappears while permanently pending elsewhere | One valid state transition updates all projections atomically | future state-machine/integration tests | BLOCKED |
 | REG-013 | Internal links use raw anchors and fail framework navigation rules | Internal navigation uses Next.js `Link` and passes lint | ESLint + Playwright | ACTIVE |
 | REG-014 | Unit coverage includes framework/config files and creates misleading failure | ≥80% threshold applies to unit-testable application/domain logic; UI/routes have separate tests | Vitest config + repository review | ACTIVE |
-| REG-015 | CI cache/setup fails because lockfile is missing | lockfile is committed; CI uses frozen install and supported pnpm cache | repository check + CI install | PENDING INSTALLATION |
-| REG-016 | Generated evidence or secrets enter Git | reports, coverage, build output, traces, screenshots, video, env files, and keys remain untracked | `.gitignore`, repository check, secret scan | PENDING INSTALLATION |
+| REG-015 | CI cache/setup fails because lockfile is missing | lockfile is committed; CI uses frozen install and supported pnpm cache | repository check + frozen GitHub Actions install | ACTIVE |
+| REG-016 | Generated evidence or secrets enter Git | reports, coverage, build output, traces, screenshots, video, env files, and keys remain untracked | `.gitignore`, repository check, secret scan | ACTIVE |
 | REG-017 | Release/payout occurs without consent, legality, copyright, quality, and review gates | all required durable approvals precede entitlement or ledger release | future state-machine/security/ledger tests | BLOCKED |
 | REG-018 | Agency action replaces performer consent | performer personally accepts project-specific terms and required final-cut approval | future consent/authorization tests | BLOCKED |
+| REG-019 | Vulnerable framework/browser dependencies pass unnoticed | production audit blocks high/critical advisories; audited patch versions and lockfile are committed | dependency audit + frozen install | ACTIVE |
+| REG-020 | Security override resolves but breaks Next.js runtime image tooling | Next resolves PostCSS 8.5.18 and Sharp 0.35.0; Sharp performs a real SVG→PNG conversion before build | runtime dependency compatibility check + production build + E2E | ACTIVE |
+| REG-021 | Expensive browser setup runs after cheap prerequisite failure | browser install/tests are blocked until repository, secret, lint, type, unit/API, dependency, runtime, and build gates pass | master gate state ordering | ACTIVE |
+| REG-022 | Owner receives vague or unnecessary manual testing | generated handoff lists exact visible tests or explicitly says none are required | `report:handoff` + GitHub Job Summary | ACTIVE |
 
 ## Status meanings
 
-- **ACTIVE:** protection exists and must pass the full gate.
-- **PENDING INSTALLATION:** gap identified by this kit installation and must be closed before merge.
-- **BLOCKED:** required future protection cannot exist until the corresponding production layer is implemented; it must be installed in that build slice before acceptance.
+- **ACTIVE:** protection exists and must pass the applicable full gate.
+- **PARTIAL:** a public/foundation version exists, but future role-specific coverage is still required.
+- **BLOCKED:** required future protection cannot exist until the corresponding production layer is implemented; install it in that build slice before acceptance.
 
 ## Adding regressions
 
