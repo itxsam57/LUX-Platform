@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// LUX uses a dedicated local port so it can run alongside the user's other project on 3000.
 const localBaseUrl = "http://127.0.0.1:30002";
 
 export default defineConfig({
