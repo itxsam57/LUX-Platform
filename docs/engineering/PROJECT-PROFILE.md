@@ -96,6 +96,6 @@ A change is done only when it preserves the canonical product rules, avoids unre
 
 ## Known current limitations
 
-- No deployment preview provider is configured; local browser handoffs use `http://127.0.0.1:3000` only when visible testing is required.
+- No deployment preview provider is configured; local browser handoffs use `http://127.0.0.1:30002` only when visible testing is required.
 - One moderate production dependency advisory remains disclosed below the high/critical blocking threshold.
 - Product-system tests remain blocked until their corresponding build slices exist.
