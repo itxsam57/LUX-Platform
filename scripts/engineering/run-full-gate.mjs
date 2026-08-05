@@ -15,6 +15,7 @@ const prerequisiteSteps = [
   ["Unit tests and coverage", "pnpm test:unit"],
   ["Integration/API tests", "pnpm test:integration"],
   ["Production dependency audit", "pnpm security:dependencies"],
+  ["Overridden runtime dependency compatibility", "pnpm runtime:dependencies"],
 ];
 
 const results = prerequisiteSteps.map(([name, command]) => run(name, command));
@@ -48,7 +49,7 @@ mkdirSync(".engineering/reports", { recursive: true });
 writeFileSync(".engineering/reports/full-gate.json", JSON.stringify({ passed, generatedAt: new Date().toISOString(), results }, null, 2), "utf8");
 
 console.log("\n=== Full gate summary ===");
-for (const item of results) console.log(`${item.status.padEnd(30)} ${item.name}`);
+for (const item of results) console.log(`${item.status.padEnd(42)} ${item.name}`);
 
 const handoff = spawnSync(`node scripts/engineering/handoff.mjs --status=${passed ? "pass" : "fail"}`, { shell: true, stdio: "inherit" });
 if (handoff.status !== 0) process.exit(handoff.status ?? 1);
