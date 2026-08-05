@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --coverage",
+    "test": "pnpm test:unit && pnpm test:integration",
+    "test:unit": "vitest run --coverage src/lib",
+    "test:integration": "vitest run src/app/health/route.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
