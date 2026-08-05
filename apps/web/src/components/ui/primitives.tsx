@@ -507,7 +507,17 @@ export function Tooltip({
   return (
     <span className="ui-tooltip" tabIndex={0} aria-describedby={id}>
       {children}
-      <span className="ui-tooltip__content" id={id} role="tooltip">
+      <span
+        className="ui-tooltip__content"
+        id={id}
+        role="tooltip"
+        style={{
+          right: 0,
+          left: "auto",
+          width: "min(240px, calc(100vw - 32px))",
+          transform: "translateY(0)",
+        }}
+      >
         {content}
       </span>
     </span>
