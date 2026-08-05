@@ -8,34 +8,45 @@ The platform allows audiences to signal demand, vote, pre-book, fund, discover, 
 
 The documentation under `docs/product`, `docs/engineering`, and `docs/testing` is the canonical product and engineering specification. Production code must not silently contradict it.
 
+Read these repository-specific files before implementation:
+
+- `docs/engineering/PROJECT-PROFILE.md`
+- `docs/engineering/PROJECT-TEST-MATRIX.md`
+- `docs/engineering/REGRESSION-REGISTER.md`
+
 ## Build method
 
-LUX is built as independently testable vertical slices. A slice is not complete until:
-
-1. its design and workflow are documented;
-2. its code, database rules, security policies, and audit behavior are implemented;
-3. automated tests pass;
-4. staging behavior is tested on desktop and mobile;
-5. cross-role and refresh/regression tests pass;
-6. the product owner completes the acceptance checklist.
+LUX is built as independently testable vertical slices. A slice is not complete until its design and workflow are documented, applicable code/security/persistence behavior is implemented, the full automated engineering gate passes, and the product owner completes only the visible browser tests listed in the generated handoff.
 
 The next slice does not begin while the current slice has unresolved critical defects.
 
-## Repository layout
+## Current repository layout
 
 ```text
 apps/web                  Next.js web application
-packages/ui               Shared UI components
-packages/config           Shared lint and TypeScript configuration
-supabase/migrations       Database migrations and RLS policies
-docs/product              LUX Blueprint Library
-docs/engineering          Build sequence and engineering contracts
+docs/product              Canonical product lock
+docs/engineering          Engineering standards, project profile, matrix and register
 docs/testing              Hard-test and acceptance protocols
-.github                   CI and contribution controls
+scripts/engineering       Repository gate, security, impact and handoff automation
+.github/workflows         GitHub Actions engineering gate
 ```
+
+Future `packages/*` and `supabase/migrations` directories are not implemented yet and must not be treated as existing architecture.
+
+## Engineering commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm verify:quick
+pnpm verify:affected
+pnpm verify:full
+pnpm report:handoff
+```
+
+`verify:full` runs every applicable required check and exits non-zero on a required failure. The generated handoff is written under `.engineering/reports/` and is intentionally not committed.
 
 ## Current status
 
 Build Slice 0: repository and quality foundation.
 
-No production feature should be considered complete yet. The current code establishes the application shell, health route, design-system preview, strict TypeScript settings, CI baseline, and the complete engineering specification needed before feature implementation begins.
+No marketplace production feature should be considered complete yet. The current code establishes the public application shell, health route, design-system preview, strict engineering gate, and canonical specifications required before feature implementation begins.

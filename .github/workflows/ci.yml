@@ -1,49 +1,76 @@
-name: CI
+name: Engineering Gate
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "engineering/**"
+      - "feature/**"
+      - "fix/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: engineering-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  quality:
+  verify:
+    name: full-verification-gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
         with:
-          version: 10.15.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+          fetch-depth: 0
 
-  browser-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --filter @lux/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @lux/web test:e2e
-      - if: failure()
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Frozen dependency install
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect browser-test impact
+        id: impact
+        env:
+          HANDOFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/engineering/ci-impact.mjs
+
+      - name: Run applicable full verification gate
+        env:
+          HANDOFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          SKIP_BROWSER: ${{ steps.impact.outputs.browser_required == 'true' && '0' || '1' }}
+        run: pnpm verify:full
+
+      - name: Upload failure evidence
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: apps/web/playwright-report/
+          name: engineering-failure-evidence
+          path: |
+            .engineering/reports/
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
           retention-days: 7
+
+      - name: Publish manual-test handoff
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .engineering/reports/manual-test-handoff.md ]; then
+            cat .engineering/reports/manual-test-handoff.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "NOT READY — AUTOMATED ENGINEERING GATE FAILED" >> "$GITHUB_STEP_SUMMARY"
+            echo "The handoff report was not generated." >> "$GITHUB_STEP_SUMMARY"
+          fi

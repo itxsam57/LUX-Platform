@@ -2,11 +2,33 @@
   "name": "lux-platform",
   "private": true,
   "packageManager": "pnpm@10.15.0",
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.18",
+      "sharp": "0.35.0"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "dev": "pnpm --filter @lux/web dev",
     "build": "pnpm --filter @lux/web build",
     "lint": "pnpm --filter @lux/web lint",
     "typecheck": "pnpm --filter @lux/web typecheck",
-    "test": "pnpm --filter @lux/web test"
+    "test": "pnpm test:unit && pnpm test:integration",
+    "test:unit": "pnpm --filter @lux/web test:unit",
+    "test:integration": "pnpm --filter @lux/web test:integration",
+    "test:e2e": "pnpm --filter @lux/web test:e2e",
+    "repo:check": "node scripts/engineering/check-repository.mjs",
+    "runtime:dependencies": "node scripts/engineering/check-runtime-dependencies.mjs",
+    "security:secrets": "node scripts/engineering/scan-secrets.mjs",
+    "security:dependencies": "pnpm audit --prod --audit-level high",
+    "verify:quick": "pnpm repo:check && pnpm security:secrets && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration",
+    "verify:affected": "node scripts/engineering/verify-affected.mjs",
+    "verify:full": "node scripts/engineering/run-full-gate.mjs",
+    "report:handoff": "node scripts/engineering/handoff.mjs"
   }
 }
