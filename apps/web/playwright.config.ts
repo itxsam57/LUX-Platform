@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const localBaseUrl = "http://127.0.0.1:30002";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -7,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["html", { open: "never" }], ["line"]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: localBaseUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -18,7 +20,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "pnpm build && pnpm start",
-    url: "http://127.0.0.1:3000/health",
+    url: `${localBaseUrl}/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
