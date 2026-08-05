@@ -14,11 +14,11 @@ test("home and design-system navigation remain synchronized without refresh", as
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
-  await expect(page.getByText("Build Slice 0: repository and quality foundation")).toBeVisible();
+  await expect(page.getByText("Build Slice 1: design system and application shell")).toBeVisible();
 
-  await page.getByRole("link", { name: "Open design-system preview" }).click();
+  await page.getByRole("link", { name: "Open design-system catalogue" }).click();
   await expect(page).toHaveURL(/\/design-system$/);
-  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Design system", exact: true })).toBeVisible();
 
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
@@ -27,7 +27,7 @@ test("home and design-system navigation remain synchronized without refresh", as
   await page.goForward();
   await expect(page).toHaveURL(/\/design-system$/);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Design system", exact: true })).toBeVisible();
 
   expect(runtimeErrors).toEqual([]);
 });
@@ -35,7 +35,7 @@ test("home and design-system navigation remain synchronized without refresh", as
 test("primary navigation is keyboard accessible", async ({ page }) => {
   await page.goto("/");
   await page.keyboard.press("Tab");
-  const link = page.getByRole("link", { name: "Open design-system preview" });
+  const link = page.getByRole("link", { name: "Open design-system catalogue" });
   await expect(link).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/design-system$/);
@@ -47,7 +47,7 @@ test("health endpoint returns a successful stable contract", async ({ request })
   await expect(response.json()).resolves.toMatchObject({
     service: "lux-web",
     status: "ok",
-    buildSlice: 0,
+    buildSlice: 1,
   });
 });
 
