@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 function captureRuntimeErrors(page: Page) {
   const errors: string[] = [];
@@ -7,6 +7,12 @@ function captureRuntimeErrors(page: Page) {
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   return errors;
+}
+
+async function placeControlInSafeViewport(locator: Locator) {
+  await locator.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeInViewport();
 }
 
 test("catalogue exposes every required primitive family without runtime errors", async ({ page }) => {
@@ -34,33 +40,43 @@ test("catalogue exposes every required primitive family without runtime errors",
 });
 
 test("tabs and overlays remain keyboard and escape usable", async ({ page }) => {
-  await page.goto("/design-system#navigation");
+  await page.goto("/design-system");
 
   const overviewTab = page.getByRole("tab", { name: "Overview" });
+  await placeControlInSafeViewport(overviewTab);
   await overviewTab.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Permissions" })).toBeFocused();
   await expect(page.getByRole("tab", { name: "Permissions" })).toHaveAttribute("aria-selected", "true");
 
-  await page.getByRole("button", { name: "Open dialog" }).click();
+  const openDialog = page.getByRole("button", { name: "Open dialog" });
+  await placeControlInSafeViewport(openDialog);
+  await openDialog.click();
   await expect(page.getByRole("dialog", { name: "Confirm example action" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Confirm example action" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Open drawer" }).click();
+  const openDrawer = page.getByRole("button", { name: "Open drawer" });
+  await placeControlInSafeViewport(openDrawer);
+  await openDrawer.click();
   await expect(page.getByRole("dialog", { name: "Context drawer" })).toBeVisible();
   await page.getByRole("button", { name: "Close drawer" }).click();
   await expect(page.getByRole("dialog", { name: "Context drawer" })).toBeHidden();
 });
 
 test("interactive feedback and menu actions expose truthful visible results", async ({ page }) => {
-  await page.goto("/design-system#feedback");
-  await page.getByRole("button", { name: "Show notification" }).click();
+  await page.goto("/design-system");
+
+  const showNotification = page.getByRole("button", { name: "Show notification" });
+  await placeControlInSafeViewport(showNotification);
+  await showNotification.click();
   await expect(page.getByRole("status").filter({ hasText: "Saved safely" })).toBeVisible();
   await page.getByRole("button", { name: "Dismiss notification" }).click();
   await expect(page.getByText("Saved safely")).toBeHidden();
 
-  await page.getByRole("button", { name: "Open menu" }).click();
+  const openMenu = page.getByRole("button", { name: "Open menu" });
+  await placeControlInSafeViewport(openMenu);
+  await openMenu.click();
   await page.getByRole("menuitem", { name: "Preview action" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved safely" })).toBeVisible();
 });
