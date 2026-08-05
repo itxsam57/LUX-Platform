@@ -13,13 +13,13 @@ Canonical product rules live in `docs/product/00_CANONICAL_PROJECT_LOCK.md`.
 
 ## Current technology
 
-- pnpm 10.15.0 workspace.
-- Next.js 15.5.2 App Router.
+- pnpm 10.15.0 workspace with committed `pnpm-lock.yaml` and frozen-install enforcement.
+- Next.js 15.5.21 App Router.
 - React and React DOM 19.1.1.
 - TypeScript 5.9.2 with strict checking.
-- ESLint 9.34.0 with Next.js rules and zero-warning policy.
+- ESLint 9.34.0 with `eslint-config-next` 15.5.21 and zero-warning policy.
 - Vitest 3.2.4 with V8 coverage.
-- Playwright 1.55.0 with Chromium desktop and Pixel 7 emulation.
+- Playwright 1.55.1 with Chromium desktop and Pixel 7 emulation.
 - GitHub Actions on Ubuntu and Node.js 22.
 
 ## Implemented surfaces
@@ -44,11 +44,11 @@ Only an anonymous public visitor exists in code. The finished product plans fan,
 
 | ID | Workflow | Risk | Automated layer |
 |---|---|---:|---|
-| FND-WF-001 | Load `/` and identify Build Slice 0 | Medium | Playwright desktop/mobile |
+| FND-WF-001 | Load foundation home page and identify active build slice | Medium | Playwright desktop/mobile |
 | FND-WF-002 | Navigate home → design system → Back/Forward → refresh | High | Playwright desktop/mobile |
 | FND-WF-003 | GET `/health` and validate service/status/build slice/timestamp | Medium | Vitest API contract + Playwright request |
-| FND-WF-004 | Open unknown route, receive 404, recover home | Medium | Playwright desktop/mobile |
-| ENG-WF-001 | Reproducible frozen dependency install | High | repository check + GitHub Actions |
+| FND-WF-004 | Request unknown route and recover home | Medium | Playwright desktop/mobile |
+| ENG-WF-001 | Clean frozen dependency install | High | committed lockfile + GitHub Actions |
 | ENG-WF-002 | Run full engineering gate and generate truthful handoff | High | `pnpm verify:full` |
 
 ## Data classification
@@ -64,24 +64,23 @@ Slice 0 requires no runtime secrets. Tracked `.env`, provider tokens, private ke
 
 ## Verification commands
 
-- `pnpm verify:quick` — repository/secret/lint/type/unit checks.
+- `pnpm verify:quick` — repository/secret/lint/type/unit/API checks.
 - `pnpm verify:affected` — safe change-aware verification.
 - `pnpm verify:full` — repository, secret, lint, type, unit, API/integration, dependency audit, build, browser tests, and handoff.
 - `pnpm report:handoff` — regenerate the current manual-test handoff.
 
 ## Browser matrix
 
-- Chromium desktop in CI: required.
-- Chromium Pixel 7 emulation in CI: required.
-- Owner’s local Chrome on Windows: manual only when the generated handoff says visible testing is required.
+- Chromium desktop in CI: required for applicable source/config changes.
+- Chromium Pixel 7 emulation in CI: required for applicable source/config changes.
+- Owner’s local Chrome on Windows: manual only when the generated handoff lists visible tests.
 - Firefox/WebKit: not configured in Slice 0 to control cost; add only when product compatibility risk justifies them.
 
 ## Definition of done
 
-A change is done only when it preserves the canonical product rules, avoids unrelated redesign, passes repository and secret checks, lint, strict types, applicable tests, production build, applicable desktop/mobile workflows, and generates a truthful handoff. The owner performs only the visible tests listed in that handoff.
+A change is done only when it preserves the canonical product rules, avoids unrelated redesign, passes repository and secret checks, lint, strict types, applicable tests, dependency audit, production build, applicable desktop/mobile workflows, and generates a truthful handoff. The owner performs only the visible tests listed in that handoff.
 
 ## Known current limitations
 
-- The audit baseline had no committed lockfile; the automation installation must generate and commit one before frozen installs can pass.
 - No deployment preview provider is configured; local browser handoffs use `http://127.0.0.1:3000` only when visible testing is required.
 - Product-system tests remain blocked until their corresponding build slices exist.
