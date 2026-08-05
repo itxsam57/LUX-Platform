@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: bootstrap-lockfile-${{ github.ref }}
@@ -26,10 +26,15 @@ jobs:
           node-version: 22
       - name: Generate lockfile from committed manifests
         run: pnpm install --lockfile-only --no-frozen-lockfile
-      - name: Upload generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: pnpm-lockfile
-          path: pnpm-lock.yaml
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit lockfile when changed
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            echo "Lockfile is already current."
+          else
+            git commit -m "build(engineering): add reproducible pnpm lockfile"
+            git push
+          fi
