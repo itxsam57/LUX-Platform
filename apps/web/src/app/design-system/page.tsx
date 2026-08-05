@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function DesignSystemPage() {
   return (
     <main className="page-shell">
@@ -8,7 +10,9 @@ export default function DesignSystemPage() {
           This route will become the controlled component catalogue for tokens, typography,
           buttons, forms, cards, feedback states, navigation, and accessibility behavior.
         </p>
-        <a className="primary-button" href="/">Return home</a>
+        <Link className="primary-button" href="/">
+          Return home
+        </Link>
       </section>
     </main>
   );
