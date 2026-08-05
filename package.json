@@ -14,7 +14,8 @@
     ]
   },
   "scripts": {
-    "dev": "pnpm --filter @lux/web dev",
+    "dev": "pnpm --filter @lux/web exec next dev -p 30002",
+    "start": "pnpm --filter @lux/web exec next start -p 30002",
     "build": "pnpm --filter @lux/web build",
     "lint": "pnpm --filter @lux/web lint",
     "typecheck": "pnpm --filter @lux/web typecheck",
