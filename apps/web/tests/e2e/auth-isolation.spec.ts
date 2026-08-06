@@ -131,7 +131,7 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
     await approveCreatorRequest(adminPage, fan.id);
 
     await page.goto("/workspace");
-    const creatorCard = page.getByRole("heading", { name: "Creator workspace" }).locator("..").locator("..");
+    const creatorCard = page.getByRole("region", { name: "Creator workspace" });
     await creatorCard.getByRole("button", { name: "Activate Creator" }).click();
     await expect(page).toHaveURL(/\/workspace\/creator$/);
     await expect(page.getByRole("heading", { name: "Creator workspace" })).toBeVisible();
@@ -204,7 +204,10 @@ test("password recovery changes the password and rejects the old password", asyn
     await page.goto(
       `/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=${encodeURIComponent("/auth/update-password")}`,
     );
-    await expect(page).toHaveURL(/\/auth\/update-password/);
+    await expect(page).toHaveURL("http://127.0.0.1:30002/auth/update-password");
+    const recoveryCookies = await page.context().cookies("http://127.0.0.1:30002");
+    expect(recoveryCookies.some((cookie) => cookie.name.endsWith("-auth-token"))).toBe(true);
+
     await page.getByLabel("New password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Update password" }).click();
     await expect(page).toHaveURL(/\/age-assurance/);
