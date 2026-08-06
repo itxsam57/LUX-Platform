@@ -1,12 +1,10 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import type {
-  WorkspaceMutationState,
-} from "@/app/workspace/actions";
 import {
   INITIAL_WORKSPACE_MUTATION_STATE,
-} from "@/app/workspace/actions";
+  type WorkspaceMutationState,
+} from "@/app/workspace/mutation-state";
 import { Button } from "@/components/ui/primitives";
 
 type WorkspaceMutationAction = (
