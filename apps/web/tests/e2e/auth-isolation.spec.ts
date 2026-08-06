@@ -185,13 +185,20 @@ test("logout all devices invalidates old sessions and accepts an immediate new l
   }
 });
 
-test("a generated recovery link changes the password and rejects the old password", async ({ page, browser }, testInfo) => {
+test("password recovery changes the password and rejects the old password", async ({ page, browser }, testInfo) => {
   const email = testEmail("recovery", testInfo);
   const user = await createConfirmedUser(email);
   const loginContext = await openSecondaryContext(browser, testInfo);
   const loginPage = await loginContext.newPage();
 
   try {
+    await page.goto("/auth/forgot-password");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Send recovery link" }).click();
+    await expect(page.getByTestId("auth-form-message")).toContainText(
+      "If the account exists, a password-recovery link has been sent",
+    );
+
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
@@ -199,9 +206,12 @@ test("a generated recovery link changes the password and rejects the old passwor
         redirectTo: "http://127.0.0.1:30002/auth/callback?next=/auth/update-password",
       },
     });
-    if (error || !data.properties?.action_link) throw error ?? new Error("Recovery link was not generated.");
+    const tokenHash = data.properties?.hashed_token;
+    if (error || !tokenHash) throw error ?? new Error("Recovery token hash was not generated.");
 
-    await page.goto(data.properties.action_link);
+    await page.goto(
+      `/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=${encodeURIComponent("/auth/update-password")}`,
+    );
     await expect(page).toHaveURL(/\/auth\/update-password/);
     await page.getByLabel("New password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Update password" }).click();
