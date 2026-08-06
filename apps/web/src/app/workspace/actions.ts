@@ -7,19 +7,12 @@ import {
   routeForRole,
 } from "@/lib/auth/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  INITIAL_WORKSPACE_MUTATION_STATE,
+  type WorkspaceMutationState,
+} from "./mutation-state";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export type WorkspaceMutationState = {
-  status: "idle" | "success" | "error";
-  message: string;
-  destination?: string;
-};
-
-export const INITIAL_WORKSPACE_MUTATION_STATE: WorkspaceMutationState = {
-  status: "idle",
-  message: "",
-};
 
 function mutationError(message: string): WorkspaceMutationState {
   return { status: "error", message };
