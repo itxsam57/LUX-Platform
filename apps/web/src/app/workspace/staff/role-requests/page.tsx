@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { reviewWorkspaceRequestAction } from "../../actions";
-import { Button, Status, Table } from "@/components/ui/primitives";
+import { Status, Table } from "@/components/ui/primitives";
+import { WorkspaceMutationForm } from "@/components/workspace/workspace-mutation-form";
 import { requireWorkspace } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -67,16 +68,25 @@ export default async function RoleRequestsPage({
                 <td>{new Date(request.requested_at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}</td>
                 <td>
                   <div className="component-row">
-                    <form action={reviewWorkspaceRequestAction}>
-                      <input type="hidden" name="membership_id" value={request.id} />
-                      <input type="hidden" name="decision" value="approved" />
-                      <Button type="submit" size="small">Approve</Button>
-                    </form>
-                    <form action={reviewWorkspaceRequestAction}>
-                      <input type="hidden" name="membership_id" value={request.id} />
-                      <input type="hidden" name="decision" value="rejected" />
-                      <Button type="submit" size="small" variant="danger">Reject</Button>
-                    </form>
+                    <WorkspaceMutationForm
+                      action={reviewWorkspaceRequestAction}
+                      fields={[
+                        { name: "membership_id", value: request.id },
+                        { name: "decision", value: "approved" },
+                      ]}
+                      label="Approve"
+                      size="small"
+                    />
+                    <WorkspaceMutationForm
+                      action={reviewWorkspaceRequestAction}
+                      fields={[
+                        { name: "membership_id", value: request.id },
+                        { name: "decision", value: "rejected" },
+                      ]}
+                      label="Reject"
+                      size="small"
+                      variant="danger"
+                    />
                   </div>
                 </td>
               </tr>
