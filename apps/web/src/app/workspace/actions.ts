@@ -23,7 +23,6 @@ export async function requestWorkspaceRoleAction(formData: FormData) {
   const { error } = await supabase.rpc("request_workspace_role", { requested_role: rawRole });
   if (error) redirect("/workspace?error=role-request-failed");
 
-  revalidatePath("/workspace");
   redirect(`/workspace?notice=${rawRole}-requested`);
 }
 
@@ -63,6 +62,5 @@ export async function reviewWorkspaceRequestAction(formData: FormData) {
   });
   if (error) redirect("/workspace/staff/role-requests?error=review-failed");
 
-  revalidatePath("/workspace/staff/role-requests");
   redirect(`/workspace/staff/role-requests?notice=${decision}`);
 }
