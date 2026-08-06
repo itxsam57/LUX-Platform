@@ -60,15 +60,30 @@ jobs:
             echo "RUN_DATABASE_TESTS=1"
           } >> "$GITHUB_ENV"
 
+      - name: Resolve verification comparison base
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ -n "$PR_BASE_SHA" ]; then
+            base="$PR_BASE_SHA"
+          elif [ "$GITHUB_REF_NAME" != "main" ]; then
+            base="$(git merge-base HEAD origin/main)"
+          elif [ -n "$PUSH_BEFORE_SHA" ] && ! [[ "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
+            base="$PUSH_BEFORE_SHA"
+          else
+            base="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
+          fi
+          echo "HANDOFF_BASE_SHA=$base" >> "$GITHUB_ENV"
+          echo "Verification comparison base: $base"
+
       - name: Detect browser-test impact
         id: impact
-        env:
-          HANDOFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/engineering/ci-impact.mjs
 
       - name: Run applicable full verification gate
         env:
-          HANDOFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           SKIP_BROWSER: ${{ steps.impact.outputs.browser_required == 'true' && '0' || '1' }}
         run: pnpm verify:full
 
