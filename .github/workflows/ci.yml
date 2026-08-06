@@ -21,7 +21,7 @@ jobs:
   verify:
     name: full-verification-gate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +39,26 @@ jobs:
 
       - name: Frozen dependency install
         run: pnpm install --frozen-lockfile
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Start isolated Supabase test stack
+        run: supabase start
+
+      - name: Export isolated Supabase environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:30002"
+            echo "AGE_ASSURANCE_MODE=self_attestation"
+            echo "RUN_DATABASE_TESTS=1"
+          } >> "$GITHUB_ENV"
 
       - name: Detect browser-test impact
         id: impact
@@ -74,3 +94,7 @@ jobs:
             echo "NOT READY — AUTOMATED ENGINEERING GATE FAILED" >> "$GITHUB_STEP_SUMMARY"
             echo "The handoff report was not generated." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Stop isolated Supabase test stack
+        if: always()
+        run: supabase stop --no-backup

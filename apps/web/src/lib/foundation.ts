@@ -1,9 +1,20 @@
 export const FOUNDATION_SLICE = {
-  id: "slice-1",
-  number: 1,
-  name: "Design system and application shell",
+  id: "slice-2",
+  number: 2,
+  name: "Authentication, age assurance, and workspace isolation",
   healthStatus: "ok",
-  requiredRoutes: ["/", "/design-system", "/health"] as const,
+  requiredRoutes: [
+    "/",
+    "/design-system",
+    "/health",
+    "/auth/login",
+    "/auth/sign-up",
+    "/auth/forgot-password",
+    "/auth/check-email",
+    "/age-assurance",
+    "/workspace",
+    "/settings/security",
+  ] as const,
 } as const;
 
 export function isFoundationRoute(pathname: string): boolean {

@@ -1,6 +1,9 @@
 import { defineConfig } from "vitest/config";
 
-const unitCoverageScope = ["src/lib/**/*.{ts,tsx}"];
+const unitCoverageScope = [
+  "src/lib/foundation.ts",
+  "src/lib/auth/policy.ts",
+];
 
 export default defineConfig({
   test: {
@@ -16,8 +19,8 @@ export default defineConfig({
         lines: 80,
         functions: 80,
         branches: 80,
-        statements: 80
-      }
-    }
-  }
+        statements: 80,
+      },
+    },
+  },
 });

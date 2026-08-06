@@ -1,0 +1,2 @@
+-- Slice 2 uses deterministic test users created by pgTAP and Playwright.
+-- Production and hosted development accounts must be created through Supabase Auth.

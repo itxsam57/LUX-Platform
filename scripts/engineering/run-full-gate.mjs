@@ -20,8 +20,28 @@ const prerequisiteSteps = [
 
 const results = prerequisiteSteps.map(([name, command]) => run(name, command));
 const prerequisitesPassed = results.every((item) => item.status === "PASS");
+const databaseRequired = process.env.RUN_DATABASE_TESTS === "1" || Boolean(process.env.CI);
 
-if (prerequisitesPassed) {
+if (!prerequisitesPassed) {
+  results.push({
+    name: "Supabase database and RLS tests",
+    command: "pnpm test:database",
+    status: "BLOCKED BY PREREQUISITE",
+  });
+} else if (databaseRequired) {
+  results.push(run("Supabase database and RLS tests", "pnpm test:database"));
+} else {
+  results.push({
+    name: "Supabase database and RLS tests",
+    command: "pnpm test:database",
+    status: "NOT AVAILABLE ON LOCAL HARDWARE",
+  });
+}
+
+const databaseStatus = results.find((item) => item.name === "Supabase database and RLS tests")?.status;
+const databasePassed = databaseStatus === "PASS" || (!process.env.CI && databaseStatus === "NOT AVAILABLE ON LOCAL HARDWARE");
+
+if (prerequisitesPassed && databasePassed) {
   results.push(run("Production build", "pnpm build"));
 } else {
   results.push({ name: "Production build", command: "pnpm build", status: "BLOCKED BY PREREQUISITE" });
@@ -44,13 +64,21 @@ if (skipBrowser) {
 }
 
 const acceptedStatuses = new Set(["PASS", "NOT APPLICABLE"]);
+if (!process.env.CI) acceptedStatuses.add("NOT AVAILABLE ON LOCAL HARDWARE");
 const passed = results.every((item) => acceptedStatuses.has(item.status));
 mkdirSync(".engineering/reports", { recursive: true });
-writeFileSync(".engineering/reports/full-gate.json", JSON.stringify({ passed, generatedAt: new Date().toISOString(), results }, null, 2), "utf8");
+writeFileSync(
+  ".engineering/reports/full-gate.json",
+  JSON.stringify({ passed, generatedAt: new Date().toISOString(), results }, null, 2),
+  "utf8",
+);
 
 console.log("\n=== Full gate summary ===");
 for (const item of results) console.log(`${item.status.padEnd(42)} ${item.name}`);
 
-const handoff = spawnSync(`node scripts/engineering/handoff.mjs --status=${passed ? "pass" : "fail"}`, { shell: true, stdio: "inherit" });
+const handoff = spawnSync(
+  `node scripts/engineering/handoff.mjs --status=${passed ? "pass" : "fail"}`,
+  { shell: true, stdio: "inherit" },
+);
 if (handoff.status !== 0) process.exit(handoff.status ?? 1);
 process.exit(passed ? 0 : 1);

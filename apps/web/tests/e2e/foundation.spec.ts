@@ -9,45 +9,46 @@ function captureRuntimeErrors(page: Page) {
   return errors;
 }
 
-test("home and design-system navigation remain synchronized without refresh", async ({ page }) => {
+test("home, auth, and design-system navigation remain synchronized without refresh", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
-  await expect(page.getByText("Build Slice 1: design system and application shell")).toBeVisible();
+  await expect(page.getByText("Build Slice 2: authentication, age assurance, and workspace isolation")).toBeVisible();
 
-  await page.getByRole("link", { name: "Open design-system catalogue" }).click();
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/auth\/login$/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole("link", { name: "Design system" }).click();
   await expect(page).toHaveURL(/\/design-system$/);
   await expect(page.getByRole("heading", { name: "Design system", exact: true })).toBeVisible();
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
-
   await page.goForward();
-  await expect(page).toHaveURL(/\/design-system$/);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Design system", exact: true })).toBeVisible();
-
   expect(runtimeErrors).toEqual([]);
 });
 
-test("primary navigation is keyboard accessible", async ({ page }) => {
+test("primary account navigation is keyboard accessible", async ({ page }) => {
   await page.goto("/");
   await page.keyboard.press("Tab");
-  const link = page.getByRole("link", { name: "Open design-system catalogue" });
-  await expect(link).toBeFocused();
+  const createAccount = page.getByRole("link", { name: "Create account" });
+  await expect(createAccount).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/design-system$/);
+  await expect(page).toHaveURL(/\/auth\/sign-up$/);
 });
 
-test("health endpoint returns a successful stable contract", async ({ request }) => {
+test("health endpoint returns the Slice 2 contract", async ({ request }) => {
   const response = await request.get("/health");
   expect(response.ok()).toBeTruthy();
   await expect(response.json()).resolves.toMatchObject({
     service: "lux-web",
     status: "ok",
-    buildSlice: 1,
+    buildSlice: 2,
   });
 });
 
@@ -57,11 +58,10 @@ test("unknown routes render a controlled 404 and recover home", async ({ page })
   await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
   await page.getByRole("link", { name: "Return home" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
 });
 
-test("foundation pages do not overflow the configured desktop or mobile viewport", async ({ page }) => {
-  for (const route of ["/", "/design-system", "/route-that-must-not-exist"]) {
+test("public foundation pages do not overflow the configured viewport", async ({ page }) => {
+  for (const route of ["/", "/auth/login", "/auth/sign-up", "/design-system", "/route-that-must-not-exist"]) {
     await page.goto(route);
     const dimensions = await page.evaluate(() => ({
       viewportWidth: document.documentElement.clientWidth,

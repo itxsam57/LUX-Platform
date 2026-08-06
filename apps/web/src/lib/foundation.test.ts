@@ -3,16 +3,27 @@ import { FOUNDATION_SLICE, isFoundationRoute } from "./foundation";
 
 describe("foundation contracts", () => {
   it("identifies the active build slice", () => {
-    expect(FOUNDATION_SLICE.id).toBe("slice-1");
-    expect(FOUNDATION_SLICE.number).toBe(1);
+    expect(FOUNDATION_SLICE.id).toBe("slice-2");
+    expect(FOUNDATION_SLICE.number).toBe(2);
     expect(FOUNDATION_SLICE.healthStatus).toBe("ok");
   });
 
-  it.each(["/", "/design-system", "/health"])("recognizes %s", (route) => {
+  it.each([
+    "/",
+    "/design-system",
+    "/health",
+    "/auth/login",
+    "/auth/sign-up",
+    "/auth/forgot-password",
+    "/auth/check-email",
+    "/age-assurance",
+    "/workspace",
+    "/settings/security",
+  ])("recognizes %s", (route) => {
     expect(isFoundationRoute(route)).toBe(true);
   });
 
-  it("rejects routes not included in the foundation", () => {
-    expect(isFoundationRoute("/dashboard")).toBe(false);
+  it("rejects routes outside the active foundation", () => {
+    expect(isFoundationRoute("/campaigns")).toBe(false);
   });
 });

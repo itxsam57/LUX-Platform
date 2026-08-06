@@ -22,6 +22,7 @@
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "pnpm --filter @lux/web test:unit",
     "test:integration": "pnpm --filter @lux/web test:integration",
+    "test:database": "supabase test db",
     "test:e2e": "pnpm --filter @lux/web test:e2e",
     "repo:check": "node scripts/engineering/check-repository.mjs",
     "runtime:dependencies": "node scripts/engineering/check-runtime-dependencies.mjs",
