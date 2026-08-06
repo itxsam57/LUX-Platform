@@ -3,7 +3,8 @@ import {
   activateWorkspaceAction,
   requestWorkspaceRoleAction,
 } from "./actions";
-import { Badge, Button, Card, Status } from "@/components/ui/primitives";
+import { Badge, Button, Status } from "@/components/ui/primitives";
+import { WorkspaceMutationForm } from "@/components/workspace/workspace-mutation-form";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { routeForRole, type AppRole } from "@/lib/auth/policy";
 
@@ -48,12 +49,17 @@ export default async function WorkspaceIndexPage({
         {viewer.context.memberships.map((membership) => {
           const copy = ROLE_COPY[membership.role];
           const active = viewer.context.activeRole === membership.role;
+          const titleId = `workspace-${membership.id}-title`;
           return (
-            <Card className="workspace-role-card" key={membership.id}>
+            <section
+              className="ui-card workspace-role-card"
+              aria-labelledby={titleId}
+              key={membership.id}
+            >
               <div className="workspace-role-card__heading">
                 <div>
                   <span className="eyebrow">{copy.label}</span>
-                  <h2>{copy.label} workspace</h2>
+                  <h2 id={titleId}>{copy.label} workspace</h2>
                 </div>
                 <Status
                   label={active ? "Active" : membership.status}
@@ -65,10 +71,11 @@ export default async function WorkspaceIndexPage({
                 active ? (
                   <Button variant="secondary" disabled title="This workspace is already active">Already active</Button>
                 ) : (
-                  <form action={activateWorkspaceAction}>
-                    <input type="hidden" name="membership_id" value={membership.id} />
-                    <Button type="submit">Activate {copy.label}</Button>
-                  </form>
+                  <WorkspaceMutationForm
+                    action={activateWorkspaceAction}
+                    fields={[{ name: "membership_id", value: membership.id }]}
+                    label={`Activate ${copy.label}`}
+                  />
                 )
               ) : (
                 <Button variant="secondary" disabled title="Approval is required before this workspace can be activated">
@@ -80,7 +87,7 @@ export default async function WorkspaceIndexPage({
                   Open current workspace
                 </Link>
               ) : null}
-            </Card>
+            </section>
           );
         })}
       </div>
@@ -93,16 +100,20 @@ export default async function WorkspaceIndexPage({
         </div>
         <div className="workspace-request-actions">
           {!existingRoles.has("creator") ? (
-            <form action={requestWorkspaceRoleAction}>
-              <input type="hidden" name="role" value="creator" />
-              <Button type="submit" variant="secondary">Request creator access</Button>
-            </form>
+            <WorkspaceMutationForm
+              action={requestWorkspaceRoleAction}
+              fields={[{ name: "role", value: "creator" }]}
+              label="Request creator access"
+              variant="secondary"
+            />
           ) : null}
           {!existingRoles.has("agency") ? (
-            <form action={requestWorkspaceRoleAction}>
-              <input type="hidden" name="role" value="agency" />
-              <Button type="submit" variant="secondary">Request agency access</Button>
-            </form>
+            <WorkspaceMutationForm
+              action={requestWorkspaceRoleAction}
+              fields={[{ name: "role", value: "agency" }]}
+              label="Request agency access"
+              variant="secondary"
+            />
           ) : null}
           {existingRoles.has("creator") && existingRoles.has("agency") ? (
             <span className="muted-copy">All self-requestable roles already have a membership record.</span>
