@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: lockfile-refresh-${{ github.ref }}
@@ -19,6 +19,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: feature/slice-2-auth-isolation
 
       - uses: pnpm/action-setup@v6
         with:
@@ -39,6 +41,19 @@ jobs:
             echo "Stale vulnerable PostCSS override remains in lockfile."
             exit 1
           fi
+
+      - name: Commit lockfile when changed
+        shell: bash
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "Lockfile is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "fix(deps): refresh lockfile for patched PostCSS"
+          git push origin HEAD:feature/slice-2-auth-isolation
 
       - uses: actions/upload-artifact@v7
         with:
