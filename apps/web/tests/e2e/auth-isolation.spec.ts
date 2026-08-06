@@ -208,7 +208,7 @@ test("password recovery changes the password and rejects the old password", asyn
     const recoveryCookies = await page.context().cookies("http://127.0.0.1:30002");
     expect(recoveryCookies.some((cookie) => cookie.name.endsWith("-auth-token"))).toBe(true);
 
-    await page.getByLabel("New password").fill(NEW_PASSWORD);
+    await page.locator("#update-password-password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Update password" }).click();
     await expect(page).toHaveURL(/\/age-assurance/);
 
