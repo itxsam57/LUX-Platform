@@ -61,11 +61,11 @@ async function openSecondaryContext(browser: Browser, testInfo: TestInfo): Promi
   return browser.newContext(testInfo.project.use);
 }
 
-async function approveOnlyCreatorRequest(adminPage: Page) {
+async function approveCreatorRequest(adminPage: Page, requestedUserId: string) {
   await adminPage.goto("/workspace/staff/role-requests");
-  const rows = adminPage.getByRole("row").filter({ has: adminPage.getByRole("button", { name: "Approve" }) });
-  await expect(rows).toHaveCount(1);
-  await rows.first().getByRole("button", { name: "Approve" }).click();
+  const row = adminPage.getByRole("row").filter({ hasText: requestedUserId.slice(0, 8) });
+  await expect(row).toHaveCount(1);
+  await row.getByRole("button", { name: "Approve" }).click();
   await expect(adminPage).toHaveURL(/notice=approved/);
 }
 
@@ -128,7 +128,7 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
 
     await login(adminPage, adminEmail, PASSWORD, "/workspace/staff");
     await confirmAdultAccess(adminPage, /\/workspace\/staff$/);
-    await approveOnlyCreatorRequest(adminPage);
+    await approveCreatorRequest(adminPage, fan.id);
 
     await page.goto("/workspace");
     const creatorCard = page.getByRole("heading", { name: "Creator workspace" }).locator("..").locator("..");
