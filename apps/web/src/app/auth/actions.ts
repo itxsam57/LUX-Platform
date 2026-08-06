@@ -19,9 +19,10 @@ function passwordFrom(formData: FormData): string {
 }
 
 export async function signUpAction(
-  _previous: AuthActionState = INITIAL_AUTH_STATE,
+  previous: AuthActionState = INITIAL_AUTH_STATE,
   formData: FormData,
 ): Promise<AuthActionState> {
+  void previous;
   const email = normalizeEmail(formData.get("email"));
   const password = passwordFrom(formData);
   const emailError = validateEmail(email);
@@ -65,9 +66,10 @@ export async function signUpAction(
 }
 
 export async function loginAction(
-  _previous: AuthActionState = INITIAL_AUTH_STATE,
+  previous: AuthActionState = INITIAL_AUTH_STATE,
   formData: FormData,
 ): Promise<AuthActionState> {
+  void previous;
   const email = normalizeEmail(formData.get("email"));
   const password = passwordFrom(formData);
   const nextPath = normalizeNextPath(formData.get("next"));
@@ -101,9 +103,10 @@ export async function loginAction(
 }
 
 export async function forgotPasswordAction(
-  _previous: AuthActionState = INITIAL_AUTH_STATE,
+  previous: AuthActionState = INITIAL_AUTH_STATE,
   formData: FormData,
 ): Promise<AuthActionState> {
+  void previous;
   const email = normalizeEmail(formData.get("email"));
   const emailError = validateEmail(email);
   if (emailError) {
@@ -126,9 +129,10 @@ export async function forgotPasswordAction(
 }
 
 export async function updatePasswordAction(
-  _previous: AuthActionState = INITIAL_AUTH_STATE,
+  previous: AuthActionState = INITIAL_AUTH_STATE,
   formData: FormData,
 ): Promise<AuthActionState> {
+  void previous;
   const password = passwordFrom(formData);
   const passwordError = validatePassword(password);
   if (passwordError) {
