@@ -26,7 +26,7 @@ export default async function RoleRequestsPage({
   const supabase = await createServerSupabaseClient();
   const { data, error: queryError } = await supabase
     .from("workspace_memberships")
-    .select("id, role, status, requested_at")
+    .select("id, user_id, role, status, requested_at")
     .eq("status", "requested")
     .in("role", ["creator", "agency"])
     .order("requested_at", { ascending: true });
@@ -39,7 +39,7 @@ export default async function RoleRequestsPage({
         <div>
           <span className="eyebrow">Super-admin only</span>
           <h1>Workspace role requests</h1>
-          <p>Approve or reject the exact creator or agency membership. No other user data is exposed here.</p>
+          <p>Approve or reject an exact creator or agency membership using its requester and membership IDs.</p>
         </div>
         <Status label={`${requests.length} pending`} tone={requests.length ? "warning" : "success"} />
       </header>
@@ -51,6 +51,7 @@ export default async function RoleRequestsPage({
         <Table caption="Pending creator and agency workspace requests">
           <thead>
             <tr>
+              <th scope="col">Requester</th>
               <th scope="col">Membership</th>
               <th scope="col">Requested role</th>
               <th scope="col">Requested</th>
@@ -60,6 +61,7 @@ export default async function RoleRequestsPage({
           <tbody>
             {requests.map((request) => (
               <tr key={request.id}>
+                <td><code>{request.user_id.slice(0, 8)}…</code></td>
                 <td><code>{request.id.slice(0, 8)}…</code></td>
                 <td>{request.role}</td>
                 <td>{new Date(request.requested_at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}</td>
