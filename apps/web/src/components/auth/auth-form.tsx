@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   forgotPasswordAction,
   loginAction,
@@ -53,6 +53,7 @@ const COPY: Record<AuthMode, { eyebrow: string; title: string; description: stri
 
 export function AuthForm({ mode, next = "/workspace" }: { mode: AuthMode; next?: string }) {
   const [state, formAction, pending] = useActionState(ACTIONS[mode], INITIAL_AUTH_STATE);
+  const [email, setEmail] = useState("");
   const copy = COPY[mode];
   const showsEmail = mode !== "update-password";
   const showsPassword = mode === "login" || mode === "sign-up" || mode === "update-password";
@@ -74,6 +75,8 @@ export function AuthForm({ mode, next = "/workspace" }: { mode: AuthMode; next?:
             autoComplete="email"
             inputMode="email"
             required
+            value={email}
+            onChange={(event) => setEmail(event.currentTarget.value)}
             error={state.fieldErrors?.email}
           />
         ) : null}
