@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const rawType = url.searchParams.get("type");
+  const isRecovery = rawType === "recovery" || nextPath === "/auth/update-password";
 
   try {
     const supabase = await createServerSupabaseClient();
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     await supabase.rpc("record_auth_event", {
-      auth_event_type: rawType === "recovery" ? "password_recovery_requested" : "email_verified",
+      auth_event_type: isRecovery ? "password_recovery_requested" : "email_verified",
       auth_outcome: "success",
     });
 
