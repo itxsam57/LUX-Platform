@@ -77,7 +77,7 @@ async function approveCreatorRequest(adminPage: Page, requestedUserId: string) {
   await expect(adminPage).toHaveURL(/notice=approved/);
 }
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "default" });
 
 test("sign-up uses safe validation and a generic verification response", async ({ page }, testInfo) => {
   const email = testEmail("signup", testInfo);
@@ -88,11 +88,11 @@ test("sign-up uses safe validation and a generic verification response", async (
     await page.getByLabel("Email address").fill(email);
     await page.getByLabel("Password").fill("weak");
     await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page.getByRole("alert")).toContainText("Check the highlighted fields");
+    await expect(page.getByTestId("auth-form-message")).toContainText("Check the highlighted fields");
 
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page.getByRole("status")).toContainText("Check your email for the verification link");
+    await expect(page.getByTestId("auth-form-message")).toContainText("Check your email for the verification link");
 
     const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     createdUserId = data.users.find((user) => user.email === email)?.id ?? null;
