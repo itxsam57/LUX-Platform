@@ -63,7 +63,7 @@ export function AuthForm({ mode, next = "/workspace" }: { mode: AuthMode; next?:
       <h1 id="auth-title">{copy.title}</h1>
       <p className="muted-copy">{copy.description}</p>
 
-      <form action={formAction} className="auth-form">
+      <form action={formAction} className="auth-form" noValidate>
         <input type="hidden" name="next" value={next} />
         {showsEmail ? (
           <Input
@@ -96,6 +96,7 @@ export function AuthForm({ mode, next = "/workspace" }: { mode: AuthMode; next?:
             className={state.status === "success" ? "auth-message auth-message--success" : "auth-message auth-message--error"}
             role={state.status === "error" ? "alert" : "status"}
             aria-live="polite"
+            data-testid="auth-form-message"
           >
             {state.message}
           </div>
