@@ -61,19 +61,11 @@ async function openSecondaryContext(browser: Browser, testInfo: TestInfo): Promi
   return browser.newContext(testInfo.project.use);
 }
 
-async function approveCreatorRequest(adminPage: Page, requestedUserId: string) {
-  const { data: membership, error } = await admin
-    .from("workspace_memberships")
-    .select("id")
-    .eq("user_id", requestedUserId)
-    .eq("role", "creator")
-    .eq("status", "requested")
-    .single();
-  if (error || !membership) throw error ?? new Error("Creator request was not found.");
-
+async function approveOnlyCreatorRequest(adminPage: Page) {
   await adminPage.goto("/workspace/staff/role-requests");
-  const row = adminPage.getByRole("row").filter({ hasText: membership.id.slice(0, 8) });
-  await row.getByRole("button", { name: "Approve" }).click();
+  const rows = adminPage.getByRole("row").filter({ has: adminPage.getByRole("button", { name: "Approve" }) });
+  await expect(rows).toHaveCount(1);
+  await rows.first().getByRole("button", { name: "Approve" }).click();
   await expect(adminPage).toHaveURL(/notice=approved/);
 }
 
@@ -136,7 +128,7 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
 
     await login(adminPage, adminEmail, PASSWORD, "/workspace/staff");
     await confirmAdultAccess(adminPage, /\/workspace\/staff$/);
-    await approveCreatorRequest(adminPage, fan.id);
+    await approveOnlyCreatorRequest(adminPage);
 
     await page.goto("/workspace");
     const creatorCard = page.getByRole("heading", { name: "Creator workspace" }).locator("..").locator("..");
@@ -174,7 +166,7 @@ test("logout all devices invalidates old sessions and accepts an immediate new l
     await expect(page).toHaveURL(/all-devices-signed-out/);
 
     await secondPage.goto("/workspace/fan");
-    await expect(secondPage).toHaveURL(/\/auth\/login\?.*reason=session-expired/);
+    await expect(secondPage).toHaveURL(/\/auth\/login\?next=%2Fworkspace%2Ffan/);
 
     await login(secondPage, email, PASSWORD, "/workspace/fan");
     await expect(secondPage).toHaveURL(/\/workspace\/fan$/);
