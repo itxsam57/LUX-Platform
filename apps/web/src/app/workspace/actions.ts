@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireAdultViewer, requireWorkspace } from "@/lib/auth/context";
 import {
   isAppRole,
@@ -12,38 +10,74 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function requestWorkspaceRoleAction(formData: FormData) {
+export type WorkspaceMutationState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  destination?: string;
+};
+
+export const INITIAL_WORKSPACE_MUTATION_STATE: WorkspaceMutationState = {
+  status: "idle",
+  message: "",
+};
+
+function mutationError(message: string): WorkspaceMutationState {
+  return { status: "error", message };
+}
+
+export async function requestWorkspaceRoleAction(
+  previous: WorkspaceMutationState = INITIAL_WORKSPACE_MUTATION_STATE,
+  formData: FormData,
+): Promise<WorkspaceMutationState> {
+  void previous;
   await requireAdultViewer("/workspace");
   const rawRole = formData.get("role");
   if (!isAppRole(rawRole) || !isSelfRequestableRole(rawRole)) {
-    redirect("/workspace?error=role-not-requestable");
+    return mutationError("That workspace role cannot be requested from this account.");
   }
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.rpc("request_workspace_role", { requested_role: rawRole });
-  if (error) redirect("/workspace?error=role-request-failed");
+  if (error) return mutationError("The workspace request could not be completed safely.");
 
-  redirect(`/workspace?notice=${rawRole}-requested`);
+  return {
+    status: "success",
+    message: `${rawRole} access requested.`,
+    destination: `/workspace?notice=${rawRole}-requested`,
+  };
 }
 
-export async function activateWorkspaceAction(formData: FormData) {
+export async function activateWorkspaceAction(
+  previous: WorkspaceMutationState = INITIAL_WORKSPACE_MUTATION_STATE,
+  formData: FormData,
+): Promise<WorkspaceMutationState> {
+  void previous;
   await requireAdultViewer("/workspace");
   const membershipId = formData.get("membership_id");
   if (typeof membershipId !== "string" || !UUID_PATTERN.test(membershipId)) {
-    redirect("/workspace?error=invalid-membership");
+    return mutationError("The selected workspace membership is invalid.");
   }
 
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("activate_workspace", {
     target_membership_id: membershipId,
   });
-  if (error || !isAppRole(data)) redirect("/workspace?error=workspace-not-approved");
+  if (error || !isAppRole(data)) {
+    return mutationError("That workspace is not approved for this account.");
+  }
 
-  revalidatePath("/workspace", "layout");
-  redirect(routeForRole(data));
+  return {
+    status: "success",
+    message: `${data} workspace activated.`,
+    destination: routeForRole(data),
+  };
 }
 
-export async function reviewWorkspaceRequestAction(formData: FormData) {
+export async function reviewWorkspaceRequestAction(
+  previous: WorkspaceMutationState = INITIAL_WORKSPACE_MUTATION_STATE,
+  formData: FormData,
+): Promise<WorkspaceMutationState> {
+  void previous;
   await requireWorkspace("staff", "staff-role-requests");
   const membershipId = formData.get("membership_id");
   const decision = formData.get("decision");
@@ -52,7 +86,7 @@ export async function reviewWorkspaceRequestAction(formData: FormData) {
     || !UUID_PATTERN.test(membershipId)
     || (decision !== "approved" && decision !== "rejected")
   ) {
-    redirect("/workspace/staff/role-requests?error=invalid-review");
+    return mutationError("The role-review request is invalid.");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -60,7 +94,11 @@ export async function reviewWorkspaceRequestAction(formData: FormData) {
     target_membership_id: membershipId,
     decision,
   });
-  if (error) redirect("/workspace/staff/role-requests?error=review-failed");
+  if (error) return mutationError("The role request could not be reviewed safely.");
 
-  redirect(`/workspace/staff/role-requests?notice=${decision}`);
+  return {
+    status: "success",
+    message: `Request ${decision}.`,
+    destination: `/workspace/staff/role-requests?notice=${decision}`,
+  };
 }
