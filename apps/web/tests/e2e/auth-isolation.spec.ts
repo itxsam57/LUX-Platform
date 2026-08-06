@@ -204,7 +204,7 @@ test("a generated recovery link changes the password and rejects the old passwor
     await expect(page).toHaveURL(/\/age-assurance/);
 
     await login(loginPage, email, PASSWORD);
-    await expect(loginPage.getByRole("alert")).toContainText("incorrect");
+    await expect(loginPage.getByTestId("auth-form-message")).toContainText("incorrect");
     await loginPage.getByLabel("Password").fill(NEW_PASSWORD);
     await loginPage.getByRole("button", { name: "Sign in" }).click();
     await expect(loginPage).toHaveURL(/\/age-assurance/);
