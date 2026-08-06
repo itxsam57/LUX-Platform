@@ -8,8 +8,8 @@ const nextRequire = createRequire(nextPackagePath);
 
 const postcss = nextRequire("postcss");
 const postcssVersion = postcss().version;
-if (postcssVersion !== "8.5.18") {
-  throw new Error(`Expected Next.js to resolve postcss 8.5.18, received ${postcssVersion}.`);
+if (postcssVersion !== "8.5.23") {
+  throw new Error(`Expected Next.js to resolve postcss 8.5.23, received ${postcssVersion}.`);
 }
 
 const sharp = nextRequire("sharp");
