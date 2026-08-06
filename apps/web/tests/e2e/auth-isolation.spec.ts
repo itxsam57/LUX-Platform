@@ -158,7 +158,7 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
   }
 });
 
-test("logout all devices invalidates a second existing browser session", async ({ page, browser }, testInfo) => {
+test("logout all devices invalidates old sessions and accepts an immediate new login", async ({ page, browser }, testInfo) => {
   const email = testEmail("sessions", testInfo);
   const user = await createConfirmedUser(email);
   const secondContext = await openSecondaryContext(browser, testInfo);
@@ -175,6 +175,10 @@ test("logout all devices invalidates a second existing browser session", async (
 
     await secondPage.goto("/workspace/fan");
     await expect(secondPage).toHaveURL(/\/auth\/login\?.*reason=session-expired/);
+
+    await login(secondPage, email, PASSWORD, "/workspace/fan");
+    await expect(secondPage).toHaveURL(/\/workspace\/fan$/);
+    await expect(secondPage.getByRole("heading", { name: "Fan workspace" })).toBeVisible();
   } finally {
     await secondContext.close();
     await removeUser(user.id);
