@@ -119,12 +119,12 @@ security definer
 set search_path = pg_catalog, public, private
 as $$
 declare
-  digest_text text := encode(digest(subject_user_id::text, 'sha256'), 'hex');
+  digest_text text := encode(extensions.digest(subject_user_id::text, 'sha256'), 'hex');
   suffix_length integer := 10;
   candidate text;
 begin
   loop
-    candidate := 'lux-' || substr(digest_text, 1, suffix_length);
+    candidate := 'lux_' || substr(digest_text, 1, suffix_length);
     if not exists (
       select 1
       from public.profiles profile
