@@ -66,7 +66,16 @@ select is(public.get_profile_export_relationships() #>> '{following,0,handle}', 
 select is(public.get_profile_export_relationships() #>> '{followers,0,handle}', 'export_follower', 'follower entry exposes public handle identity');
 select is(public.get_profile_export_relationships() #>> '{blocks,0,handle}', 'export_blocked', 'block entry exposes public handle identity');
 select is(public.get_profile_export_relationships() #>> '{mutes,0,handle}', 'export_muted', 'mute entry exposes public handle identity');
-select ok(position('10000000-0000-0000-0000-0000000000' in public.get_profile_export_relationships()::text) = 0, 'relationship export contains no internal user UUID');
+select ok(
+  not exists (
+    select 1
+    from jsonb_each(public.get_profile_export_relationships()) as collection(collection_name, items)
+    cross join lateral jsonb_array_elements(collection.items) as exported_item(item)
+    cross join lateral jsonb_object_keys(exported_item.item) as exported_key(field_name)
+    where exported_key.field_name not in ('handle', 'display_name')
+  ),
+  'relationship export exposes only allowlisted public relationship fields'
+);
 select lives_ok($$ select public.record_account_export_generated() $$, 'owner can create an auditable export receipt without adult assurance');
 reset role;
 
