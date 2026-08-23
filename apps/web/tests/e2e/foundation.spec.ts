@@ -42,13 +42,13 @@ test("primary account navigation is keyboard accessible", async ({ page }) => {
   await expect(page).toHaveURL(/\/auth\/sign-up$/);
 });
 
-test("health endpoint returns the Slice 2 contract", async ({ request }) => {
+test("health endpoint returns the Slice 3 contract", async ({ request }) => {
   const response = await request.get("/health");
   expect(response.ok()).toBeTruthy();
   await expect(response.json()).resolves.toMatchObject({
     service: "lux-web",
     status: "ok",
-    buildSlice: 2,
+    buildSlice: 3,
   });
 });
 
