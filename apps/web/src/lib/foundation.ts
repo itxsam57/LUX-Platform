@@ -1,7 +1,7 @@
 export const FOUNDATION_SLICE = {
-  id: "slice-2",
-  number: 2,
-  name: "Authentication, age assurance, and workspace isolation",
+  id: "slice-3",
+  number: 3,
+  name: "Profiles and privacy",
   healthStatus: "ok",
   requiredRoutes: [
     "/",
@@ -14,6 +14,10 @@ export const FOUNDATION_SLICE = {
     "/age-assurance",
     "/workspace",
     "/settings/security",
+    "/settings/profile",
+    "/settings/privacy",
+    "/settings/privacy/export",
+    "/notifications",
   ] as const,
 } as const;
 
