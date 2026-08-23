@@ -117,7 +117,7 @@ select set_config(
 
 select is(
   public.get_profile_media_upload_path('avatar'),
-  'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp',
+  '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp',
   'upload path uses a non-reversible SHA-256 namespace rather than the account UUID'
 );
 select ok(
@@ -131,11 +131,11 @@ select throws_ok(
   'upload path RPC rejects unknown media kinds'
 );
 select lives_ok(
-  $$ insert into storage.objects(bucket_id, name) values ('profile-media', 'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp') $$,
+  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp') $$,
   'adult-assured owner can insert only inside the opaque media namespace'
 );
 select throws_ok(
-  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '76e012ac02c1f06f0bf3ee412dbbe7787b5361a063d088c1f2540721d6e76272/banner.webp') $$,
+  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '3ce8076f31299b1b1eb433ac1076aa2e3f2528c3ef6cd5849e762214322a4d43/banner.webp') $$,
   '42501',
   null,
   'owner cannot write another account opaque media namespace'
@@ -146,7 +146,7 @@ select lives_ok(
 );
 select is(
   (select avatar_path from public.profiles where user_id = auth.uid()),
-  'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp',
+  '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp',
   'media commit stores only the opaque object path'
 );
 select is(
@@ -159,7 +159,7 @@ reset role;
 set local role anon;
 select is(
   public.resolve_profile_media('media_alpha', 'avatar'),
-  'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp',
+  '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp',
   'anonymous media resolver returns the opaque object path only for a public profile'
 );
 select ok(
@@ -167,7 +167,7 @@ select ok(
   'anonymous media resolver never returns the internal UUID'
 );
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp'),
   1::bigint,
   'anonymous storage read sees attached media for a public profile'
 );
@@ -177,7 +177,7 @@ update public.profiles set visibility = 'private' where user_id = '10000000-0000
 set local role anon;
 select is(public.resolve_profile_media('media_alpha', 'avatar'), null::text, 'private profile media resolver is anonymous-safe');
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp'),
   0::bigint,
   'private profile media is not directly readable by anonymous storage callers'
 );
@@ -196,7 +196,7 @@ select set_config(
 );
 select is(
   public.resolve_profile_media('media_alpha', 'avatar'),
-  'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp',
+  '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp',
   'profile owner can resolve own media while private'
 );
 reset role;
@@ -220,7 +220,7 @@ select lives_ok(
 );
 select is(public.resolve_profile_media('media_alpha', 'avatar'), null::text, 'blocked authenticated caller cannot resolve profile media');
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp'),
   0::bigint,
   'blocked authenticated caller cannot bypass the media resolver through Storage RLS'
 );
