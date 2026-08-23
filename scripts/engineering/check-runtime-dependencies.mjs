@@ -21,8 +21,8 @@ if (postcssVersion !== "8.5.23") {
 
 const sharp = nextRequire("sharp");
 const sharpVersion = sharp.versions?.sharp;
-if (sharpVersion !== "0.35.0") {
-  throw new Error(`Expected Next.js to resolve sharp 0.35.0, received ${sharpVersion ?? "unknown"}.`);
+if (sharpVersion !== "0.35.3") {
+  throw new Error(`Expected Next.js to resolve sharp 0.35.3, received ${sharpVersion ?? "unknown"}.`);
 }
 
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="black"/></svg>');
