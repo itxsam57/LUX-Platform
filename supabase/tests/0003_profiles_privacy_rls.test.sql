@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(76);
+select plan(79);
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'profile_follows', 'profile follows table exists');
