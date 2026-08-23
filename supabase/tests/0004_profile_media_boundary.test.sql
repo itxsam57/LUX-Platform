@@ -157,6 +157,7 @@ select is(
 reset role;
 
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select is(
   public.resolve_profile_media('media_alpha', 'avatar'),
   '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp',
@@ -175,6 +176,7 @@ reset role;
 
 update public.profiles set visibility = 'private' where user_id = '10000000-0000-0000-0000-000000000041';
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select is(public.resolve_profile_media('media_alpha', 'avatar'), null::text, 'private profile media resolver is anonymous-safe');
 select is(
   (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c/avatar.webp'),

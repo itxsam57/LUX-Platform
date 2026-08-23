@@ -128,6 +128,7 @@ select has_function('public', 'mark_notification_read', 'single notification rea
 select has_function('public', 'mark_all_notifications_read', 'all notifications read RPC exists');
 
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select throws_ok(
   $$ select * from public.profiles $$,
   '42501',
@@ -158,12 +159,14 @@ reset role;
 
 update public.profiles set visibility = 'unlisted' where handle = 'bravo';
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select ok(public.get_public_profile('bravo') is not null, 'unlisted profile remains directly addressable');
 select is(public.is_profile_discoverable('bravo'), false, 'unlisted profile is excluded from discovery');
 reset role;
 
 update public.profiles set visibility = 'private' where handle = 'bravo';
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select is(public.get_public_profile('bravo'), null::jsonb, 'private profile is hidden from anonymous callers');
 reset role;
 
@@ -477,13 +480,13 @@ select set_config(
   true
 );
 select lives_ok(
-  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '10000000-0000-0000-0000-000000000031/avatar.webp') $$,
+  $$ insert into storage.objects(bucket_id, name) values ('profile-media', 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/avatar.webp') $$,
   'adult-assured owner can write only to own profile-media namespace'
 );
 reset role;
 
 update public.profiles
-set avatar_path = '10000000-0000-0000-0000-000000000031/avatar.webp', visibility = 'public'
+set avatar_path = 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/avatar.webp', visibility = 'public'
 where user_id = '10000000-0000-0000-0000-000000000031';
 
 set local role authenticated;
@@ -498,13 +501,13 @@ select set_config(
   true
 );
 select throws_ok(
-  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '10000000-0000-0000-0000-000000000031/banner.webp') $$,
+  $$ insert into storage.objects(bucket_id, name) values ('profile-media', 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/banner.webp') $$,
   '42501',
   null,
   'account cannot write another owner profile-media namespace'
 );
 select throws_ok(
-  $$ insert into storage.objects(bucket_id, name) values ('profile-media', '10000000-0000-0000-0000-000000000033/avatar.webp') $$,
+  $$ insert into storage.objects(bucket_id, name) values ('profile-media', 'b72473d496e2d12cd918895055233f4e6edb3c7d9e0f3c2f40baea88ee6ff05e/avatar.webp') $$,
   '42501',
   null,
   'profile-media write remains adult-gated even inside the owner namespace'
@@ -512,8 +515,9 @@ select throws_ok(
 reset role;
 
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '10000000-0000-0000-0000-000000000031/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/avatar.webp'),
   1::bigint,
   'anonymous storage read is allowed only for media attached to a public profile'
 );
@@ -522,8 +526,9 @@ reset role;
 update public.profiles set visibility = 'private' where user_id = '10000000-0000-0000-0000-000000000031';
 
 set local role anon;
+select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '10000000-0000-0000-0000-000000000031/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/avatar.webp'),
   0::bigint,
   'private-profile media is hidden from anonymous storage reads'
 );
@@ -541,7 +546,7 @@ select set_config(
   true
 );
 select is(
-  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = '10000000-0000-0000-0000-000000000031/avatar.webp'),
+  (select count(*) from storage.objects where bucket_id = 'profile-media' and name = 'fb63da1655d5d3a13ac0ed84a153413814517c0338f0f456d52a12d8911cdbaf/avatar.webp'),
   1::bigint,
   'profile owner can read own media while profile is private'
 );
