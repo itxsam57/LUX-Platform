@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 const unitCoverageScope = [
   "src/lib/foundation.ts",
   "src/lib/auth/policy.ts",
+  "src/lib/profile/policy.ts",
 ];
 
 export default defineConfig({
