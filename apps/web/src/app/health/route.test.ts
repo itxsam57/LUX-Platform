@@ -5,7 +5,7 @@ import { GET } from "./route";
 describe("GET /health", () => {
   it("returns the stable public health contract", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-06T00:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-08-23T00:00:00.000Z"));
 
     const response = GET();
 
@@ -13,8 +13,8 @@ describe("GET /health", () => {
     await expect(response.json()).resolves.toEqual({
       service: "lux-web",
       status: "ok",
-      buildSlice: 2,
-      timestamp: "2026-08-06T00:00:00.000Z",
+      buildSlice: 3,
+      timestamp: "2026-08-23T00:00:00.000Z",
     });
 
     vi.useRealTimers();
