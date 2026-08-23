@@ -6,6 +6,13 @@ const webRequire = createRequire(pathToFileURL(resolve("apps/web/package.json"))
 const nextPackagePath = webRequire.resolve("next/package.json");
 const nextRequire = createRequire(nextPackagePath);
 
+const postcssPackagePath = nextRequire.resolve("postcss/package.json");
+const postcssRequire = createRequire(postcssPackagePath);
+const nanoidPackage = postcssRequire("nanoid/package.json");
+if (nanoidPackage.version !== "3.3.18") {
+  throw new Error(`Expected PostCSS to resolve nanoid 3.3.18, received ${nanoidPackage.version ?? "unknown"}.`);
+}
+
 const postcss = nextRequire("postcss");
 const postcssVersion = postcss().version;
 if (postcssVersion !== "8.5.23") {
@@ -25,4 +32,4 @@ if (png.subarray(0, 8).toString("hex") !== pngSignature) {
   throw new Error("Sharp runtime did not produce a valid PNG signature.");
 }
 
-console.log(`Runtime dependency compatibility passed (postcss ${postcssVersion}, sharp ${sharpVersion}).`);
+console.log(`Runtime dependency compatibility passed (nanoid ${nanoidPackage.version}, postcss ${postcssVersion}, sharp ${sharpVersion}).`);
