@@ -47,9 +47,10 @@ export async function submitDeletionRequestAction(
 
 export async function cancelDeletionRequestAction(
   previous: PrivacyActionState = INITIAL_PRIVACY_ACTION_STATE,
-  _formData: FormData,
+  formData: FormData,
 ): Promise<PrivacyActionState> {
   void previous;
+  void formData;
   await requireAuthenticatedViewer("/settings/privacy");
   const supabase = await createServerSupabaseClient();
   const { data, error: rpcError } = await supabase.rpc("cancel_account_deletion_request");
