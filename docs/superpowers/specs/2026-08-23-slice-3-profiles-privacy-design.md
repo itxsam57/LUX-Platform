@@ -16,6 +16,7 @@ Build a privacy-first identity layer for fans and creators that exposes only int
 - Supporter anonymity is a durable privacy preference consumed later by campaigns, badges, and funding views. Slice 3 provides a preview using the same resolver so downstream slices do not reinvent the rule.
 - Profile media is sanitized before storage. Raw EXIF/location metadata is never retained.
 - Deletion is a request, not immediate destructive erasure, because later financial, consent, fraud, and legal-retention records may require controlled retention.
+- Account export, deletion-request, and existing block/mute management remain available to a current authenticated owner even when adult assurance is not currently satisfied. Privacy rights must not be trapped behind the adult gate.
 - No service-role key is required in the browser application for ordinary profile operations.
 
 ## Architecture
@@ -31,7 +32,7 @@ The UI uses the existing Slice 1 shell and primitives. The route family is split
 Public:
 
 - `/u/[handle]` — public or unlisted profile projection; private/blocked states return controlled not-found/denied behavior.
-- `/profile-media/[userId]/[kind]` — guarded media proxy for `avatar` or `banner`; never exposes a permanent storage object URL.
+- `/profile-media/[handle]/[kind]` — guarded media proxy for `avatar` or `banner`; never exposes the internal account UUID or permanent storage object URL.
 
 Authenticated owner settings:
 
@@ -63,7 +64,7 @@ One row per account.
 
 `profile_visibility` values: `public`, `unlisted`, `private`.
 
-Existing accounts are backfilled. New auth users receive a non-email-derived default handle of the form `lux-<stable random-looking suffix>` and a neutral display name. Email-derived handles are forbidden.
+Existing accounts are backfilled. New auth users receive a non-email-derived handle computed as `lux-` plus the first 10 lowercase hexadecimal characters of `sha256(user_id::text)`, with a collision fallback that extends the digest suffix. The default display name is `LUX member`. Email-derived handles are forbidden.
 
 ### `profile_follows`
 
@@ -129,8 +130,8 @@ A single RPC, `get_public_profile(profile_handle text)`, returns only:
 - handle
 - display name
 - bio
-- avatar media route
-- banner media route
+- handle-based avatar media route
+- handle-based banner media route
 - sanitized links
 - language code
 - visibility
@@ -139,7 +140,7 @@ A single RPC, `get_public_profile(profile_handle text)`, returns only:
 - viewer relationship state (`following`, `blocked_by_me`, `muted_by_me`) only when the caller is authenticated
 - approved creator-workspace presence as a neutral capability flag, never as identity-verification proof
 
-It never returns `user_id` to anonymous viewers unless required internally by the media proxy; public UI uses opaque handle-based identity. Private profiles are visible only to the owner. Unlisted profiles are directly addressable but must be excluded from future Slice 4 discovery/search indexing.
+It never returns `user_id` to anonymous viewers. Private profiles are visible only to the owner. Unlisted profiles are directly addressable but `is_profile_discoverable(handle)` returns false for them so Slice 4 can consume the same rule without redefining visibility.
 
 ## Validation rules
 
@@ -148,8 +149,8 @@ It never returns `user_id` to anonymous viewers unless required internally by th
 - lowercase only
 - 3–30 characters
 - regex `^[a-z0-9_]{3,30}$`
-- unique case-insensitively by normalized storage
-- reserved names rejected, including `admin`, `administrator`, `api`, `auth`, `login`, `logout`, `signup`, `support`, `staff`, `moderator`, `creator`, `agency`, `settings`, `workspace`, `health`, `design-system`, `lux`, and common route/system aliases
+- unique after lowercase normalization
+- reserved handles are exactly: `about`, `account`, `admin`, `administrator`, `agency`, `api`, `auth`, `callback`, `creator`, `design-system`, `explore`, `feed`, `health`, `help`, `login`, `logout`, `lux`, `moderator`, `notifications`, `privacy`, `settings`, `signup`, `staff`, `support`, `terms`, `u`, `workspace`
 
 Handle changes increment `profile_revision` and immediately invalidate the old public profile route.
 
@@ -173,7 +174,8 @@ Handle changes increment `profile_revision` and immediately invalidate the old p
 
 ### Language
 
-- BCP-47-like normalized language tag, maximum 16 characters
+- normalized tag matching `^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$`
+- maximum 16 characters
 - no automatic inference from private device/account metadata
 
 ## Profile media
@@ -200,13 +202,13 @@ Server processing with Sharp:
 - banner → maximum 2400×900, WebP
 - upload only the processed buffer
 
-Object paths use the authenticated owner UUID plus fixed kind/version naming. The database stores only the object path. Media responses use `Cache-Control: private` for private owner-only media and short cache windows for public/unlisted media so a visibility change does not leave a long-lived public cache.
+Object paths use the authenticated owner UUID plus fixed kind/version naming; that UUID is never placed in the public media URL. The database stores only the object path. Private owner-only responses use `Cache-Control: private, no-store`. Public/unlisted media responses use `Cache-Control: public, max-age=60, must-revalidate`, so a visibility change has a defined maximum browser cache window of 60 seconds.
 
 ## Social graph behavior
 
 ### Follow
 
-- authenticated adult viewer only
+- authenticated adult-assured viewer only
 - cannot follow self
 - cannot follow across an active block in either direction
 - duplicate follow is idempotent
@@ -215,13 +217,14 @@ Object paths use the authenticated owner UUID plus fixed kind/version naming. Th
 
 ### Unfollow
 
-- authenticated adult viewer only
+- authenticated adult-assured viewer only
 - idempotent
 - count/state updates without page reload
 
 ### Block
 
-- authenticated adult viewer only
+- creation from a public profile requires an authenticated adult-assured viewer
+- existing blocks can still be managed from `/settings/privacy` by a current authenticated owner without requiring adult assurance
 - atomic transaction removes follows both directions
 - later follow attempts fail at RPC/database boundary
 - blocked caller cannot use authenticated profile interaction RPCs against the blocker
@@ -229,7 +232,8 @@ Object paths use the authenticated owner UUID plus fixed kind/version naming. Th
 
 ### Mute
 
-- authenticated adult viewer only
+- creation from a public profile requires an authenticated adult-assured viewer
+- existing mutes can still be managed from `/settings/privacy` by a current authenticated owner without requiring adult assurance
 - does not imply or create a block
 - mute list is visible only to the muter
 - future feed/discovery Slice 4 must consume the same mute relation
@@ -243,13 +247,13 @@ The privacy settings page provides two explicit options:
 - `Anonymous by default`
 - `Show my profile by default`
 
-A shared resolver returns either the public profile projection or an anonymous-safe identity object. The settings page includes a “How supporters will see you” preview using this resolver. Slices 9 and 10 must use the same resolver for campaign supporter lists and badges.
+A shared resolver returns either the public profile projection or an anonymous-safe identity object. The settings page includes a “How supporters will see you” preview using this resolver. Slices 9 and 10 must use the same resolver for campaign supporter lists and badges. Changing this owner privacy preference requires a current authenticated session but does not require adult assurance.
 
 ## Export and deletion
 
 ### Export
 
-`GET /settings/privacy/export` requires an authenticated, current session and streams UTF-8 JSON with:
+`GET /settings/privacy/export` requires a current authenticated owner session but does not require adult assurance. It streams UTF-8 JSON with:
 
 - profile fields owned by the account
 - approved/requested workspace role names and statuses, excluding internal reviewer metadata
@@ -265,11 +269,11 @@ No password hashes, refresh/access tokens, provider secrets, other users’ priv
 
 ### Deletion request
 
-The owner must confirm a destructive-action dialog and type a fixed confirmation phrase before submission. The request is idempotent and auditable. The account remains usable until a future controlled retention/deletion workflow processes the request.
+The owner must have a current authenticated session but does not need current adult assurance. The owner must confirm a destructive-action dialog and type the exact phrase `DELETE MY LUX ACCOUNT` before submission. The request is idempotent and auditable. The account remains usable until a future controlled retention/deletion workflow processes the request.
 
 ## Notifications UI
 
-The existing shell notification control becomes functional for authenticated users:
+The existing shell notification control becomes functional for authenticated adult-assured users:
 
 - unread count
 - latest follower notifications
@@ -302,7 +306,7 @@ All new public tables have RLS enabled.
 - `notifications`: recipient-only read and mark-read; creation is server/database controlled.
 - storage object access is owner-or-viewable-profile only.
 
-Every mutation calls the existing current-session and adult-access checks before changing state.
+Profile edits, new social interactions, media upload, and public notification interactions require the existing current-session plus adult-access checks. Export, deletion-request, supporter-anonymity preference, and management/removal of already-existing block/mute relationships require a current authenticated owner session but deliberately do not require adult assurance.
 
 ## Audit events
 
@@ -344,9 +348,9 @@ Test validation and projection policy independently:
 Prove:
 
 - anonymous caller cannot select full profile rows
-- public RPC returns only allowlisted fields
+- public RPC returns only allowlisted fields and never the internal user UUID
 - private profile is owner-only
-- unlisted profile is direct-readable but discovery helper excludes it
+- unlisted profile is direct-readable while `is_profile_discoverable` returns false
 - one account cannot update another profile
 - follow cannot cross a block
 - block removes both follow directions atomically
@@ -357,6 +361,7 @@ Prove:
 - notification reads are recipient-only
 - storage owner write and viewability policies enforce profile visibility
 - audit inserts cannot be forged directly by authenticated users
+- export/deletion/supporter-privacy and existing block/mute management remain callable by an authenticated owner when adult assurance is absent/expired, while new social/profile-publication actions remain denied
 
 ### Browser desktop + Pixel 7
 
@@ -366,12 +371,15 @@ Prove:
 - handle conflict and invalid link errors
 - avatar/banner upload, sanitize, render, replace, and visibility transition
 - public/unlisted/private profile behavior
+- media routes never expose internal user UUIDs
+- private-profile media becomes inaccessible after the 60-second defined cache window
 - follow/unfollow count changes without manual refresh
 - block removes follow and prevents alternate-route refollow
 - unblock allows a fresh follow
 - mute/unmute persists privately
 - supporter-anonymity preview changes immediately and persists
 - export downloads correct JSON without another user’s private data
+- export/deletion controls remain usable when the test account’s age assurance is deliberately removed/expired
 - deletion request confirmation, submission, duplicate submission, and cancellation
 - notification unread/read behavior and deep link
 - existing Slice 1 design-system regression
@@ -384,13 +392,15 @@ Tests execute independently rather than serially so one failure cannot conceal l
 Slice 3 is not complete until:
 
 - private fields never appear in public API/page responses;
+- internal user UUIDs are absent from anonymous profile/media URLs and payloads;
 - profile edits survive refresh and concurrent sessions;
 - follow counts/state update without manual refresh;
 - block is enforced through UI, direct URL/RPC alternate paths, and database rules;
 - mute remains private and durable;
 - supporter-anonymity resolver produces the same identity decision used by its preview and future downstream contract tests;
-- media is metadata-stripped and private-profile media becomes inaccessible after visibility changes within the defined cache window;
+- media is metadata-stripped and private-profile media becomes inaccessible after visibility changes within 60 seconds;
 - export contains only the owner’s permitted data;
+- export, deletion request, supporter privacy, and existing block/mute management cannot be locked out by an absent/expired adult-assurance record;
 - deletion request is explicit, idempotent, and audited;
 - no new production dependency vulnerability remains;
 - full unit, database/RLS, build, desktop, mobile, Slice 1 regression, and Slice 2 regression gates are green;
