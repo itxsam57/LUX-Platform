@@ -73,7 +73,7 @@ test("owner export includes UUID-free social relationships and writes a success 
     const { data: receipts, error: receiptError } = await admin
       .from("audit_events")
       .select("event_type, outcome, route_key")
-      .eq("user_id", owner.id)
+      .eq("actor_user_id", owner.id)
       .eq("event_type", "account_export_generated");
     if (receiptError) throw receiptError;
     expect(receipts).toHaveLength(1);
