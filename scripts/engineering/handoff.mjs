@@ -10,7 +10,7 @@ const args = new Map(process.argv.slice(2).map((arg) => {
 const gateStatus = args.get("status") || process.env.GATE_STATUS || "fail";
 const output = args.get("output") || ".engineering/reports/manual-test-handoff.md";
 const files = changedFiles(args.get("base"));
-const localUrl = "http://localhost:30002";
+const localUrl = "http://127.0.0.1:30002";
 
 function activeSlice() {
   try {
@@ -31,13 +31,17 @@ const featureRules = [
   [/^apps\/web\/src\/app\/(loading|error)\.tsx$/, "Route loading and error states"],
   [/^apps\/web\/src\/app\/health\/route\.ts$/, "Health endpoint"],
   [/^apps\/web\/src\/app\/not-found\.tsx$/, "Controlled 404 recovery"],
-  [/^apps\/web\/src\/app\/(layout\.tsx|globals\.css|auth-workspace\.css)$/, "Global responsive presentation"],
+  [/^apps\/web\/src\/app\/(layout\.tsx|globals\.css|auth-workspace\.css|profile-privacy\.css)$/, "Global responsive presentation"],
   [/^apps\/web\/src\/(app\/auth\/|components\/auth\/|lib\/supabase\/|middleware\.ts)/, "Authentication and account recovery"],
   [/^apps\/web\/src\/app\/age-assurance\//, "Adult access assurance"],
   [/^apps\/web\/src\/(app\/workspace\/|components\/workspace\/|lib\/auth\/context\.ts)/, "Workspace selection and isolation"],
   [/^apps\/web\/src\/app\/settings\/security\//, "Session security and account audit"],
   [/^apps\/web\/src\/app\/access-denied\//, "Controlled authorization denial"],
-  [/^supabase\/(config\.toml|migrations\/|tests\/)/, "Authentication database and RLS boundary"],
+  [/^apps\/web\/src\/(app\/settings\/profile\/|components\/profile\/profile-editor|lib\/profile\/)/, "Owner profile editing and media"],
+  [/^apps\/web\/src\/(app\/u\/|app\/profile-media\/|components\/profile\/(public-profile|profile-social-actions))/, "Public profile visibility and social controls"],
+  [/^apps\/web\/src\/(app\/settings\/privacy\/|components\/profile\/privacy-settings)/, "Privacy preferences, export, and deletion requests"],
+  [/^apps\/web\/src\/app\/notifications\//, "Profile notifications"],
+  [/^supabase\/(config\.toml|migrations\/|tests\/)/, "Authentication, profile, privacy, and media database/RLS boundary"],
 ];
 const visibleFeatures = [...new Set(files.flatMap((file) =>
   featureRules.filter(([pattern]) => pattern.test(file)).map(([, name]) => name),
@@ -68,6 +72,18 @@ if (visibleFeatures.includes("Workspace selection and isolation") || visibleFeat
 if (visibleFeatures.includes("Session security and account audit")) {
   steps.push("Sign into the same test account in two browser windows. Use **Sign out all devices** in one window, then refresh a protected route in the second. Confirm both sessions require sign-in again and the security history contains sanitized events only.");
 }
+if (visibleFeatures.includes("Owner profile editing and media")) {
+  steps.push("Open `/settings/profile`, save a valid handle/display name/bio/language/visibility and up to five HTTPS links, then refresh and confirm the saved values persist. Upload an avatar and banner and confirm both render through the guarded handle-based media route without exposing an account UUID.");
+}
+if (visibleFeatures.includes("Public profile visibility and social controls")) {
+  steps.push("With two adult-assured test accounts, verify a public profile is readable, an unlisted profile remains direct-link visible but undiscoverable, and a private profile is owner-only. Follow/unfollow, mute/unmute, block, then confirm blocking removes follow edges and hides the profile in both directions.");
+}
+if (visibleFeatures.includes("Privacy preferences, export, and deletion requests")) {
+  steps.push("Open `/settings/privacy` with a verified session. Change supporter anonymity, download the JSON export and confirm it contains no tokens/auth metadata/age evidence/internal UUIDs, submit the deletion phrase twice and confirm only one active request exists, then cancel it. Repeat privacy removal after age assurance is absent and confirm unblock/unmute remain available.");
+}
+if (visibleFeatures.includes("Profile notifications")) {
+  steps.push("Create a follower notification, open `/notifications`, confirm only the recipient can read it, mark it read, follow its profile deep link, then block the actor and confirm that actor’s notification is suppressed.");
+}
 if (visibleFeatures.includes("Design-system catalogue")) {
   steps.push("Open `/design-system` and confirm the previously accepted Slice 1 catalogue remains visually unchanged and its sidebar navigation stays aligned.");
 }
@@ -80,6 +96,16 @@ if (visibleFeatures.includes("Controlled 404 recovery")) {
 
 const requestedChange = process.env.HANDOFF_REQUEST
   || `Complete Build Slice ${slice.number}: ${slice.name}.`;
+
+const profileOrPrivacyChanged = visibleFeatures.some((item) => [
+  "Owner profile editing and media",
+  "Public profile visibility and social controls",
+  "Privacy preferences, export, and deletion requests",
+  "Profile notifications",
+].includes(item));
+const accountBoundaryChanged = visibleFeatures.some((item) =>
+  item.includes("Workspace") || item.includes("Authentication") || item.includes("Adult") || item.includes("Session") || profileOrPrivacyChanged,
+);
 
 const report = `${status}
 
@@ -103,30 +129,30 @@ ${visibleFeatures.length ? visibleFeatures.map((item) => `- ${item}`).join("\n")
 
 ## Affected roles
 
-${visibleFeatures.some((item) => item.includes("Workspace") || item.includes("Authentication") || item.includes("Adult") || item.includes("Session"))
-  ? "- Anonymous visitor\n- Verified fan\n- Requested/approved creator or agency account\n- Restricted staff and super-admin contexts"
+${accountBoundaryChanged
+  ? "- Anonymous visitor\n- Verified fan\n- Approved creator using the same canonical profile\n- Requested/approved creator or agency account\n- Restricted staff and super-admin contexts"
   : "- Anonymous visitor using the current public foundation surfaces"}
 
 ## Exact manual tests
 
-${steps.length ? steps.map((step, index) => `${index + 1}. ${step}\n   - **Expected:** The visible behavior is clear and the trusted state remains synchronized without overlap, stale routes, permission merging, or manual refresh.`).join("\n") : "No visible product behavior changed, so no manual browser feature test is required."}
+${steps.length ? steps.map((step, index) => `${index + 1}. ${step}\n   - **Expected:** The visible behavior is clear and the trusted state remains synchronized without overlap, stale routes, permission merging, privacy leakage, or manual refresh.`).join("\n") : "No visible product behavior changed, so no manual browser feature test is required."}
 
 ## Regression spot-checks
 
-${visibleFeatures.length ? "- URL and visible route remain synchronized.\n- Refresh, Back, and Forward do not bypass authentication or active-workspace checks.\n- A requested role grants no permission.\n- Approved roles remain separate until explicitly activated.\n- No horizontal overflow, covered controls, or uncontrolled error state.\n- Slice 1 design-system presentation remains intact." : "- None required from the product owner; applicable automated regressions still run in CI."}
+${visibleFeatures.length ? "- URL and visible route remain synchronized.\n- Refresh, Back, and Forward do not bypass authentication, privacy, or active-workspace checks.\n- A requested role grants no permission.\n- Approved roles remain separate until explicitly activated.\n- Private/unlisted/public profile behavior remains distinct.\n- Public pages, media URLs, notifications, and exports expose no internal user UUIDs.\n- No horizontal overflow, covered controls, or uncontrolled error state.\n- Slice 1 design-system presentation and Slice 2 authentication/workspace behavior remain intact." : "- None required from the product owner; applicable automated regressions still run in CI."}
 
 ## Unaffected areas
 
-- Profiles, feeds, campaigns, payments, production uploads, consent, secure releases, payouts, copyright operations, and later marketplace systems remain unimplemented and unchanged.
-- Creator/depicted-person identity verification is still Slice 5 and is not implied by the viewer adult-access gate.
+- Feeds, demand boards, verification providers, projects, consent, campaigns, payments, production uploads, secure releases, payouts, copyright operations, agency operations, and later marketplace systems remain for their canonical later slices.
+- Creator/depicted-person identity verification is still Slice 5 and is not implied by the viewer adult-access gate or an approved Creator workspace.
 
 ## Setup requirements
 
-${steps.length ? "1. Pull the approved branch.\n2. Copy `.env.example` to `.env.local` and add the hosted development Supabase URL and publishable key supplied for testing.\n3. Keep `AGE_ASSURANCE_MODE=self_attestation` only in the approved development environment.\n4. Run `pnpm install --frozen-lockfile`.\n5. Run `pnpm dev`.\n6. Perform only the browser steps above using synthetic test accounts." : "None for the product owner."}
+${steps.length ? "1. Pull the approved branch.\n2. Put the hosted development Supabase URL and publishable key in `apps/web/.env.local`; never put a service-role/secret key there.\n3. Set `NEXT_PUBLIC_APP_URL=http://127.0.0.1:30002` and keep `AGE_ASSURANCE_MODE=self_attestation` only in the approved development environment.\n4. Apply the listed Slice 2 and Slice 3 migrations to the hosted development Supabase project.\n5. Run `pnpm install --frozen-lockfile`.\n6. Run `pnpm dev`.\n7. Perform the browser steps above using synthetic test accounts." : "None for the product owner."}
 
 ## Automated evidence
 
-- ${gateStatus === "pass" ? "Applicable full engineering gate passed, including the isolated Supabase database/RLS suite when required." : "One or more required automated checks failed or were blocked. Manual testing must not begin."}
+- ${gateStatus === "pass" ? "Applicable full engineering gate passed, including the isolated Supabase database/RLS suite and required desktop/mobile browser workflows." : "One or more required automated checks failed or were blocked. Manual testing must not begin."}
 - Changed files considered by the handoff generator: ${files.length}.
 
 ## Known limitations
