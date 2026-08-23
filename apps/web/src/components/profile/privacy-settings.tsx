@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   cancelDeletionRequestAction,
   INITIAL_PRIVACY_ACTION_STATE,
@@ -9,6 +9,7 @@ import {
   submitDeletionRequestAction,
 } from "@/app/settings/privacy/actions";
 import { Button, Input, Switch } from "@/components/ui/primitives";
+import { resolveSupporterIdentity, type PublicSupporterProfile } from "@/lib/profile/policy";
 
 type PrivateRelationship = { handle: string; displayName: string };
 
@@ -37,11 +38,13 @@ function RelationshipRow({ item, action }: { item: PrivateRelationship; action: 
 
 export function PrivacySettings({
   anonymousByDefault,
+  supporterProfile,
   deletionStatus,
   blocks,
   mutes,
 }: {
   anonymousByDefault: boolean;
+  supporterProfile: PublicSupporterProfile;
   deletionStatus: string | null;
   blocks: PrivateRelationship[];
   mutes: PrivateRelationship[];
@@ -49,13 +52,27 @@ export function PrivacySettings({
   const [supportState, supportAction, savingSupport] = useActionState(setSupporterPrivacyAction, INITIAL_PRIVACY_ACTION_STATE);
   const [deleteState, deleteAction, deleting] = useActionState(submitDeletionRequestAction, INITIAL_PRIVACY_ACTION_STATE);
   const [cancelState, cancelAction, cancelling] = useActionState(cancelDeletionRequestAction, INITIAL_PRIVACY_ACTION_STATE);
+  const [anonymousPreference, setAnonymousPreference] = useState(anonymousByDefault);
+  const supporterIdentity = resolveSupporterIdentity(supporterProfile, anonymousPreference);
 
   return (
     <div className="privacy-settings-stack">
       <section className="ui-card privacy-card">
         <div><span className="eyebrow">Support identity</span><h2>Anonymous by default</h2><p className="muted-copy">This controls the identity LUX may show with future support activity. Anonymous is the default and can be changed without adult assurance.</p></div>
         <form action={supportAction} className="privacy-form">
-          <Switch id="anonymous-by-default" name="anonymous_by_default" label="Keep future support anonymous by default" description="Turning this off allows your public profile identity to be used where a later support flow explicitly permits it." defaultChecked={anonymousByDefault} />
+          <Switch
+            id="anonymous-by-default"
+            name="anonymous_by_default"
+            label="Keep future support anonymous by default"
+            description="Turning this off allows your public profile identity to be used where a later support flow explicitly permits it."
+            checked={anonymousPreference}
+            onChange={(event) => setAnonymousPreference(event.currentTarget.checked)}
+          />
+          <div className="supporter-preview" aria-live="polite" data-testid="supporter-identity-preview">
+            <span className="eyebrow">How supporters will see you</span>
+            <strong>{supporterIdentity.label}</strong>
+            {supporterIdentity.kind === "profile" ? <span>@{supporterIdentity.handle}</span> : <span>Your public profile stays hidden from the support identity.</span>}
+          </div>
           <Button type="submit" variant="secondary" loading={savingSupport}>Save supporter privacy</Button>
           <Message status={supportState.status} message={supportState.message} />
         </form>
