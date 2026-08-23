@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdultViewer } from "@/lib/auth/context";
+import { requireAdultViewer, requireAuthenticatedViewer } from "@/lib/auth/context";
 import { normalizeHandle, validateHandle } from "@/lib/profile/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -20,6 +20,7 @@ export const INITIAL_RELATIONSHIP_STATE: RelationshipState = {
 };
 
 const ACTIONS = new Set(["follow", "unfollow", "block", "unblock", "mute", "unmute"]);
+const PRIVACY_REMOVAL_ACTIONS = new Set(["unblock", "unmute"]);
 
 function numberOrUndefined(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
@@ -35,7 +36,12 @@ export async function profileRelationshipAction(
     return { ...previous, status: "error", message: "That profile action is invalid." };
   }
 
-  await requireAdultViewer(`/u/${target}`);
+  if (PRIVACY_REMOVAL_ACTIONS.has(action)) {
+    await requireAuthenticatedViewer(`/settings/privacy`);
+  } else {
+    await requireAdultViewer(`/u/${target}`);
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("set_profile_relationship", {
     target_handle: target,
