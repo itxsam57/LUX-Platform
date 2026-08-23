@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import sharp from "sharp";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -72,6 +73,90 @@ test("owner edits a profile and public projection leaks no private account ident
     expect(markup).not.toContain(email);
     expect(markup).not.toContain(user.id);
     expect(await anonymousPage.content()).not.toContain(user.id);
+  } finally {
+    await anonymousContext.close();
+    await removeUser(user.id);
+  }
+});
+
+test("profile media uploads are processed to guarded WebP and obey profile privacy", async ({ page, browser }, testInfo) => {
+  const email = emailFor("profile-media", testInfo);
+  const user = await createConfirmedUser(email);
+  const anonymousContext = await secondaryContext(browser, testInfo);
+
+  try {
+    await loginAndAssure(page, email);
+    await configurePublicProfile(page, "media_upload_alpha", "Media Upload Alpha");
+
+    const avatar = await sharp({
+      create: {
+        width: 1200,
+        height: 900,
+        channels: 3,
+        background: { r: 91, g: 44, b: 160 },
+      },
+    }).jpeg({ quality: 92 }).withMetadata({ orientation: 6, density: 300 }).toBuffer();
+    const banner = await sharp({
+      create: {
+        width: 2800,
+        height: 1100,
+        channels: 3,
+        background: { r: 28, g: 104, b: 82 },
+      },
+    }).png().toBuffer();
+
+    await page.locator("#avatar-file").setInputFiles({
+      name: "avatar-with-metadata.jpg",
+      mimeType: "image/jpeg",
+      buffer: avatar,
+    });
+    await page.getByRole("button", { name: "Process and upload avatar" }).click();
+    await expect(page.getByText("Avatar updated as metadata-stripped WebP.")).toBeVisible();
+
+    await page.locator("#banner-file").setInputFiles({
+      name: "banner-source.png",
+      mimeType: "image/png",
+      buffer: banner,
+    });
+    await page.getByRole("button", { name: "Process and upload banner" }).click();
+    await expect(page.getByText("Banner updated as metadata-stripped WebP.")).toBeVisible();
+
+    const avatarResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/avatar");
+    expect(avatarResponse.status()).toBe(200);
+    expect(avatarResponse.headers()["content-type"]).toContain("image/webp");
+    expect(avatarResponse.headers()["cache-control"]).toContain("public");
+    const processedAvatar = await avatarResponse.body();
+    const avatarMetadata = await sharp(processedAvatar).metadata();
+    expect(avatarMetadata.format).toBe("webp");
+    expect(avatarMetadata.width).toBeLessThanOrEqual(1024);
+    expect(avatarMetadata.height).toBeLessThanOrEqual(1024);
+    expect(avatarMetadata.orientation).toBeUndefined();
+    expect(avatarMetadata.exif).toBeUndefined();
+
+    const bannerResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/banner");
+    expect(bannerResponse.status()).toBe(200);
+    expect(bannerResponse.headers()["content-type"]).toContain("image/webp");
+    const processedBanner = await bannerResponse.body();
+    const bannerMetadata = await sharp(processedBanner).metadata();
+    expect(bannerMetadata.format).toBe("webp");
+    expect(bannerMetadata.width).toBeLessThanOrEqual(2400);
+    expect(bannerMetadata.height).toBeLessThanOrEqual(900);
+
+    await page.goto("/u/media_upload_alpha");
+    const publicMarkup = await page.content();
+    expect(publicMarkup).toContain("/profile-media/media_upload_alpha/avatar");
+    expect(publicMarkup).toContain("/profile-media/media_upload_alpha/banner");
+    expect(publicMarkup).not.toContain(user.id);
+
+    await page.goto("/settings/profile");
+    await page.getByLabel("Profile visibility").selectOption("private");
+    await page.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByTestId("profile-action-message")).toContainText("Profile saved");
+
+    const privateAvatarResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/avatar");
+    const privateBannerResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/banner");
+    expect(privateAvatarResponse.status()).toBe(404);
+    expect(privateBannerResponse.status()).toBe(404);
   } finally {
     await anonymousContext.close();
     await removeUser(user.id);
