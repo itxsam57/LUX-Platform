@@ -202,7 +202,7 @@ Server processing with Sharp:
 - banner → maximum 2400×900, WebP
 - upload only the processed buffer
 
-Object paths use the authenticated owner UUID plus fixed kind/version naming; that UUID is never placed in the public media URL. The database stores only the object path. Private owner-only responses use `Cache-Control: private, no-store`. Public/unlisted media responses use `Cache-Control: public, max-age=60, must-revalidate`, so a visibility change has a defined maximum browser cache window of 60 seconds.
+Object paths use an opaque deterministic namespace derived inside the private database boundary from the authenticated owner UUID, plus a fixed media-kind filename. The raw account UUID is never present in the storage object path or public media URL. The database stores only the opaque object path. Private owner-only responses use `Cache-Control: private, no-store`. Public/unlisted media responses use `Cache-Control: public, max-age=60, must-revalidate`, so a visibility change has a defined maximum browser cache window of 60 seconds.
 
 ## Social graph behavior
 
@@ -261,7 +261,7 @@ A shared resolver returns either the public profile projection or an anonymous-s
 - follows/following
 - blocks
 - mutes
-- age-assurance decision metadata but not auth tokens or evidence
+- no age-assurance records, jurisdiction decisions, or verification evidence; those remain outside the portable profile/privacy export boundary
 - audit-event records already readable by the account
 - privacy-request history
 
