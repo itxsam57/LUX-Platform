@@ -32,7 +32,7 @@ export async function GET(
     headers: {
       "Content-Type": "image/webp",
       "Content-Length": String(bytes.byteLength),
-      "Cache-Control": visibility === "private" ? "private, no-store" : "public, max-age=60, s-maxage=60",
+      "Cache-Control": visibility === "private" ? "private, no-store" : "public, max-age=60, must-revalidate",
       "X-Content-Type-Options": "nosniff",
     },
   });
