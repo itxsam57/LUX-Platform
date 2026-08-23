@@ -21,7 +21,9 @@
 
 .profile-editor-card h2,
 .profile-media-card h2,
-.public-profile-card h2 {
+.public-profile-card h2,
+.privacy-card h2,
+.notification-card h2 {
   margin: 7px 0 8px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.7rem, 3vw, 2.5rem);
@@ -31,7 +33,10 @@
 
 .profile-editor-form,
 .profile-media-form,
-.profile-media-stack {
+.profile-media-stack,
+.privacy-settings-stack,
+.privacy-form,
+.notification-list {
   display: grid;
   gap: 18px;
 }
@@ -72,7 +77,8 @@
 }
 
 .profile-media-form .ui-button,
-.profile-editor-form > .ui-button {
+.profile-editor-form > .ui-button,
+.privacy-form > .ui-button {
   width: fit-content;
 }
 
@@ -151,7 +157,8 @@
 .public-profile-badges,
 .public-profile-meta,
 .profile-social-actions,
-.profile-social-counts {
+.profile-social-counts,
+.notification-actions {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -195,7 +202,8 @@
 }
 
 .public-profile-card,
-.profile-social-panel {
+.profile-social-panel,
+.privacy-card {
   display: grid;
   gap: 16px;
 }
@@ -222,6 +230,76 @@
   font-size: 0.82rem;
 }
 
+.privacy-card {
+  padding: clamp(20px, 4vw, 34px);
+}
+
+.privacy-card--danger {
+  border-color: rgba(232, 137, 137, 0.24);
+}
+
+.privacy-relationship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.privacy-relationship-grid h3 {
+  margin: 0 0 10px;
+}
+
+.privacy-relationship-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.privacy-relationship-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.privacy-relationship-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.privacy-relationship-row span {
+  color: var(--color-text-subtle);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.privacy-relationship-row--removed {
+  grid-template-columns: 1fr;
+}
+
+.notification-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notification-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+}
+
+.notification-card--read {
+  opacity: 0.72;
+}
+
 @media (max-width: 980px) {
   .profile-settings-grid,
   .public-profile-grid {
@@ -240,7 +318,8 @@
 
   .profile-link-row,
   .profile-media-stack,
-  .public-profile-hero__body {
+  .public-profile-hero__body,
+  .privacy-relationship-grid {
     grid-template-columns: 1fr;
   }
 
@@ -250,7 +329,8 @@
 
   .profile-media-form .ui-button,
   .profile-editor-form > .ui-button,
-  .profile-social-actions .ui-button {
+  .profile-social-actions .ui-button,
+  .privacy-form > .ui-button {
     width: 100%;
   }
 
@@ -262,7 +342,8 @@
     padding-top: 0;
   }
 
-  .public-profile-name-row {
+  .public-profile-name-row,
+  .notification-card {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -270,5 +351,14 @@
   .profile-social-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .notification-toolbar {
+    justify-content: flex-start;
+  }
+
+  .notification-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 }
