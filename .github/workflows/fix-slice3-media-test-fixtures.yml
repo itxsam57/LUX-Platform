@@ -1,0 +1,42 @@
+name: Fix Slice 3 media test fixtures
+
+on:
+  push:
+    branches:
+      - feature/slice-3-profiles-privacy
+    paths:
+      - .github/workflows/fix-slice3-media-test-fixtures.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/slice-3-profiles-privacy
+      - name: Correct deterministic SHA-256 fixtures
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('supabase/tests/0004_profile_media_boundary.test.sql')
+          text = path.read_text()
+          replacements = {
+              'c27be2d557879fe2d18f94d7328952eb571990e5a9f0fe4a3e9d836150644ed7': '839f8bd9e8c76591193bd530fb7f1366c6a45f9eaebeb830a3dc2c60ce60149c',
+              '76e012ac02c1f06f0bf3ee412dbbe7787b5361a063d088c1f2540721d6e76272': '3ce8076f31299b1b1eb433ac1076aa2e3f2528c3ef6cd5849e762214322a4d43',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing expected fixture {old}')
+              text = text.replace(old, new)
+          path.write_text(text)
+      - name: Commit corrected test fixtures
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/tests/0004_profile_media_boundary.test.sql
+          git commit -m "test(profile): correct media hash fixtures"
+          git push origin HEAD:feature/slice-3-profiles-privacy
