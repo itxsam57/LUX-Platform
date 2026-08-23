@@ -146,6 +146,41 @@ begin
 end;
 $$;
 
+create or replace function public.get_private_profile_relationships()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public, private, auth
+as $$
+declare
+  block_rows jsonb;
+  mute_rows jsonb;
+begin
+  perform private.assert_current_session();
+
+  select coalesce(
+    jsonb_agg(jsonb_build_object('handle', profile.handle, 'display_name', profile.display_name) order by profile.handle),
+    '[]'::jsonb
+  )
+  into block_rows
+  from public.profile_blocks block
+  join public.profiles profile on profile.user_id = block.blocked_user_id
+  where block.blocker_user_id = auth.uid();
+
+  select coalesce(
+    jsonb_agg(jsonb_build_object('handle', profile.handle, 'display_name', profile.display_name) order by profile.handle),
+    '[]'::jsonb
+  )
+  into mute_rows
+  from public.profile_mutes mute
+  join public.profiles profile on profile.user_id = mute.muted_user_id
+  where mute.muter_user_id = auth.uid();
+
+  return jsonb_build_object('blocks', block_rows, 'mutes', mute_rows);
+end;
+$$;
+
 create or replace function policy_internal.profile_media_owner_can_write(object_name text)
 returns boolean
 language sql
@@ -165,9 +200,11 @@ revoke all on function private.profile_media_namespace(uuid) from public, anon, 
 revoke all on function public.get_profile_media_upload_path(text) from public, anon, authenticated;
 revoke all on function public.commit_profile_media(text) from public, anon, authenticated;
 revoke all on function public.resolve_profile_media(text, text) from public, anon, authenticated;
+revoke all on function public.get_private_profile_relationships() from public, anon, authenticated;
 
 grant execute on function public.get_profile_media_upload_path(text) to authenticated;
 grant execute on function public.commit_profile_media(text) to authenticated;
 grant execute on function public.resolve_profile_media(text, text) to anon, authenticated;
+grant execute on function public.get_private_profile_relationships() to authenticated;
 
 notify pgrst, 'reload schema';
