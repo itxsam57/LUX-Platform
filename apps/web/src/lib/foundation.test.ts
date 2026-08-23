@@ -3,8 +3,8 @@ import { FOUNDATION_SLICE, isFoundationRoute } from "./foundation";
 
 describe("foundation contracts", () => {
   it("identifies the active build slice", () => {
-    expect(FOUNDATION_SLICE.id).toBe("slice-2");
-    expect(FOUNDATION_SLICE.number).toBe(2);
+    expect(FOUNDATION_SLICE.id).toBe("slice-3");
+    expect(FOUNDATION_SLICE.number).toBe(3);
     expect(FOUNDATION_SLICE.healthStatus).toBe("ok");
   });
 
@@ -19,6 +19,10 @@ describe("foundation contracts", () => {
     "/age-assurance",
     "/workspace",
     "/settings/security",
+    "/settings/profile",
+    "/settings/privacy",
+    "/settings/privacy/export",
+    "/notifications",
   ])("recognizes %s", (route) => {
     expect(isFoundationRoute(route)).toBe(true);
   });
