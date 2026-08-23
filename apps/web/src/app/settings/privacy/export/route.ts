@@ -51,7 +51,7 @@ export async function GET() {
     supabase
       .from("audit_events")
       .select("event_type, outcome, route_key, created_at")
-      .eq("user_id", viewer.user.id)
+      .eq("actor_user_id", viewer.user.id)
       .order("created_at", { ascending: true }),
     supabase.rpc("get_profile_export_relationships"),
   ]);
