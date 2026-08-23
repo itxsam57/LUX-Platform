@@ -61,7 +61,9 @@ test.describe.configure({ mode: "default" });
 
 test("privacy rights remain available without current adult assurance and export stays allowlisted", async ({ page }, testInfo) => {
   const email = emailFor("privacy-no-age", testInfo);
+  const otherEmail = emailFor("privacy-other", testInfo);
   const user = await createConfirmedUser(email);
+  const otherUser = await createConfirmedUser(otherEmail);
 
   try {
     await login(page, email, "/settings/privacy");
@@ -69,23 +71,34 @@ test("privacy rights remain available without current adult assurance and export
     await expect(page.getByRole("heading", { name: "Your account, your boundaries" })).toBeVisible();
 
     const supporterSwitch = page.getByRole("switch", { name: /Keep future support anonymous by default/ });
+    const supporterPreview = page.getByTestId("supporter-identity-preview");
     await expect(supporterSwitch).toBeChecked();
+    await expect(supporterPreview).toContainText("Anonymous supporter");
+
     await supporterSwitch.uncheck();
+    await expect(supporterPreview).toContainText("LUX member");
+    await expect(supporterPreview).not.toContainText("Anonymous supporter");
     await page.getByRole("button", { name: "Save supporter privacy" }).click();
     await expect(page.getByText("Support may use your public profile by default.")).toBeVisible();
 
-    const response = await page.request.get("/settings/privacy/export");
+    await page.reload();
+    await expect(supporterSwitch).not.toBeChecked();
+    await expect(supporterPreview).toContainText("LUX member");
+
+    const response = await page.context().request.get("/settings/privacy/export");
     expect(response.ok()).toBe(true);
     expect(response.headers()["content-type"]).toContain("application/json");
     expect(response.headers()["cache-control"]).toContain("no-store");
     const exportText = await response.text();
     expect(exportText).toContain(email);
+    expect(exportText).not.toContain(otherEmail);
     expect(exportText).not.toContain("access_token");
     expect(exportText).not.toContain("refresh_token");
     expect(exportText).not.toContain("raw_app_meta_data");
     expect(exportText).not.toContain("raw_user_meta_data");
     expect(exportText).not.toContain("age_assurance_records");
     expect(exportText).not.toContain(user.id);
+    expect(exportText).not.toContain(otherUser.id);
 
     await page.getByLabel("Confirmation phrase").fill("DELETE MY LUX ACCOUNT");
     await page.getByRole("button", { name: "Submit deletion request" }).click();
@@ -105,6 +118,7 @@ test("privacy rights remain available without current adult assurance and export
     await expect(page.getByText("Deletion request cancelled.")).toBeVisible();
   } finally {
     await removeUser(user.id);
+    await removeUser(otherUser.id);
   }
 });
 
@@ -142,7 +156,8 @@ test("existing block and mute can be removed after adult assurance expires", asy
     await page.goto("/settings/profile");
     await expect(page).toHaveURL(/\/age-assurance/);
 
-    await loginAndAssure(bravoPage, bravoEmail, "/u/privacy_alpha");
+    await bravoPage.goto("/u/privacy_alpha");
+    await expect(bravoPage.getByRole("heading", { name: "Privacy Alpha" })).toBeVisible();
     await bravoPage.getByRole("button", { name: "Mute" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unmute" })).toBeVisible();
     const { error: expireBravoError } = await admin
