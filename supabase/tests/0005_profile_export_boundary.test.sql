@@ -71,7 +71,7 @@ select lives_ok($$ select public.record_account_export_generated() $$, 'owner ca
 reset role;
 
 select is(
-  (select count(*) from public.audit_events where user_id = '10000000-0000-0000-0000-000000000051' and event_type = 'account_export_generated'),
+  (select count(*) from public.audit_events where actor_user_id = '10000000-0000-0000-0000-000000000051' and event_type = 'account_export_generated'),
   1::bigint,
   'successful export receipt is written exactly once'
 );
