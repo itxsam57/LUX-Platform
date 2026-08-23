@@ -831,8 +831,6 @@ revoke all on function policy_internal.profile_media_can_read(text) from public,
 grant execute on function policy_internal.profile_media_owner_can_write(text) to authenticated;
 grant execute on function policy_internal.profile_media_can_read(text) to anon, authenticated;
 
-alter table storage.objects enable row level security;
-
 drop policy if exists profile_media_insert_owner on storage.objects;
 create policy profile_media_insert_owner
   on storage.objects for insert
