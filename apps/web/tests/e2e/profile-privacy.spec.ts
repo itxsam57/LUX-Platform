@@ -130,19 +130,29 @@ test("follow, block, unblock, and mute stay synchronized without permission leak
 
     await bravoPage.goto("/u/social_alpha");
     await bravoPage.getByRole("button", { name: "Block" }).click();
-    await expect(bravoPage.getByRole("button", { name: "Unblock" })).toBeVisible();
+    await expect(bravoPage.getByText("Block complete.")).toBeVisible();
 
     await page.goto("/u/social_bravo");
     await expect(page.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
+    await bravoPage.goto("/u/social_alpha");
+    await expect(bravoPage.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
 
-    await bravoPage.getByRole("button", { name: "Unblock" }).click();
-    await expect(bravoPage.getByRole("button", { name: "Block" })).toBeVisible();
+    await bravoPage.goto("/settings/privacy");
+    const blockedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@social_alpha" });
+    await expect(blockedRow).toHaveCount(1);
+    await blockedRow.getByRole("button", { name: "Unblock" }).click();
+    await expect(blockedRow).toContainText("@social_alpha unblocked");
+
+    await bravoPage.goto("/u/social_alpha");
+    await expect(bravoPage.getByRole("heading", { name: "Social Alpha" })).toBeVisible();
     await bravoPage.getByRole("button", { name: "Mute" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unmute" })).toBeVisible();
 
-    const { data: muteRows, error } = await admin.from("profile_mutes").select("muter_user_id, muted_user_id");
-    if (error) throw error;
-    expect(muteRows.some((row) => row.muter_user_id === bravo.id && row.muted_user_id === alpha.id)).toBe(true);
+    await bravoPage.goto("/settings/privacy");
+    const mutedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@social_alpha" });
+    await expect(mutedRow).toHaveCount(1);
+    await mutedRow.getByRole("button", { name: "Unmute" }).click();
+    await expect(mutedRow).toContainText("@social_alpha unmuted");
   } finally {
     await bravoContext.close();
     await removeUser(alpha.id);
