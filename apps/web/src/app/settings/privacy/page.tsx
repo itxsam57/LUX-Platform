@@ -22,7 +22,7 @@ export default async function PrivacySettingsPage() {
   const viewer = await requireAuthenticatedViewer("/settings/privacy");
   const supabase = await createServerSupabaseClient();
   const [{ data: profile }, { data: requests }, { data: relationships }] = await Promise.all([
-    supabase.from("profiles").select("supporter_anonymity_default").eq("user_id", viewer.user.id).single(),
+    supabase.from("profiles").select("handle, display_name, supporter_anonymity_default").eq("user_id", viewer.user.id).single(),
     supabase.from("privacy_requests").select("status, requested_at").eq("user_id", viewer.user.id).eq("request_type", "deletion").order("requested_at", { ascending: false }).limit(1),
     supabase.rpc("get_private_profile_relationships"),
   ]);
@@ -42,6 +42,10 @@ export default async function PrivacySettingsPage() {
         </header>
         <PrivacySettings
           anonymousByDefault={profile?.supporter_anonymity_default !== false}
+          supporterProfile={{
+            handle: profile?.handle ?? "lux_member",
+            displayName: profile?.display_name ?? "LUX member",
+          }}
           deletionStatus={requests?.[0]?.status ?? null}
           blocks={parseRelationshipList(relationshipObject.blocks)}
           mutes={parseRelationshipList(relationshipObject.mutes)}
