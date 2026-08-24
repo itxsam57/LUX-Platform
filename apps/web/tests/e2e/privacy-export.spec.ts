@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
@@ -15,6 +16,10 @@ function emailFor(prefix: string, testInfo: TestInfo) {
   return `${prefix}-${project}-${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(16).slice(2)}@lux.test`;
 }
 
+function defaultHandle(userId: string) {
+  return `lux_${createHash("sha256").update(userId).digest("hex").slice(0, 10)}`;
+}
+
 async function createConfirmedUser(email: string) {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("Privacy export test user was not created.");
@@ -26,12 +31,16 @@ async function removeUser(userId: string) {
   if (error) throw error;
 }
 
-async function login(page: Page, email: string, target: string) {
-  await page.goto(`/auth/login?next=${encodeURIComponent(target)}`);
+async function loginAndAssure(page: Page, email: string) {
+  await page.goto("/auth/login?next=%2Fworkspace");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(new RegExp(target.replaceAll("/", "\\/")));
+  await expect(page).toHaveURL(/\/age-assurance/);
+  await page.getByLabel("Country code").fill("PK");
+  await page.getByLabel(/I confirm that I am at least 18 years old/).check();
+  await page.getByRole("button", { name: "Confirm and continue" }).click();
+  await expect(page).toHaveURL(/\/workspace$/);
 }
 
 test.describe.configure({ mode: "default" });
@@ -41,47 +50,42 @@ test("owner export includes UUID-free social relationships and writes a success 
   const otherEmail = emailFor("export-other", testInfo);
   const owner = await createConfirmedUser(ownerEmail);
   const other = await createConfirmedUser(otherEmail);
+  const otherHandle = defaultHandle(other.id);
 
   try {
-    const { data: otherProfile, error: profileError } = await admin
-      .from("profiles")
-      .select("handle, display_name")
-      .eq("user_id", other.id)
-      .single();
-    if (profileError || !otherProfile) throw profileError ?? new Error("Other profile fixture was not created.");
+    await loginAndAssure(page, ownerEmail);
+    await page.goto(`/u/${otherHandle}`);
+    await expect(page.getByRole("heading", { name: "LUX member" })).toBeVisible();
+    await page.getByRole("button", { name: "Follow" }).click();
+    await expect(page.getByRole("button", { name: "Unfollow" })).toBeVisible();
 
-    const { error: followError } = await admin.from("profile_follows").insert({
-      follower_user_id: owner.id,
-      followed_user_id: other.id,
-    });
-    if (followError) throw followError;
-
-    await login(page, ownerEmail, "/settings/privacy");
     const response = await page.context().request.get("/settings/privacy/export");
     expect(response.status()).toBe(200);
     const body = await response.json() as Record<string, unknown>;
     const relationships = body.profile_relationships as Record<string, Array<Record<string, string>>>;
     expect(relationships.following).toEqual([
-      { handle: otherProfile.handle, display_name: otherProfile.display_name },
+      { handle: otherHandle, display_name: "LUX member" },
     ]);
 
     const exportText = JSON.stringify(body);
     expect(exportText).not.toContain(owner.id);
     expect(exportText).not.toContain(other.id);
     expect(exportText).not.toContain(otherEmail);
+    expect(exportText).not.toContain("access_token");
+    expect(exportText).not.toContain("refresh_token");
+    expect(exportText).not.toContain("age_assurance_records");
 
-    const { data: receipts, error: receiptError } = await admin
-      .from("audit_events")
-      .select("event_type, outcome, route_key")
-      .eq("actor_user_id", owner.id)
-      .eq("event_type", "account_export_generated");
-    if (receiptError) throw receiptError;
-    expect(receipts).toHaveLength(1);
-    expect(receipts[0]).toMatchObject({
-      event_type: "account_export_generated",
-      outcome: "success",
-      route_key: "privacy-settings-export",
-    });
+    const secondResponse = await page.context().request.get("/settings/privacy/export");
+    expect(secondResponse.status()).toBe(200);
+    const secondBody = await secondResponse.json() as Record<string, unknown>;
+    const auditEvents = secondBody.audit_events as Array<Record<string, unknown>>;
+    expect(auditEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event_type: "account_export_generated",
+        outcome: "success",
+        route_key: "privacy-settings-export",
+      }),
+    ]));
   } finally {
     await removeUser(owner.id);
     await removeUser(other.id);
