@@ -106,12 +106,14 @@ test("privacy rights remain available without current adult assurance and export
     await page.getByRole("button", { name: "Submit deletion request" }).click();
     await expect(page.getByText(/Account deletion request submitted/)).toBeVisible();
 
-    const { data: activeRequests, error: requestError } = await admin
-      .from("privacy_requests")
-      .select("id, status")
-      .eq("user_id", user.id)
-      .in("status", ["submitted", "processing"]);
-    if (requestError) throw requestError;
+    const duplicateExportResponse = await page.context().request.get("/settings/privacy/export");
+    expect(duplicateExportResponse.ok()).toBe(true);
+    const duplicateExport = await duplicateExportResponse.json() as {
+      privacy_requests?: Array<{ status?: string }>;
+    };
+    const activeRequests = (duplicateExport.privacy_requests ?? []).filter(
+      (request) => request.status === "submitted" || request.status === "processing",
+    );
     expect(activeRequests).toHaveLength(1);
 
     await page.getByRole("button", { name: "Cancel submitted deletion request" }).click();
@@ -140,11 +142,8 @@ test("existing block and mute can be removed after adult assurance expires", asy
     await page.getByRole("button", { name: "Block" }).click();
     await expect(page.getByText("Block complete.")).toBeVisible();
 
-    const { error: expireError } = await admin
-      .from("age_assurance_records")
-      .delete()
-      .eq("user_id", alpha.id);
-    if (expireError) throw expireError;
+    const { error: revokeAlphaError } = await admin.rpc("revoke_age_assurance", { target_user_id: alpha.id });
+    if (revokeAlphaError) throw revokeAlphaError;
 
     await page.goto("/settings/privacy");
     await expect(page).toHaveURL(/\/settings\/privacy$/);
@@ -160,11 +159,8 @@ test("existing block and mute can be removed after adult assurance expires", asy
     await expect(bravoPage.getByRole("heading", { name: "Privacy Alpha" })).toBeVisible();
     await bravoPage.getByRole("button", { name: "Mute" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unmute" })).toBeVisible();
-    const { error: expireBravoError } = await admin
-      .from("age_assurance_records")
-      .delete()
-      .eq("user_id", bravo.id);
-    if (expireBravoError) throw expireBravoError;
+    const { error: revokeBravoError } = await admin.rpc("revoke_age_assurance", { target_user_id: bravo.id });
+    if (revokeBravoError) throw revokeBravoError;
     await bravoPage.goto("/settings/privacy");
     const muteRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@privacy_alpha" });
     await expect(muteRow).toHaveCount(1);
