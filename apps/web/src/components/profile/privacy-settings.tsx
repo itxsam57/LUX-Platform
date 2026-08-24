@@ -3,12 +3,12 @@
 import { useActionState, useState } from "react";
 import {
   cancelDeletionRequestAction,
-  INITIAL_PRIVACY_ACTION_STATE,
   removePrivateRelationshipAction,
   setSupporterPrivacyAction,
   submitDeletionRequestAction,
 } from "@/app/settings/privacy/actions";
 import { Button, Input, Switch } from "@/components/ui/primitives";
+import { INITIAL_PRIVACY_ACTION_STATE } from "@/lib/profile/action-state";
 import { resolveSupporterIdentity, type PublicSupporterProfile } from "@/lib/profile/policy";
 
 type PrivateRelationship = { handle: string; displayName: string };
