@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project": "LUX Platform",
+  "repository": "itxsam57/LUX-Platform",
+  "branch": "feature/slices-4-10-marketplace-core",
+  "baseline_main_sha": "21135e5895390294ba503df3d2dfba1a3dc6795e",
+  "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
+  "governor": {
+    "mode": "CRITICAL",
+    "state": "OWNER_SPEC_REVIEW_REQUIRED",
+    "current_slice": 4,
+    "accepted_slices": [0, 1, 2, 3],
+    "target_slices": [4, 5, 6, 7, 8, 9, 10],
+    "owner_testing_policy": "BATCH_AFTER_SLICE_10",
+    "max_root_cause_revisions_per_blocker": 3,
+    "mandatory_failed_gate_blocks_progress": true,
+    "merge_before_owner_acceptance": false
+  },
+  "design_spec": "docs/superpowers/specs/2026-08-25-slices-4-10-marketplace-core-design.md",
+  "next_action": "Owner reviews the committed design specification; after approval, write the detailed implementation plan and begin isolated TDD execution.",
+  "provider_policy": {
+    "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
+    "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
+  },
+  "evidence": {
+    "design_commit": "14f2609d3766df0ddb7c9b744b5e965b61c35e8f",
+    "implementation_started": false,
+    "automated_acceptance_complete": false,
+    "owner_acceptance_complete": false,
+    "merged": false
+  }
+}
