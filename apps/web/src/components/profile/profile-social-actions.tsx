@@ -1,12 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  INITIAL_RELATIONSHIP_STATE,
-  profileRelationshipAction,
-  type RelationshipState,
-} from "@/app/u/[handle]/actions";
+import { profileRelationshipAction } from "@/app/u/[handle]/actions";
 import { Button } from "@/components/ui/primitives";
+import { INITIAL_RELATIONSHIP_STATE, type RelationshipState } from "@/lib/profile/action-state";
 
 export function ProfileSocialActions({
   handle,
