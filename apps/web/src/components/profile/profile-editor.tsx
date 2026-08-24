@@ -1,12 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  INITIAL_PROFILE_ACTION_STATE,
-  saveProfileAction,
-  uploadProfileMediaAction,
-} from "@/app/settings/profile/actions";
+import { saveProfileAction, uploadProfileMediaAction } from "@/app/settings/profile/actions";
 import { Button, FilePicker, Input, Select, Textarea } from "@/components/ui/primitives";
+import { INITIAL_PROFILE_ACTION_STATE } from "@/lib/profile/action-state";
 import type { ProfileLink, ProfileVisibility } from "@/lib/profile/policy";
 
 export type EditableProfile = {
