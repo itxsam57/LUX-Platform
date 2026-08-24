@@ -1,23 +1,9 @@
 "use server";
 
 import { requireAdultViewer, requireAuthenticatedViewer } from "@/lib/auth/context";
+import { INITIAL_RELATIONSHIP_STATE, type RelationshipState } from "@/lib/profile/action-state";
 import { normalizeHandle, validateHandle } from "@/lib/profile/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export type RelationshipState = {
-  status: "idle" | "success" | "error";
-  message: string;
-  following?: boolean;
-  blockedByMe?: boolean;
-  mutedByMe?: boolean;
-  followerCount?: number;
-  followingCount?: number;
-};
-
-export const INITIAL_RELATIONSHIP_STATE: RelationshipState = {
-  status: "idle",
-  message: "",
-};
 
 const ACTIONS = new Set(["follow", "unfollow", "block", "unblock", "mute", "unmute"]);
 const PRIVACY_REMOVAL_ACTIONS = new Set(["unblock", "unmute"]);
@@ -37,7 +23,7 @@ export async function profileRelationshipAction(
   }
 
   if (PRIVACY_REMOVAL_ACTIONS.has(action)) {
-    await requireAuthenticatedViewer(`/settings/privacy`);
+    await requireAuthenticatedViewer("/settings/privacy");
   } else {
     await requireAdultViewer(`/u/${target}`);
   }
