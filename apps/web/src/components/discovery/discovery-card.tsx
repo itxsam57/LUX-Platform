@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Avatar, Badge, Card } from "@/components/ui/primitives";
 import type { DiscoveryProfile } from "@/lib/discovery/projection";
@@ -16,7 +17,14 @@ export function DiscoveryCard({ profile }: { profile: DiscoveryProfile }) {
     <Card as="article" className="discovery-card">
       <div className="discovery-card__identity">
         {profile.avatarUrl ? (
-          <img className="discovery-card__avatar" src={profile.avatarUrl} alt="" width={56} height={56} />
+          <Image
+            className="discovery-card__avatar"
+            src={profile.avatarUrl}
+            alt=""
+            width={56}
+            height={56}
+            unoptimized
+          />
         ) : (
           <Avatar initials={initials(profile.displayName)} label={`${profile.displayName} avatar`} size="large" />
         )}
