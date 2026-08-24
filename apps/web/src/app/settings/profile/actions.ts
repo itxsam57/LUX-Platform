@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdultViewer } from "@/lib/auth/context";
+import { INITIAL_PROFILE_ACTION_STATE, type ProfileActionState } from "@/lib/profile/action-state";
 import { processProfileMedia } from "@/lib/profile/media";
 import {
   normalizeHandle,
@@ -16,17 +17,6 @@ import {
   type ProfileVisibility,
 } from "@/lib/profile/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export type ProfileActionState = {
-  status: "idle" | "success" | "error";
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
-
-export const INITIAL_PROFILE_ACTION_STATE: ProfileActionState = {
-  status: "idle",
-  message: "",
-};
 
 const VISIBILITIES = new Set<ProfileVisibility>(["public", "unlisted", "private"]);
 const MEDIA_KINDS = new Set<ProfileMediaKind>(["avatar", "banner"]);
