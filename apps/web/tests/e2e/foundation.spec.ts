@@ -14,7 +14,7 @@ test("home, auth, and design-system navigation remain synchronized without refre
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
-  await expect(page.getByText("Build Slice 2: authentication, age assurance, and workspace isolation")).toBeVisible();
+  await expect(page.getByText("Build Slice 3: profiles, privacy, media, and social boundaries")).toBeVisible();
 
   await page.getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/auth\/login$/);
