@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import "./auth-workspace.css";
 import "./profile-privacy.css";
+import "./discovery.css";
 
 export const metadata: Metadata = {
   title: "LUX Platform",
