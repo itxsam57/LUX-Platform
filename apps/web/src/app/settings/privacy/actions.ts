@@ -1,15 +1,9 @@
 "use server";
 
 import { requireAuthenticatedViewer } from "@/lib/auth/context";
+import { INITIAL_PRIVACY_ACTION_STATE, type PrivacyActionState } from "@/lib/profile/action-state";
 import { normalizeHandle, validateHandle } from "@/lib/profile/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export type PrivacyActionState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_PRIVACY_ACTION_STATE: PrivacyActionState = { status: "idle", message: "" };
 
 function error(message: string): PrivacyActionState {
   return { status: "error", message };
