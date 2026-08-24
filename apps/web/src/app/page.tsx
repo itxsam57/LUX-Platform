@@ -4,14 +4,14 @@ export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero-card">
-        <span className="eyebrow">Profiles, privacy, and isolated workspaces</span>
+        <span className="eyebrow">Discovery with privacy-first identity</span>
         <h1>LUX Platform</h1>
         <p className="lede">
-          One adult account with separate workspaces, a single privacy-first public identity, guarded profile media, and owner-controlled social boundaries. Audience demand never overrides creator choice.
+          Adult accounts can discover public creators through privacy-safe feed, explore, and search surfaces while creator choice, blocks, profile visibility, and isolated workspaces remain authoritative.
         </p>
         <div className="status-row">
           <span className="status-dot" aria-hidden="true" />
-          <span>Build Slice 3: profiles, privacy, media, and social boundaries</span>
+          <span>Build Slice 4: feed and discovery</span>
         </div>
         <div className="component-row">
           <Link className="ui-button ui-button--primary ui-button--medium" href="/auth/sign-up">
