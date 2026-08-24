@@ -27,13 +27,13 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-019 | Vulnerable framework/browser dependencies pass unnoticed | Production audit blocks required advisories and frozen audited versions are committed | dependency audit + frozen install | ACTIVE |
 | REG-020 | Security override resolves but breaks Next.js runtime image tooling | Audited runtime resolutions remain compatible and Sharp performs real image conversion | runtime compatibility check + production build + media tests | ACTIVE |
 | REG-021 | Expensive browser setup runs after cheap prerequisite failure | Browser install/tests are blocked until cheap prerequisite gates pass | master gate ordering + GitHub workflow dependency | ACTIVE |
-| REG-022 | Owner receives vague or unnecessary manual testing | Generated handoff lists exact visible tests only after automated readiness | `report:handoff` + GitHub Job Summary | ACTIVE |
+| REG-022 | Owner receives vague or unnecessary manual testing | Generated handoff lists exact visible tests only after automated readiness; the approved Slice 4→10 run defers owner execution until the combined Slice 10 handoff | `report:handoff` + GitHub Job Summary + Governor policy | ACTIVE |
 | REG-023 | Fixed mobile navigation covers a button | Interactive content retains safe bottom clearance and visible controls remain actionable | mobile shell/touch-target Playwright | ACTIVE |
 | REG-024 | Hidden tooltip/overlay widens the mobile document | Absolutely positioned content stays bounded by viewport | desktop/mobile overflow regression | ACTIVE |
 | REG-025 | Invalid responsive width silently creates intrinsic overflow | Responsive containers use valid widths and document never exceeds viewport | build + desktop/mobile overflow workflow | ACTIVE |
 | REG-026 | Tabs look keyboard-accessible while focus and selection diverge | ArrowLeft/Right, Home and End keep focus and selected tab synchronized | desktop/mobile design-system workflow | ACTIVE |
 | REG-027 | Dialog/drawer opens without reliable close path | Labelled overlays close through controls and Escape without trapping route | desktop/mobile overlay workflow | ACTIVE |
-| REG-028 | Handoff describes an old slice or obsolete test | Handoff derives active slice and changed visible surfaces from repository state | handoff generator + Job Summary | ACTIVE |
+| REG-028 | Handoff describes an old slice, obsolete deferred area, or wrong owner-test timing | Handoff derives active slice, changed visible surfaces, deferred areas and owner-testing policy from repository/Governor state | handoff generator + Job Summary | ACTIVE |
 | REG-029 | Catalogue control implies a production action that does not exist | Fixtures explicitly state they do not upload, persist, authorize, pay or modify production data | catalogue copy assertions + browser review | ACTIVE |
 | REG-030 | Weak/generic auth behavior leaks whether an account exists | Sign-up/recovery responses remain safe while valid verification/recovery still works | auth policy + desktop/mobile `auth-isolation.spec.ts` | ACTIVE |
 | REG-031 | “Sign out all devices” leaves an older protected session usable | Revocation invalidates prior sessions while allowing a fresh authenticated session | pgTAP precise revocation + desktop/mobile E2E | ACTIVE |
@@ -51,10 +51,14 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-043 | Notification is readable by another user or survives a block relationship | Only recipient reads/marks it; profile deep link is authorized; blocked actor notification is suppressed | pgTAP + `privacy-rights.spec.ts` | ACTIVE |
 | REG-044 | Adult assurance expires between media staging and durable profile mutation | Final storage/profile mutation revalidates current authorization/assurance and fails closed | pgTAP `0006_media_staging_age_revocation` + profile hardening workflows | ACTIVE |
 | REG-045 | Public avatar replacement changes address or serves stale/partially committed media | Replacement completes before success state and stable guarded media URL resolves the new processed object | media boundary + `profile-hardening.spec.ts` | ACTIVE |
+| REG-046 | Private, unlisted, or blocked profiles enter discovery ranking and leak through feed/search | Discovery candidate RPCs suppress private/non-discoverable and either-direction blocked profiles before ranking/rendering | pgTAP `0007_slice_4_discovery` + discovery browser workflows | ACTIVE |
+| REG-047 | For You ranking becomes opaque, unstable, or lets one creator monopolize results | Explicit followed/interest/freshness/engagement weights, stable tie breaking and creator diversity cap remain deterministic | `src/lib/discovery/ranking.test.ts` | ACTIVE |
+| REG-048 | Search/discovery response grows to expose UUID/email/private fields | Discovery UI parses an explicit profile allowlist and database projections use public handle/stage fields only | discovery projection parser + pgTAP boundary + build/browser tests | ACTIVE |
+| REG-049 | Discovery routes look implemented but are 404s or require manual refresh | `/app/feed`, `/app/explore`, `/app/search` are real adult-protected routes and preserve responsive/navigation behavior | `discovery.spec.ts` desktop/mobile + foundation regressions | ACTIVE |
 
 ## Evidence baseline
 
-The Slice 3 pre-reconciliation full baseline is GitHub Engineering Gate run `32680016367` (run #306): 39 unit tests, 1 integration/API test, 166 pgTAP/RLS assertions, production build, dependency/runtime checks, and 48 Playwright desktop/mobile workflows all passed. After any candidate-head change, the current head must obtain its own required green gate; this register does not permit inheriting a failed current-head status from an older run.
+The accepted Slices 0–3 baseline is `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`. Slice 4 is the active candidate on Draft PR #6. Its current checkpoint must obtain its own green cumulative Engineering Gate; older Slice 3 evidence cannot substitute for a failed or missing current-head gate.
 
 ## Adding regressions
 
