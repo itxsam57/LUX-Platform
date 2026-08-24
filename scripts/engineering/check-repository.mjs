@@ -9,6 +9,10 @@ const requiredFiles = [
   "docs/engineering/PROJECT-PROFILE.md",
   "docs/engineering/PROJECT-TEST-MATRIX.md",
   "docs/engineering/REGRESSION-REGISTER.md",
+  "docs/engineering/02_SLICE_2_AUTH_SECURITY_SPEC.md",
+  "supabase/config.toml",
+  "supabase/migrations/20260806000100_slice_2_auth_workspace.sql",
+  "supabase/tests/0001_auth_workspace_rls.test.sql",
 ];
 
 const forbiddenTrackedPatterns = [
@@ -46,7 +50,16 @@ for (const file of tracked) {
 if (existsSync("package.json")) {
   const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
   if (rootPackage.packageManager !== "pnpm@10.15.0") failures.push("Root packageManager must remain pinned to pnpm@10.15.0.");
-  for (const script of ["verify:quick", "verify:affected", "verify:full", "test:unit", "test:integration", "test:e2e", "report:handoff"]) {
+  for (const script of [
+    "verify:quick",
+    "verify:affected",
+    "verify:full",
+    "test:unit",
+    "test:integration",
+    "test:database",
+    "test:e2e",
+    "report:handoff",
+  ]) {
     if (!rootPackage.scripts?.[script]) failures.push(`Missing master command: ${script}`);
   }
 }

@@ -4,8 +4,9 @@
   "packageManager": "pnpm@10.15.0",
   "pnpm": {
     "overrides": {
-      "postcss": "8.5.18",
-      "sharp": "0.35.0"
+      "nanoid": "3.3.18",
+      "postcss": "8.5.23",
+      "sharp": "0.35.3"
     },
     "onlyBuiltDependencies": [
       "esbuild",
@@ -22,11 +23,12 @@
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "pnpm --filter @lux/web test:unit",
     "test:integration": "pnpm --filter @lux/web test:integration",
+    "test:database": "supabase test db",
     "test:e2e": "pnpm --filter @lux/web test:e2e",
     "repo:check": "node scripts/engineering/check-repository.mjs",
     "runtime:dependencies": "node scripts/engineering/check-runtime-dependencies.mjs",
     "security:secrets": "node scripts/engineering/scan-secrets.mjs",
-    "security:dependencies": "pnpm audit --prod --audit-level high",
+    "security:dependencies": "pnpm audit --prod --audit-level moderate",
     "verify:quick": "pnpm repo:check && pnpm security:secrets && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration",
     "verify:affected": "node scripts/engineering/verify-affected.mjs",
     "verify:full": "node scripts/engineering/run-full-gate.mjs",

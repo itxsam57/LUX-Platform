@@ -7,6 +7,7 @@ const browserRelevant = [
   /^apps\/web\/tests\/e2e\//,
   /^apps\/web\/playwright\.config\.ts$/,
   /^apps\/web\/package\.json$/,
+  /^supabase\/(config\.toml|migrations\/|tests\/)/,
   /^package\.json$/,
   /^pnpm-lock\.yaml$/,
   /^scripts\/engineering\//,
