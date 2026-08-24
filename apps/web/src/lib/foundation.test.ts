@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { FOUNDATION_SLICE, isFoundationRoute } from "./foundation";
 
 describe("foundation contracts", () => {
-  it("identifies the active build slice", () => {
-    expect(FOUNDATION_SLICE.id).toBe("slice-3");
-    expect(FOUNDATION_SLICE.number).toBe(3);
+  it("identifies Slice 4 feed and discovery as the active build slice", () => {
+    expect(FOUNDATION_SLICE.id).toBe("slice-4");
+    expect(FOUNDATION_SLICE.number).toBe(4);
+    expect(FOUNDATION_SLICE.name).toBe("Feed and discovery");
     expect(FOUNDATION_SLICE.healthStatus).toBe("ok");
   });
 
@@ -23,6 +24,9 @@ describe("foundation contracts", () => {
     "/settings/privacy",
     "/settings/privacy/export",
     "/notifications",
+    "/app/feed",
+    "/app/explore",
+    "/app/search",
   ])("recognizes %s", (route) => {
     expect(isFoundationRoute(route)).toBe(true);
   });
