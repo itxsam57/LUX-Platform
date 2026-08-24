@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { saveProfileAction, uploadProfileMediaAction } from "@/app/settings/profile/actions";
 import { Button, FilePicker, Input, Select, Textarea } from "@/components/ui/primitives";
 import { INITIAL_PROFILE_ACTION_STATE } from "@/lib/profile/action-state";
@@ -46,7 +46,15 @@ export function ProfileEditor({ profile }: { profile: EditableProfile }) {
           <p className="muted-copy">Only the fields shown here can appear in the public profile projection. Email, account UUID, age records, and auth metadata stay private.</p>
         </div>
 
-        <form action={saveAction} className="profile-editor-form" noValidate>
+        <form
+          className="profile-editor-form"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
+            startTransition(() => saveAction(formData));
+          }}
+        >
           <Input
             id="profile-handle"
             name="handle"
