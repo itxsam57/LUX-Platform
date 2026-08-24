@@ -54,6 +54,16 @@ async function secondaryContext(browser: Browser, testInfo: TestInfo): Promise<B
   return browser.newContext(testInfo.project.use);
 }
 
+async function submitProfileMedia(page: Page, buttonName: string) {
+  const responsePromise = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && new URL(response.url()).pathname === "/settings/profile"
+  ));
+  await page.getByRole("button", { name: buttonName }).click();
+  const response = await responsePromise;
+  expect(response.ok()).toBe(true);
+}
+
 test.describe.configure({ mode: "default" });
 
 test("duplicate handles and unsafe links fail safely while valid profile edits persist after refresh", async ({ page, browser }, testInfo) => {
@@ -118,14 +128,14 @@ test("avatar replacement overwrites the guarded object without changing the publ
     }).png().toBuffer();
 
     await page.locator("#avatar-file").setInputFiles({ name: "first.png", mimeType: "image/png", buffer: firstImage });
-    await page.getByRole("button", { name: "Process and upload avatar" }).click();
+    await submitProfileMedia(page, "Process and upload avatar");
     await expect(page.getByText("Avatar updated as metadata-stripped WebP.")).toBeVisible();
     const firstResponse = await anonymousContext.request.get("/profile-media/replace_media_alpha/avatar");
     expect(firstResponse.status()).toBe(200);
     const firstBytes = await firstResponse.body();
 
     await page.locator("#avatar-file").setInputFiles({ name: "second.png", mimeType: "image/png", buffer: secondImage });
-    await page.getByRole("button", { name: "Process and upload avatar" }).click();
+    await submitProfileMedia(page, "Process and upload avatar");
     await expect(page.getByText("Avatar updated as metadata-stripped WebP.")).toBeVisible();
     const secondResponse = await anonymousContext.request.get("/profile-media/replace_media_alpha/avatar");
     expect(secondResponse.status()).toBe(200);
