@@ -26,7 +26,20 @@ export function getAgeAssuranceMode(): AgeAssuranceMode {
     : "provider_required";
 }
 
+function isLoopbackAppUrl(appUrl: string): boolean {
+  try {
+    const hostname = new URL(appUrl).hostname;
+    return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function getVerificationEnvironment(): VerificationProviderEnvironment {
+  const explicitTestOverride = process.env.IDENTITY_VERIFICATION_ENVIRONMENT === "test";
+  const ciLoopbackRuntime = process.env.CI === "true" && isLoopbackAppUrl(getPublicAppUrl());
+
+  if (explicitTestOverride && ciLoopbackRuntime) return "test";
   if (process.env.NODE_ENV === "production") return "production";
   if (process.env.NODE_ENV === "test") return "test";
   return "development";
