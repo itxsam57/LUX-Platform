@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Status, Table } from "@/components/ui/primitives";
+import { Badge, Status, Table } from "@/components/ui/primitives";
 import { WorkspaceMutationForm } from "@/components/workspace/workspace-mutation-form";
 import { requireWorkspace } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -13,6 +13,7 @@ type ReviewRow = {
   level: "v2" | "v3";
   status: "not_started" | "pending" | "needs_review" | "verified" | "rejected" | "expired" | "revoked";
   latestSessionId: string | null;
+  latestSessionSynthetic: boolean;
 };
 
 function parseReviewRow(value: unknown): ReviewRow | null {
@@ -31,6 +32,7 @@ function parseReviewRow(value: unknown): ReviewRow | null {
     level: row.level,
     status: row.status as ReviewRow["status"],
     latestSessionId: typeof row.latest_session_id === "string" ? row.latest_session_id : null,
+    latestSessionSynthetic: row.latest_session_synthetic === true,
   };
 }
 
@@ -90,6 +92,7 @@ export default async function VerificationReviewPage({
               <th scope="col">Account</th>
               <th scope="col">Level</th>
               <th scope="col">Status</th>
+              <th scope="col">Source</th>
               <th scope="col">Reviewer actions</th>
             </tr>
           </thead>
@@ -99,6 +102,11 @@ export default async function VerificationReviewPage({
                 <td>@{row.handle}</td>
                 <td>{levelLabel(row.level)}</td>
                 <td>{statusLabel(row.status)}</td>
+                <td>
+                  <Badge tone={row.latestSessionSynthetic ? "warning" : "info"}>
+                    {row.latestSessionSynthetic ? "Synthetic development" : "Provider result"}
+                  </Badge>
+                </td>
                 <td>
                   <div className="component-row">
                     {(row.status === "pending" || row.status === "needs_review") && row.latestSessionId ? (
