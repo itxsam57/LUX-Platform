@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 import {
-  INITIAL_VERIFICATION_ACTION_STATE,
   startVerificationAction,
+  type VerificationActionState,
 } from "@/app/settings/verification/actions";
 import { Badge, Button, Status } from "@/components/ui/primitives";
 import type { VerificationProviderMode, VerificationStatus } from "@/lib/verification/types";
@@ -30,6 +30,13 @@ export type VerificationSummaryView = {
   v3: LevelSummary & { prerequisites: V3PrerequisitesView };
 };
 
+const INITIAL_VERIFICATION_ACTION_STATE: VerificationActionState = {
+  status: "idle",
+  message: "",
+  level: null,
+  verificationStatus: null,
+};
+
 const STATUS_LABELS: Record<VerificationStatus, string> = {
   not_started: "Not started",
   pending: "Pending review",
@@ -50,7 +57,7 @@ function statusTone(status: VerificationStatus): "neutral" | "success" | "warnin
 function displayStatus(
   initial: VerificationStatus,
   actionLevel: "v2" | "v3",
-  actionState: typeof INITIAL_VERIFICATION_ACTION_STATE,
+  actionState: VerificationActionState,
 ): VerificationStatus {
   return actionState.level === actionLevel && actionState.verificationStatus
     ? actionState.verificationStatus
@@ -63,7 +70,7 @@ function formatExpiry(value: string | null): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
 }
 
-function ActionMessage({ state }: { state: typeof INITIAL_VERIFICATION_ACTION_STATE }) {
+function ActionMessage({ state }: { state: VerificationActionState }) {
   if (!state.message) return null;
   return (
     <p

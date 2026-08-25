@@ -14,7 +14,7 @@ export type VerificationActionState = {
   verificationStatus: VerificationStatus | null;
 };
 
-export const INITIAL_VERIFICATION_ACTION_STATE: VerificationActionState = {
+const INITIAL_VERIFICATION_ACTION_STATE: VerificationActionState = {
   status: "idle",
   message: "",
   level: null,
