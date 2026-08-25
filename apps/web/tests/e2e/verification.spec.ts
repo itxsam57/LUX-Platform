@@ -2,10 +2,13 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("Verification E2E requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
+  throw new Error(
+    "Verification E2E requires NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, and SUPABASE_SERVICE_ROLE_KEY.",
+  );
 }
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -33,6 +36,18 @@ async function createConfirmedUser(email: string) {
 async function removeUser(userId: string) {
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) throw error;
+}
+
+async function readOwnVerificationSummary(email: string) {
+  const client = createClient(supabaseUrl, publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: signInError } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  if (signInError) throw signInError;
+
+  const { data, error } = await client.rpc("get_my_verification_summary");
+  if (error) throw error;
+  return data;
 }
 
 async function loginAndAssure(page: Page, email: string, target: string) {
@@ -65,15 +80,10 @@ test("adult-assured user can start synthetic V2 without self-promoting", async (
     await expect(page.getByTestId("verification-v2-status")).toHaveText("Pending review");
     await expect(page.getByText(/development-only workflow/i)).toBeVisible();
 
-    const { data: subjects, error: subjectError } = await admin
-      .from("verification_subjects")
-      .select("status, verified_at")
-      .eq("user_id", user.id)
-      .eq("level", "v2");
-    if (subjectError) throw subjectError;
-    expect(subjects).toHaveLength(1);
-    expect(subjects[0]?.status).toBe("pending");
-    expect(subjects[0]?.verified_at).toBeNull();
+    const summary = await readOwnVerificationSummary(email);
+    expect(summary?.v2?.status).toBe("pending");
+    expect(summary?.v2?.current).toBe(false);
+    expect(summary?.v2?.verifiedAt).toBeNull();
   } finally {
     await removeUser(user.id);
   }
