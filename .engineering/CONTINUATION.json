@@ -7,9 +7,9 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_4_TDD_RED",
-    "current_slice": 4,
-    "accepted_slices": [0, 1, 2, 3],
+    "state": "SLICE_5_TDD_RED",
+    "current_slice": 5,
+    "accepted_slices": [0, 1, 2, 3, 4],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
     "owner_testing_policy": "BATCH_AFTER_SLICE_10",
     "max_root_cause_revisions_per_blocker": 3,
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Observe the failing Slice 4 foundation contract on PR #6, then implement the minimum Slice 4 discovery behavior and expand RED tests for ranking, database privacy and browser workflows.",
+  "next_action": "Write Slice 5 RED unit contracts for legal verification transitions, V3 prerequisites, expiry/revocation and production provider fail-closed behavior before implementing verification production code.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -36,6 +36,9 @@
     "plans_complete": true,
     "pr_number": 6,
     "slice_4_red_contract_commit": "0d7f1d171a02cd16e83bf0d1a3967ab08a4859fd",
+    "slice_4_checkpoint_head": "9c8908c71fee91761261593bc479260c977e444e",
+    "slice_4_checkpoint_run": 32772644111,
+    "slice_4_automated_checkpoint_passed": true,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,
