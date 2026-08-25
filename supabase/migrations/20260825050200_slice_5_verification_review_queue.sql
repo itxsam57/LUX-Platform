@@ -6,6 +6,7 @@ returns table (
   status public.verification_status,
   latest_session_id uuid,
   latest_session_status public.verification_status,
+  latest_session_synthetic boolean,
   updated_at timestamptz
 )
 language plpgsql
@@ -23,12 +24,13 @@ begin
     subject.status,
     latest_session.id,
     latest_session.status,
+    latest_session.synthetic,
     subject.updated_at
   from public.verification_subjects subject
   join public.profiles profile
     on profile.user_id = subject.user_id
   left join lateral (
-    select session.id, session.status
+    select session.id, session.status, session.synthetic
     from public.verification_sessions session
     where session.user_id = subject.user_id
       and session.target_level = subject.level
