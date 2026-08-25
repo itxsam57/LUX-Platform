@@ -4,6 +4,7 @@ import {
   evaluateV3Eligibility,
   isVerificationCurrent,
   resolveVerificationProviderMode,
+  verificationSessionMatchesRuntime,
 } from "./policy";
 
 describe("verification policy", () => {
@@ -94,5 +95,32 @@ describe("verification policy", () => {
       approvedProviderConfigured: true,
       syntheticEnabled: true,
     })).toBe("provider");
+  });
+
+  it("allows reviewer approval only when the stored session source matches the active runtime", () => {
+    expect(verificationSessionMatchesRuntime(
+      { synthetic: true, providerKey: "synthetic" },
+      { mode: "synthetic", providerKey: null },
+    )).toBe(true);
+
+    expect(verificationSessionMatchesRuntime(
+      { synthetic: true, providerKey: "synthetic" },
+      { mode: "provider", providerKey: "approved-idp" },
+    )).toBe(false);
+
+    expect(verificationSessionMatchesRuntime(
+      { synthetic: false, providerKey: "approved-idp" },
+      { mode: "provider", providerKey: "approved-idp" },
+    )).toBe(true);
+
+    expect(verificationSessionMatchesRuntime(
+      { synthetic: false, providerKey: "other-idp" },
+      { mode: "provider", providerKey: "approved-idp" },
+    )).toBe(false);
+
+    expect(verificationSessionMatchesRuntime(
+      { synthetic: false, providerKey: "approved-idp" },
+      { mode: "unavailable", providerKey: null },
+    )).toBe(false);
   });
 });
