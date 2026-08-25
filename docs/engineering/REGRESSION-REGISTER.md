@@ -8,8 +8,8 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 |---|---|---|---|---|
 | REG-001 | URL changes while visible page stays stale or requires refresh | Route, Back, Forward, and refresh always show the matching screen | Playwright foundation/navigation/history/refresh | ACTIVE |
 | REG-002 | Cross-role or cross-workspace access | Trusted server/API/database boundaries deny unauthorized routes and data | pgTAP auth/workspace RLS + `auth-isolation.spec.ts` | ACTIVE |
-| REG-003 | Button changes text without completing a real workflow | Implemented production controls perform authorized durable actions and report truthful success/failure | Slice 2/3 integration + E2E; later actions require their own tests | ACTIVE/PARTIAL |
-| REG-004 | Submitted evidence missing for reviewer or reviewer result missing for submitter | Both sides reference one durable record and synchronize without refresh | future upload/review integration | BLOCKED |
+| REG-003 | Button changes text without completing a real workflow | Implemented production controls perform authorized durable actions and report truthful success/failure | cumulative integration + E2E; later actions require their own tests | ACTIVE/PARTIAL |
+| REG-004 | Submitted evidence missing for reviewer or reviewer result missing for submitter | Verification review uses one durable normalized record; later production upload/review systems require equivalent protection | Slice 5 pgTAP + `verification.spec.ts` | ACTIVE/PARTIAL |
 | REG-005 | File or form state leaks into another record/account | Implemented profile state and media stay owner-scoped; later records require equivalent guards | profile RPC/RLS + media boundary + E2E | ACTIVE/PARTIAL |
 | REG-006 | Allowed media cannot upload/replace/preview safely | Declared profile image types validate, sanitize, persist, replace and render consistently | media unit tests + pgTAP media boundary + profile E2E | ACTIVE/PARTIAL |
 | REG-007 | Draft text disappears after navigation/refresh | Saved draft restores; unsaved-exit behavior is explicit | future draft-bearing workflow tests | BLOCKED |
@@ -17,7 +17,7 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-009 | Back action enters another workspace or revives stale permission | Back/Forward/refresh/direct navigation remains inside current authorized workspace | `auth-isolation.spec.ts` desktop/mobile | ACTIVE |
 | REG-010 | White screen, silent crash, or uncontrolled error | Controlled loading/error/404 state; no uncaught page or console errors | route boundaries + Playwright page-error/console/404 checks | ACTIVE |
 | REG-011 | Duplicate click creates duplicate durable effect | Implemented idempotent flows create one durable effect; payment idempotency remains future scope | deletion/follow notification pgTAP + privacy E2E | ACTIVE/PARTIAL |
-| REG-012 | Queue item disappears while permanently pending elsewhere | One valid state transition updates all projections atomically | future queue/state-machine integration | BLOCKED |
+| REG-012 | Queue item disappears while permanently pending elsewhere | Implemented verification review transitions update the durable subject state; later queues require equivalent atomic projections | Slice 5 review RPC + pgTAP + verification E2E | ACTIVE/PARTIAL |
 | REG-013 | Internal links use raw anchors and fail framework navigation rules | Internal route navigation uses framework-safe navigation and passes lint/browser tests | ESLint + Playwright | ACTIVE |
 | REG-014 | Unit coverage includes framework/config files and creates misleading failure | Coverage floor applies to unit-testable application/domain logic; UI/routes have separate tests | Vitest config + engineering gate | ACTIVE |
 | REG-015 | CI cache/setup fails because lockfile is missing or install drifts | Lockfile is committed; CI uses frozen install and supported pnpm cache | repository check + frozen GitHub Actions install | ACTIVE |
@@ -27,7 +27,7 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-019 | Vulnerable framework/browser dependencies pass unnoticed | Production audit blocks required advisories and frozen audited versions are committed | dependency audit + frozen install | ACTIVE |
 | REG-020 | Security override resolves but breaks Next.js runtime image tooling | Audited runtime resolutions remain compatible and Sharp performs real image conversion | runtime compatibility check + production build + media tests | ACTIVE |
 | REG-021 | Expensive browser setup runs after cheap prerequisite failure | Browser install/tests are blocked until cheap prerequisite gates pass | master gate ordering + GitHub workflow dependency | ACTIVE |
-| REG-022 | Owner receives vague or unnecessary manual testing | Generated handoff lists exact visible tests only after automated readiness; the approved Slice 4→10 run defers owner execution until the combined Slice 10 handoff | `report:handoff` + GitHub Job Summary + Governor policy | ACTIVE |
+| REG-022 | Owner receives vague or unnecessary manual testing | Generated handoff lists exact visible tests only after automated readiness; approved Slice 4→10 run defers owner execution until combined Slice 10 handoff | `report:handoff` + GitHub Job Summary + Governor policy | ACTIVE |
 | REG-023 | Fixed mobile navigation covers a button | Interactive content retains safe bottom clearance and visible controls remain actionable | mobile shell/touch-target Playwright | ACTIVE |
 | REG-024 | Hidden tooltip/overlay widens the mobile document | Absolutely positioned content stays bounded by viewport | desktop/mobile overflow regression | ACTIVE |
 | REG-025 | Invalid responsive width silently creates intrinsic overflow | Responsive containers use valid widths and document never exceeds viewport | build + desktop/mobile overflow workflow | ACTIVE |
@@ -55,10 +55,23 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-047 | For You ranking becomes opaque, unstable, or lets one creator monopolize results | Explicit followed/interest/freshness/engagement weights, stable tie breaking and creator diversity cap remain deterministic | `src/lib/discovery/ranking.test.ts` | ACTIVE |
 | REG-048 | Search/discovery response grows to expose UUID/email/private fields | Discovery UI parses an explicit profile allowlist and database projections use public handle/stage fields only | discovery projection parser + pgTAP boundary + build/browser tests | ACTIVE |
 | REG-049 | Discovery routes look implemented but are 404s or require manual refresh | `/app/feed`, `/app/explore`, `/app/search` are real adult-protected routes and preserve responsive/navigation behavior | `discovery.spec.ts` desktop/mobile + foundation regressions | ACTIVE |
+| REG-050 | User self-promotes or unauthorized reviewer changes V2/V3 state | Participants may start eligible flows but only constrained reviewer/super-admin transitions can approve, revoke or expire verification | pgTAP `0008_slice_5_verification`/`0008b_slice_5_verification_review_queue` + `verification.spec.ts` | ACTIVE |
+| REG-051 | Public verification leaks legal identity evidence, provider references, raw payloads or internal UUIDs | Public surfaces expose only normalized safe verification badge/state; evidence stays behind private/RLS boundaries | Slice 5 pgTAP + public-profile verification E2E | ACTIVE |
+| REG-052 | Revoked/expired verification remains current or keeps a stronger public badge | Revocation/expiry immediately makes the level non-current and public state truthfully downgrades or disappears | verification policy + Slice 5 pgTAP + verification E2E | ACTIVE |
+| REG-053 | V3 is granted without complete performer prerequisites | V3 requires current V2 plus performer/liveness result, payout-ownership state and consent-education acknowledgement | verification policy tests + pgTAP `0008` | ACTIVE |
+| REG-054 | Synthetic identity verification is accidentally treated as production verification | Synthetic adapter is restricted to explicit development/CI; production provider-required mode fails closed until an approved provider is configured | verification environment/policy tests + server adapter boundary | ACTIVE/PARTIAL |
+| REG-055 | Reviewer E2E passes/fails based on incidental navigation instead of committed state | Reviewer workflows synchronize on the subject’s durable private verification summary after each mutation | `verification.spec.ts` durable-state polling | ACTIVE |
+| REG-056 | Super-admin verification test is forced through Fan after bootstrap activates staff | Age-assurance helper preserves the requested authorized target, so workspace isolation—not helper drift—determines access | `verification.spec.ts` super-admin reviewer workflow | ACTIVE |
+| REG-057 | Health/home/handoff advertise different active slices | Visible home checkpoint and health/handoff metadata derive from the canonical active foundation contract and are asserted in unit/integration/desktop/mobile tests | `foundation.test.ts`, health route test, `foundation.spec.ts`, handoff generator | ACTIVE |
 
 ## Evidence baseline
 
-The accepted Slices 0–3 baseline is `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`. Slice 4 is the active candidate on Draft PR #6. Its current checkpoint must obtain its own green cumulative Engineering Gate; older Slice 3 evidence cannot substitute for a failed or missing current-head gate.
+- Accepted Slices 0–3 baseline: `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`.
+- Draft PR #6 is the cumulative Slice 4→10 implementation branch and must remain unmerged while owner testing is deferred.
+- Slice 5 clean functional checkpoint: `192468df4fbe7f764a2761fb5f75764a2da378af`, Engineering Gate run `32856235160` (#443), fully green with 224 database/RLS assertions and zero flaky browser workflows.
+- Task 4 deliberately introduced RED checkpoint-contract tests before updating active Slice metadata/home. Those RED runs are evidence of contract drift detection, not accepted readiness.
+- The final Slice 5 Task 4 reconciliation head must obtain its own green cumulative Engineering Gate. Older green evidence never substitutes for a failed or missing current-head gate.
+- Product-owner browser testing remains intentionally deferred to the combined Slice 10 handoff under `BATCH_AFTER_SLICE_10`.
 
 ## Adding regressions
 
