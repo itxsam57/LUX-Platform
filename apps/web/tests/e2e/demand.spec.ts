@@ -140,6 +140,7 @@ test("fan creates a suggested-creator demand and truthful detail survives refres
   const creator = await createConfirmedUser(creatorEmail);
 
   try {
+    await approveAndActivateCreatorFixture(creator.id);
     const creatorHandle = await readOwnHandle(creatorEmail, creator.id);
 
     await loginAndAssure(page, authorEmail, "/app/demand");
@@ -193,8 +194,8 @@ test("support remains one edge after an equivalent retry and persists across ref
 
     const supporterClient = await createAuthenticatedUserClient(supporterEmail);
     const { error: retryError } = await supporterClient.rpc("set_demand_support", {
-      demand_public_id: publicId,
-      support_active: true,
+      requested_public_id: publicId,
+      enabled: true,
       publicly_attributed: true,
     });
     if (retryError) throw retryError;
