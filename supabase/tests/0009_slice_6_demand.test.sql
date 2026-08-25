@@ -148,7 +148,10 @@ select lives_ok(
   $$,
   'adult-assured fan can create a demand without implying creator commitment'
 );
-select like((select public_id from pg_temp.slice6_ids where label = 'primary'), 'dem________________________', 'demand uses an opaque prefixed public identifier');
+select ok(
+  (select public_id from pg_temp.slice6_ids where label = 'primary') ~ '^dem[A-Za-z0-9_-]{24}$',
+  'demand uses an opaque prefixed public identifier'
+);
 select lives_ok(
   $$
     insert into pg_temp.slice6_ids(label, public_id)
@@ -171,8 +174,14 @@ select lives_ok(
 );
 select is((select payload ->> 'state' from pg_temp.slice6_json where label = 'author_detail'), 'open', 'new demand starts open');
 select is((select payload -> 'suggestedCreator' ->> 'relationship' from pg_temp.slice6_json where label = 'author_detail'), 'suggested', 'named creator is publicly described only as suggested');
-select unlike((select payload::text from pg_temp.slice6_json where label = 'author_detail'), '%10000000-0000-0000-0000-000000000061%', 'public demand projection hides author internal UUID');
-select unlike((select payload::text from pg_temp.slice6_json where label = 'author_detail'), '%10000000-0000-0000-0000-000000000063%', 'public demand projection hides suggested creator internal UUID');
+select ok(
+  position('10000000-0000-0000-0000-000000000061' in (select payload::text from pg_temp.slice6_json where label = 'author_detail')) = 0,
+  'public demand projection hides author internal UUID'
+);
+select ok(
+  position('10000000-0000-0000-0000-000000000063' in (select payload::text from pg_temp.slice6_json where label = 'author_detail')) = 0,
+  'public demand projection hides suggested creator internal UUID'
+);
 select throws_ok(
   $$ select public.create_demand(jsonb_build_object('title', 'x', 'brief', 'A sufficiently detailed brief for validation.', 'category', 'concept', 'format', 'video')) $$,
   '22023', 'invalid_demand_title',
@@ -215,7 +224,10 @@ select lives_ok(
 );
 select is((select (payload ->> 'supportCount')::integer from pg_temp.slice6_json where label = 'public_support'), 1, 'one support edge produces support count one');
 select is((select (payload ->> 'viewerSupported')::boolean from pg_temp.slice6_json where label = 'public_support'), true, 'viewer projection reports its own active support');
-select like((select payload::text from pg_temp.slice6_json where label = 'public_support'), '%demand_supporter%', 'public attribution exposes only the safe supporter handle');
+select ok(
+  position('demand_supporter' in (select payload::text from pg_temp.slice6_json where label = 'public_support')) > 0,
+  'public attribution exposes only the safe supporter handle'
+);
 select lives_ok(
   $$ select public.set_demand_support((select public_id from pg_temp.slice6_ids where label = 'primary'), true, true) $$,
   'repeating the same support action is idempotent'
@@ -266,7 +278,10 @@ select lives_ok(
   'anonymous supporter can read the updated projection'
 );
 select is((select (payload ->> 'supportCount')::integer from pg_temp.slice6_json where label = 'anonymous_support'), 1, 'anonymous attribution preserves the truthful support count');
-select unlike((select payload::text from pg_temp.slice6_json where label = 'anonymous_support'), '%demand_supporter%', 'anonymous attribution hides supporter identity from the safe projection');
+select ok(
+  position('demand_supporter' in (select payload::text from pg_temp.slice6_json where label = 'anonymous_support')) = 0,
+  'anonymous attribution hides supporter identity from the safe projection'
+);
 select lives_ok(
   $$ select public.set_demand_support((select public_id from pg_temp.slice6_ids where label = 'primary'), false, false) $$,
   'supporter can remove its own support edge'
@@ -335,7 +350,10 @@ select lives_ok(
   'unrelated adult viewer can read the public-safe demand after private decline'
 );
 select is((select payload ->> 'state' from pg_temp.slice6_json where label = 'after_decline'), 'open', 'private decline does not publish a rejected state');
-select unlike((select payload::text from pg_temp.slice6_json where label = 'after_decline'), '%declined%', 'public projection never exposes creator decline status or reason');
+select ok(
+  position('declined' in (select payload::text from pg_temp.slice6_json where label = 'after_decline')) = 0,
+  'public projection never exposes creator decline status or reason'
+);
 reset role;
 
 select lives_ok(
@@ -454,7 +472,13 @@ select lives_ok(
   $$,
   'blocked viewer can request the filtered demand list'
 );
-select unlike((select payload::text from pg_temp.slice6_json where label = 'blocked_list'), '%' || coalesce((select public_id from pg_temp.slice6_ids where label = 'primary'), 'missing') || '%', 'blocked viewer list omits the blocked author demand');
+select ok(
+  position(
+    coalesce((select public_id from pg_temp.slice6_ids where label = 'primary'), 'missing')
+    in (select payload::text from pg_temp.slice6_json where label = 'blocked_list')
+  ) = 0,
+  'blocked viewer list omits the blocked author demand'
+);
 select throws_ok(
   $$ select public.set_demand_support((select public_id from pg_temp.slice6_ids where label = 'primary'), true, false) $$,
   '42501', 'demand_unavailable',
