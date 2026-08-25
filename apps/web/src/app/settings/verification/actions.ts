@@ -14,6 +14,12 @@ export type VerificationActionState = {
   verificationStatus: VerificationStatus | null;
 };
 
+export type ConsentEducationActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  acknowledged: boolean;
+};
+
 const INITIAL_VERIFICATION_ACTION_STATE: VerificationActionState = {
   status: "idle",
   message: "",
@@ -92,5 +98,45 @@ export async function startVerificationAction(
     message: "Development-only workflow started. Review is still required; this action did not verify the account.",
     level,
     verificationStatus: "pending",
+  };
+}
+
+export async function acknowledgeConsentEducationAction(
+  previous: ConsentEducationActionState,
+  formData: FormData,
+): Promise<ConsentEducationActionState> {
+  void previous;
+  await requireAdultViewer("/settings/verification");
+  const policyVersion = formData.get("policy_version");
+  if (
+    typeof policyVersion !== "string"
+    || policyVersion.length < 3
+    || policyVersion.length > 80
+    || !/^[A-Za-z0-9._-]+$/.test(policyVersion)
+  ) {
+    return {
+      status: "error",
+      message: "The consent-education version could not be identified safely.",
+      acknowledged: false,
+    };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("acknowledge_consent_education", {
+    requested_policy_version: policyVersion,
+  });
+  if (error) {
+    return {
+      status: "error",
+      message: "The consent-education acknowledgement could not be recorded safely.",
+      acknowledged: false,
+    };
+  }
+
+  revalidatePath("/settings/verification");
+  return {
+    status: "success",
+    message: "Consent education acknowledged for the current policy version.",
+    acknowledged: true,
   };
 }
