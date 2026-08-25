@@ -1,7 +1,7 @@
 export const FOUNDATION_SLICE = {
-  id: "slice-4",
-  number: 4,
-  name: "Feed and discovery",
+  id: "slice-5",
+  number: 5,
+  name: "Creator and depicted-person verification",
   healthStatus: "ok",
   requiredRoutes: [
     "/",
@@ -17,10 +17,12 @@ export const FOUNDATION_SLICE = {
     "/settings/profile",
     "/settings/privacy",
     "/settings/privacy/export",
+    "/settings/verification",
     "/notifications",
     "/app/feed",
     "/app/explore",
     "/app/search",
+    "/workspace/staff/verification",
   ] as const,
 } as const;
 
