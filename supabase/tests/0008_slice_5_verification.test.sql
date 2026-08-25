@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(36);
+select plan(41);
 
 select has_type('public', 'verification_level', 'verification level enum exists');
 select has_type('public', 'verification_status', 'verification status enum exists');
