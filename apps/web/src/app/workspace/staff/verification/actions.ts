@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireWorkspace } from "@/lib/auth/context";
+import { getVerificationProviderRuntime } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   INITIAL_WORKSPACE_MUTATION_STATE,
@@ -42,6 +43,27 @@ export async function reviewVerificationAction(
   if (operation === "approve") {
     if (!isUuid(sessionId) || (level !== "v2" && level !== "v3")) {
       return failure("The verification result request is invalid.");
+    }
+
+    const { data: session, error: sessionError } = await supabase
+      .from("verification_sessions")
+      .select("target_level, provider_key, synthetic")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (sessionError || !session || session.target_level !== level) {
+      return failure("The verification session could not be reviewed safely.");
+    }
+
+    const runtime = getVerificationProviderRuntime();
+    if (runtime.mode === "unavailable") {
+      return failure("Verification approval is unavailable because an approved provider is not configured.");
+    }
+    if (session.synthetic) {
+      if (runtime.mode !== "synthetic" || session.provider_key !== "synthetic") {
+        return failure("Synthetic verification can only be approved in the development/CI verification runtime.");
+      }
+    } else if (runtime.mode !== "provider" || runtime.providerKey !== session.provider_key) {
+      return failure("The verification session does not match the configured approved provider.");
     }
 
     const { error } = await supabase.rpc("apply_verification_result", {
