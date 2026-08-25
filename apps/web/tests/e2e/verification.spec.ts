@@ -104,7 +104,7 @@ async function readOwnHandle(email: string, userId: string) {
 }
 
 async function loginAndAssure(page: Page, email: string, target: string) {
-  await page.goto(`/auth/login?next=${encodeURIComponent("/workspace/fan")}`);
+  await page.goto(`/auth/login?next=${encodeURIComponent(target)}`);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -112,8 +112,6 @@ async function loginAndAssure(page: Page, email: string, target: string) {
   await page.getByLabel("Country code").fill("PK");
   await page.getByLabel(/I confirm that I am at least 18 years old/).check();
   await page.getByRole("button", { name: "Confirm and continue" }).click();
-  await expect(page).toHaveURL(/\/workspace\/fan$/);
-  await page.goto(target);
   await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
 }
 
