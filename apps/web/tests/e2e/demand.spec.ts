@@ -62,44 +62,74 @@ async function readOwnHandle(email: string, userId: string) {
   return data.handle;
 }
 
-async function approveAndActivateCreatorFixture(userId: string) {
-  const now = new Date().toISOString();
-  const { data: membership, error: membershipError } = await admin
-    .from("workspace_memberships")
-    .insert({
-      user_id: userId,
-      role: "creator",
-      status: "approved",
-      reviewed_at: now,
-      reviewed_by: userId,
-    })
-    .select("id")
-    .single();
-  if (membershipError || !membership?.id) {
-    throw membershipError ?? new Error("Creator demand fixture membership was not created.");
-  }
-
-  const { error: activeError } = await admin
-    .from("active_workspaces")
-    .update({ membership_id: membership.id, updated_at: now })
-    .eq("user_id", userId);
-  if (activeError) throw activeError;
-}
-
-async function loginAndAssure(page: Page, email: string, target: string) {
+async function login(page: Page, email: string, target: string) {
   await page.goto(`/auth/login?next=${encodeURIComponent(target)}`);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/age-assurance/);
-  await page.getByLabel("Country code").fill("PK");
-  await page.getByLabel(/I confirm that I am at least 18 years old/).check();
-  await page.getByRole("button", { name: "Confirm and continue" }).click();
+}
+
+async function loginAndAssure(page: Page, email: string, target: string) {
+  const assuranceTarget = "/app/feed";
+  await login(page, email, assuranceTarget);
+  await expect(page).toHaveURL(/\/(?:age-assurance|app\/feed)(?:[/?]|$)/);
+
+  if (new URL(page.url()).pathname === "/age-assurance") {
+    await page.getByLabel("Country code").fill("PK");
+    await page.getByLabel(/I confirm that I am at least 18 years old/).check();
+    await page.getByRole("button", { name: "Confirm and continue" }).click();
+  }
+
+  await expect(page).toHaveURL(/\/app\/feed$/);
+  await page.goto(target);
   await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
 }
 
 async function openSecondaryContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
   return browser.newContext(testInfo.project.use);
+}
+
+async function approveCreatorRequest(adminPage: Page, requestedUserId: string) {
+  await adminPage.goto("/workspace/staff/role-requests");
+  const row = adminPage.getByRole("row").filter({ hasText: requestedUserId.slice(0, 8) });
+  await expect(row).toHaveCount(1);
+  await row.getByRole("button", { name: "Approve" }).click();
+  await expect(adminPage).toHaveURL(/notice=approved/);
+}
+
+async function approveAndActivateCreatorFixture(
+  creatorPage: Page,
+  browser: Browser,
+  testInfo: TestInfo,
+  creatorEmail: string,
+  creatorUserId: string,
+) {
+  const adminEmail = testEmail("demand-admin", testInfo);
+  const superAdmin = await createConfirmedUser(adminEmail);
+  const adminContext = await openSecondaryContext(browser, testInfo);
+  const adminPage = await adminContext.newPage();
+
+  try {
+    await loginAndAssure(creatorPage, creatorEmail, "/workspace");
+    await creatorPage.getByRole("button", { name: "Request creator access" }).click();
+    await expect(creatorPage).toHaveURL(/notice=creator-requested/);
+
+    const { error: bootstrapError } = await admin.rpc("bootstrap_super_admin", {
+      target_user_id: superAdmin.id,
+    });
+    if (bootstrapError) throw bootstrapError;
+
+    await loginAndAssure(adminPage, adminEmail, "/workspace/staff");
+    await approveCreatorRequest(adminPage, creatorUserId);
+
+    await creatorPage.goto("/workspace");
+    const creatorCard = creatorPage.getByRole("region", { name: "Creator workspace" });
+    await creatorCard.getByRole("button", { name: "Activate Creator" }).click();
+    await expect(creatorPage).toHaveURL(/\/workspace\/creator$/);
+  } finally {
+    await adminContext.close();
+    await removeUser(superAdmin.id);
+  }
 }
 
 async function expectDocumentFitsViewport(page: Page) {
@@ -133,14 +163,16 @@ async function createDemandThroughUi(page: Page, suggestedCreatorHandle?: string
 
 test.describe.configure({ mode: "default" });
 
-test("fan creates a suggested-creator demand and truthful detail survives refresh", async ({ page }, testInfo) => {
+test("fan creates a suggested-creator demand and truthful detail survives refresh", async ({ page, browser }, testInfo) => {
   const authorEmail = testEmail("demand-author", testInfo);
   const creatorEmail = testEmail("demand-creator", testInfo);
   const author = await createConfirmedUser(authorEmail);
   const creator = await createConfirmedUser(creatorEmail);
+  const creatorContext = await openSecondaryContext(browser, testInfo);
+  const creatorPage = await creatorContext.newPage();
 
   try {
-    await approveAndActivateCreatorFixture(creator.id);
+    await approveAndActivateCreatorFixture(creatorPage, browser, testInfo, creatorEmail, creator.id);
     const creatorHandle = await readOwnHandle(creatorEmail, creator.id);
 
     await loginAndAssure(page, authorEmail, "/app/demand");
@@ -166,6 +198,7 @@ test("fan creates a suggested-creator demand and truthful detail survives refres
     await expect(page.getByTestId("demand-state")).toHaveText("Open");
     await expect(page.getByTestId("demand-suggested-creator")).toContainText(/suggested|requested/i);
   } finally {
+    await creatorContext.close();
     await removeUser(author.id);
     await removeUser(creator.id);
   }
@@ -220,13 +253,13 @@ test("suggested creator can decline privately and only their interest becomes pu
   const creatorPage = await creatorContext.newPage();
 
   try {
-    await approveAndActivateCreatorFixture(creator.id);
+    await approveAndActivateCreatorFixture(creatorPage, browser, testInfo, creatorEmail, creator.id);
     const creatorHandle = await readOwnHandle(creatorEmail, creator.id);
 
     await loginAndAssure(page, authorEmail, "/app/demand");
     const { pathname } = await createDemandThroughUi(page, creatorHandle);
 
-    await loginAndAssure(creatorPage, creatorEmail, "/workspace/creator/demand");
+    await creatorPage.goto("/workspace/creator/demand");
     const responseCard = creatorPage.getByTestId("creator-demand-card").filter({ hasText: "A rooftop editorial concept" });
     await expect(responseCard).toHaveCount(1);
     await expect(responseCard).toContainText(/suggested|requested/i);
