@@ -96,6 +96,14 @@ function verificationRow(page: Page, handle: string, level: "V2" | "V3") {
   return page.getByRole("row").filter({ hasText: handle }).filter({ hasText: level });
 }
 
+async function expectReviewerMutationCompleted(
+  page: Page,
+  notice: "approve" | "complete_performer" | "revoke" | "expire",
+) {
+  await expect(page).toHaveURL(new RegExp(`/workspace/staff/verification\\?notice=${notice}$`));
+  await expect(page.getByRole("status")).toHaveText("Verification review completed.");
+}
+
 test.describe.configure({ mode: "default" });
 
 test("adult-assured user can start synthetic V2 without self-promoting", async ({ page }, testInfo) => {
@@ -168,6 +176,7 @@ test("reviewed synthetic V3 exposes only a safe public badge and revoke or expir
     await loginAndAssure(adminPage, adminEmail, "/workspace/staff");
     await adminPage.goto("/workspace/staff/verification");
     await verificationRow(adminPage, handle, "V2").getByRole("button", { name: "Approve V2" }).click();
+    await expectReviewerMutationCompleted(adminPage, "approve");
 
     await page.goto("/settings/verification");
     await expect(page.getByTestId("verification-v2-status")).toHaveText("Verified");
@@ -178,6 +187,7 @@ test("reviewed synthetic V3 exposes only a safe public badge and revoke or expir
     await verificationRow(adminPage, handle, "V2")
       .getByRole("button", { name: "Complete performer prerequisites" })
       .click();
+    await expectReviewerMutationCompleted(adminPage, "complete_performer");
 
     await page.goto("/settings/verification");
     await expect(page.getByRole("button", { name: "Start development V3" })).toBeEnabled();
@@ -186,6 +196,7 @@ test("reviewed synthetic V3 exposes only a safe public badge and revoke or expir
 
     await adminPage.goto("/workspace/staff/verification");
     await verificationRow(adminPage, handle, "V3").getByRole("button", { name: "Approve V3" }).click();
+    await expectReviewerMutationCompleted(adminPage, "approve");
 
     await page.goto("/settings/verification");
     await expect(page.getByTestId("verification-v3-status")).toHaveText("Verified");
@@ -197,12 +208,14 @@ test("reviewed synthetic V3 exposes only a safe public badge and revoke or expir
 
     await adminPage.goto("/workspace/staff/verification");
     await verificationRow(adminPage, handle, "V3").getByRole("button", { name: "Revoke V3" }).click();
+    await expectReviewerMutationCompleted(adminPage, "revoke");
 
     await publicPage.reload();
     await expect(publicPage.getByTestId("public-verification-badge")).toHaveText("V2 verified");
 
     await adminPage.goto("/workspace/staff/verification");
     await verificationRow(adminPage, handle, "V2").getByRole("button", { name: "Expire V2" }).click();
+    await expectReviewerMutationCompleted(adminPage, "expire");
 
     await publicPage.reload();
     await expect(publicPage.getByTestId("public-verification-badge")).toHaveCount(0);
