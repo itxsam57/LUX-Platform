@@ -7,9 +7,9 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_5_CHECKPOINT_GATE",
-    "current_slice": 5,
-    "accepted_slices": [0, 1, 2, 3, 4],
+    "state": "SLICE_6_TDD_RED",
+    "current_slice": 6,
+    "accepted_slices": [0, 1, 2, 3, 4, 5],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
     "owner_testing_policy": "BATCH_AFTER_SLICE_10",
     "max_root_cause_revisions_per_blocker": 3,
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Freeze this Slice 5 checkpoint commit and require its own cumulative Engineering Gate to complete successfully. Only after that exact checkpoint is green may Slice 6 RED contracts begin. Owner browser testing remains deferred until the combined Slice 10 handoff.",
+  "next_action": "Execute Slice 6 Task 1 with strict TDD: write failing unit and pgTAP contracts for demand validation, opaque public IDs, one-account-one-support, anonymous/public support projection, suggested-creator autonomy, quiet decline privacy, block suppression and denial of fan-controlled conversion; verify RED before production implementation.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -43,9 +43,10 @@
     "slice_5_pre_checkpoint_run": 32860714529,
     "slice_5_pre_checkpoint_run_number": 457,
     "slice_5_pre_checkpoint_full_gate_passed": true,
-    "slice_5_checkpoint_head": null,
-    "slice_5_checkpoint_run": null,
-    "slice_5_automated_checkpoint_passed": false,
+    "slice_5_checkpoint_head": "3b615ac5c7972366305f30c0b3e1d62e5295a55c",
+    "slice_5_checkpoint_run": 32863675260,
+    "slice_5_checkpoint_run_number": 459,
+    "slice_5_automated_checkpoint_passed": true,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,
