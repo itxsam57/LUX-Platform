@@ -45,6 +45,13 @@ function parseProfile(value: unknown): PublicProfileView | null {
   };
 }
 
+function parseVerificationLevel(value: unknown): "v2" | "v3" | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (row.verified !== true || (row.level !== "v2" && row.level !== "v3")) return null;
+  return row.level;
+}
+
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const supabase = await createServerSupabaseClient();
@@ -64,6 +71,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     );
   }
 
+  const { data: verificationBadge } = await supabase.rpc("get_public_verification_badge", {
+    profile_handle: profile.handle,
+  });
+  const verificationLevel = parseVerificationLevel(verificationBadge);
+
   let viewer = null;
   try {
     viewer = await getOptionalViewer();
@@ -81,5 +93,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     isOwner = ownProfile?.handle === profile.handle;
   }
 
-  return <PublicProfile profile={profile} signedIn={Boolean(viewer)} isOwner={isOwner} />;
+  return (
+    <PublicProfile
+      profile={profile}
+      signedIn={Boolean(viewer)}
+      isOwner={isOwner}
+      verificationLevel={verificationLevel}
+    />
+  );
 }
