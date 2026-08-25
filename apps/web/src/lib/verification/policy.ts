@@ -55,3 +55,24 @@ export function resolveVerificationProviderMode(
   if (input.syntheticEnabled) return "synthetic";
   return input.approvedProviderConfigured ? "provider" : "unavailable";
 }
+
+export function verificationSessionMatchesRuntime(
+  session: {
+    synthetic: boolean;
+    providerKey: string;
+  },
+  runtime: {
+    mode: VerificationProviderMode;
+    providerKey: string | null;
+  },
+): boolean {
+  if (runtime.mode === "unavailable") return false;
+
+  if (session.synthetic) {
+    return runtime.mode === "synthetic" && session.providerKey === "synthetic";
+  }
+
+  return runtime.mode === "provider"
+    && runtime.providerKey !== null
+    && session.providerKey === runtime.providerKey;
+}
