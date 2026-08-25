@@ -1,0 +1,131 @@
+.verification-page {
+  min-width: 0;
+}
+
+.verification-page__header {
+  align-items: flex-start;
+}
+
+.verification-stack {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.verification-provider-card,
+.verification-privacy-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: clamp(20px, 4vw, 28px);
+}
+
+.verification-provider-card h2,
+.verification-privacy-card h2,
+.verification-level-card h2 {
+  margin: var(--space-2) 0 0;
+}
+
+.verification-level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.verification-level-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: clamp(20px, 4vw, 28px);
+}
+
+.verification-level-card--wide {
+  grid-column: 1 / -1;
+}
+
+.verification-level-card__topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.verification-status-line {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
+  font-weight: 800;
+}
+
+.verification-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.verification-action-form {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.verification-prerequisites {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.verification-prerequisite {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: var(--color-text-muted);
+}
+
+.verification-prerequisite__mark {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-subtle);
+}
+
+.verification-prerequisite__mark--met {
+  border-color: rgba(123, 197, 155, 0.45);
+  background: rgba(123, 197, 155, 0.1);
+  color: var(--color-success);
+}
+
+@media (max-width: 760px) {
+  .verification-level-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .verification-level-card--wide {
+    grid-column: auto;
+  }
+
+  .verification-provider-card,
+  .verification-privacy-card,
+  .verification-level-card__topline {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .verification-provider-card .ui-badge,
+  .verification-level-card__topline .ui-status {
+    align-self: flex-start;
+  }
+}
