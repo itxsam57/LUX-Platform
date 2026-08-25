@@ -24,10 +24,12 @@ export function PublicProfile({
   profile,
   signedIn,
   isOwner,
+  verificationLevel,
 }: {
   profile: PublicProfileView;
   signedIn: boolean;
   isOwner: boolean;
+  verificationLevel: "v2" | "v3" | null;
 }) {
   return (
     <main className="public-profile-shell">
@@ -49,6 +51,11 @@ export function PublicProfile({
               </div>
               <div className="public-profile-badges">
                 <Badge tone={profile.visibility === "public" ? "success" : profile.visibility === "unlisted" ? "info" : "neutral"}>{profile.visibility}</Badge>
+                {verificationLevel ? (
+                  <span data-testid="public-verification-badge">
+                    <Badge tone="success">{verificationLevel.toUpperCase()} verified</Badge>
+                  </span>
+                ) : null}
                 {profile.creatorCapable ? <Badge tone="accent">Creator workspace approved</Badge> : null}
               </div>
             </div>
