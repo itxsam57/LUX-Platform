@@ -1,8 +1,19 @@
 import type { AgeAssuranceMode } from "../auth/policy";
+import { resolveVerificationProviderMode } from "../verification/policy";
+import type {
+  VerificationProviderEnvironment,
+  VerificationProviderMode,
+} from "../verification/types";
 
 export type PublicSupabaseConfig = {
   url: string;
   publishableKey: string;
+};
+
+export type VerificationProviderRuntime = {
+  environment: VerificationProviderEnvironment;
+  mode: VerificationProviderMode;
+  providerKey: string | null;
 };
 
 export function getPublicAppUrl(): string {
@@ -13,6 +24,28 @@ export function getAgeAssuranceMode(): AgeAssuranceMode {
   return process.env.AGE_ASSURANCE_MODE === "self_attestation"
     ? "self_attestation"
     : "provider_required";
+}
+
+function getVerificationEnvironment(): VerificationProviderEnvironment {
+  if (process.env.NODE_ENV === "production") return "production";
+  if (process.env.NODE_ENV === "test") return "test";
+  return "development";
+}
+
+export function getVerificationProviderRuntime(): VerificationProviderRuntime {
+  const environment = getVerificationEnvironment();
+  const providerKey = process.env.IDENTITY_VERIFICATION_PROVIDER?.trim() || null;
+  const syntheticEnabled = process.env.IDENTITY_VERIFICATION_MODE === "synthetic";
+
+  return {
+    environment,
+    providerKey,
+    mode: resolveVerificationProviderMode({
+      environment,
+      approvedProviderConfigured: providerKey !== null,
+      syntheticEnabled,
+    }),
+  };
 }
 
 export function getPublicSupabaseConfig(): PublicSupabaseConfig {
