@@ -11,7 +11,11 @@ if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
   );
 }
 
-const admin = createClient(supabaseUrl, serviceRoleKey, {
+const testSupabaseUrl: string = supabaseUrl;
+const testPublishableKey: string = publishableKey;
+const testServiceRoleKey: string = serviceRoleKey;
+
+const admin = createClient(testSupabaseUrl, testServiceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
@@ -39,7 +43,7 @@ async function removeUser(userId: string) {
 }
 
 async function readOwnVerificationSummary(email: string) {
-  const client = createClient(supabaseUrl, publishableKey, {
+  const client = createClient(testSupabaseUrl, testPublishableKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { error: signInError } = await client.auth.signInWithPassword({ email, password: PASSWORD });
