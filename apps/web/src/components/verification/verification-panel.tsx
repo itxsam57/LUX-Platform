@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 import {
+  acknowledgeConsentEducationAction,
   startVerificationAction,
+  type ConsentEducationActionState,
   type VerificationActionState,
 } from "@/app/settings/verification/actions";
 import { Badge, Button, Status } from "@/components/ui/primitives";
@@ -35,6 +37,12 @@ const INITIAL_VERIFICATION_ACTION_STATE: VerificationActionState = {
   message: "",
   level: null,
   verificationStatus: null,
+};
+
+const INITIAL_CONSENT_ACTION_STATE: ConsentEducationActionState = {
+  status: "idle",
+  message: "",
+  acknowledged: false,
 };
 
 const STATUS_LABELS: Record<VerificationStatus, string> = {
@@ -70,7 +78,7 @@ function formatExpiry(value: string | null): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
 }
 
-function ActionMessage({ state }: { state: VerificationActionState }) {
+function ActionMessage({ state }: { state: Pick<VerificationActionState | ConsentEducationActionState, "status" | "message"> }) {
   if (!state.message) return null;
   return (
     <p
@@ -108,14 +116,19 @@ export function VerificationPanel({
     startVerificationAction,
     INITIAL_VERIFICATION_ACTION_STATE,
   );
+  const [consentState, consentAction, consentPending] = useActionState(
+    acknowledgeConsentEducationAction,
+    INITIAL_CONSENT_ACTION_STATE,
+  );
 
   const v2Status = displayStatus(summary.v2.status, "v2", v2ActionState);
   const v3Status = displayStatus(summary.v3.status, "v3", v3ActionState);
+  const consentAcknowledged = summary.v3.prerequisites.consentEducationAcknowledged || consentState.acknowledged;
   const v3Eligible = summary.v3.prerequisites.v2Current
     && summary.v3.prerequisites.performerRecordActive
     && summary.v3.prerequisites.livenessCurrent
     && summary.v3.prerequisites.payoutOwnershipVerified
-    && summary.v3.prerequisites.consentEducationAcknowledged;
+    && consentAcknowledged;
   const canStartV2 = !summary.v2.current && !["pending", "needs_review"].includes(v2Status);
   const canStartV3 = v3Eligible && !summary.v3.current && !["pending", "needs_review"].includes(v3Status);
   const synthetic = provider.mode === "synthetic";
@@ -191,10 +204,22 @@ export function VerificationPanel({
             <Prerequisite met={summary.v3.prerequisites.performerRecordActive}>Active performer record</Prerequisite>
             <Prerequisite met={summary.v3.prerequisites.livenessCurrent}>Current performer liveness review</Prerequisite>
             <Prerequisite met={summary.v3.prerequisites.payoutOwnershipVerified}>Payout ownership verified</Prerequisite>
-            <Prerequisite met={summary.v3.prerequisites.consentEducationAcknowledged}>Consent education acknowledged</Prerequisite>
+            <Prerequisite met={consentAcknowledged}>Consent education acknowledged</Prerequisite>
           </ul>
+          <p className="verification-meta" data-testid="verification-consent-status">
+            {consentAcknowledged ? "Acknowledged" : "Not acknowledged"}
+          </p>
           {summary.v3.prerequisites.consentEducationVersion ? (
             <p className="verification-meta">Consent education version: {summary.v3.prerequisites.consentEducationVersion}</p>
+          ) : null}
+          {!consentAcknowledged && summary.v3.prerequisites.consentEducationVersion ? (
+            <form action={consentAction} className="verification-action-form">
+              <input type="hidden" name="policy_version" value={summary.v3.prerequisites.consentEducationVersion} />
+              <Button type="submit" loading={consentPending} variant="secondary">
+                Acknowledge consent education
+              </Button>
+              <ActionMessage state={consentState} />
+            </form>
           ) : null}
           {formatExpiry(summary.v3.expiresAt) ? <p className="verification-meta">Expires: {formatExpiry(summary.v3.expiresAt)}</p> : null}
           {summary.v3.recheckReason ? <p className="verification-meta">Recheck required: {summary.v3.recheckReason}</p> : null}
