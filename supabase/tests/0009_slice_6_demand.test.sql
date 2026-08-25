@@ -40,6 +40,9 @@ create temp table slice6_text (
   label text primary key,
   value text
 );
+grant select, insert, update, delete on pg_temp.slice6_ids to authenticated;
+grant select, insert, update, delete on pg_temp.slice6_json to authenticated;
+grant select, insert, update, delete on pg_temp.slice6_text to authenticated;
 
 set local role anon;
 select set_config('request.jwt.claims', jsonb_build_object('role', 'anon')::text, true);
