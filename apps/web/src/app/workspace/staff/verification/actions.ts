@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireWorkspace } from "@/lib/auth/context";
 import { getVerificationProviderRuntime } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { verificationSessionMatchesRuntime } from "@/lib/verification/policy";
 import {
   INITIAL_WORKSPACE_MUTATION_STATE,
   type WorkspaceMutationState,
@@ -55,15 +56,21 @@ export async function reviewVerificationAction(
     }
 
     const runtime = getVerificationProviderRuntime();
-    if (runtime.mode === "unavailable") {
-      return failure("Verification approval is unavailable because an approved provider is not configured.");
-    }
-    if (session.synthetic) {
-      if (runtime.mode !== "synthetic" || session.provider_key !== "synthetic") {
-        return failure("Synthetic verification can only be approved in the development/CI verification runtime.");
-      }
-    } else if (runtime.mode !== "provider" || runtime.providerKey !== session.provider_key) {
-      return failure("The verification session does not match the configured approved provider.");
+    if (!verificationSessionMatchesRuntime(
+      {
+        synthetic: session.synthetic === true,
+        providerKey: session.provider_key,
+      },
+      {
+        mode: runtime.mode,
+        providerKey: runtime.providerKey,
+      },
+    )) {
+      return failure(
+        session.synthetic
+          ? "Synthetic verification can only be approved in the development/CI verification runtime."
+          : "The verification session does not match the configured approved provider.",
+      );
     }
 
     const { error } = await supabase.rpc("apply_verification_result", {
