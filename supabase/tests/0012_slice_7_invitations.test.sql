@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(23);
 
 select has_table('public','project_invitations','Slice 7 stores collaboration invitations');
 select has_table('public','project_invitation_proposals','Slice 7 stores immutable invitation proposal versions');
