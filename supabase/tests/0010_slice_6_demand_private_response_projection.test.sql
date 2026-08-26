@@ -42,6 +42,32 @@ where user_id in (
   '10000000-0000-0000-0000-000000000073'
 );
 
+insert into public.age_assurance_records(user_id, method, status, jurisdiction_code, policy_version, expires_at)
+select id, 'self_attestation', 'accepted', 'PK', 'slice-6-private-response-test', now() + interval '1 year'
+from auth.users
+where id in (
+  '10000000-0000-0000-0000-000000000071',
+  '10000000-0000-0000-0000-000000000072',
+  '10000000-0000-0000-0000-000000000073'
+);
+
+insert into public.workspace_memberships(user_id, role, status, reviewed_at, reviewed_by)
+values (
+  '10000000-0000-0000-0000-000000000072',
+  'creator',
+  'approved',
+  now(),
+  '10000000-0000-0000-0000-000000000072'
+);
+
+update public.active_workspaces active
+set membership_id = membership.id, updated_at = now()
+from public.workspace_memberships membership
+where active.user_id = '10000000-0000-0000-0000-000000000072'
+  and membership.user_id = active.user_id
+  and membership.role = 'creator'
+  and membership.status = 'approved';
+
 insert into public.demands (
   public_id,
   author_user_id,
@@ -73,41 +99,68 @@ from public.demands demand
 where demand.public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA';
 
 select ok(
-  private.build_demand_projection(
-    (select id from public.demands where public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA'),
-    '10000000-0000-0000-0000-000000000072'
-  ) ? 'viewerCreatorResponse',
-  'suggested creator private projection includes the viewer response key'
+  not (
+    private.build_demand_projection(
+      (select id from public.demands where public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA'),
+      '10000000-0000-0000-0000-000000000072'
+    ) ? 'viewerCreatorResponse'
+  ),
+  'general demand projection never carries creator private response state'
 );
 
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '10000000-0000-0000-0000-000000000072',
+    'role', 'authenticated',
+    'session_id', '20000000-0000-0000-0000-000000000072',
+    'iat', extract(epoch from now())::bigint - 10
+  )::text,
+  true
+);
 select is(
-  private.build_demand_projection(
-    (select id from public.demands where public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA'),
-    '10000000-0000-0000-0000-000000000072'
-  ) ->> 'viewerCreatorResponse',
+  public.get_my_demand_creator_responses() -> 0 ->> 'response',
   'declined',
-  'suggested creator sees their durable private decline response'
+  'active approved creator sees their durable private decline through the creator-only RPC'
 );
+reset role;
 
-select ok(
-  not (
-    private.build_demand_projection(
-      (select id from public.demands where public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA'),
-      '10000000-0000-0000-0000-000000000071'
-    ) ? 'viewerCreatorResponse'
-  ),
-  'demand author projection omits the creator private response key'
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '10000000-0000-0000-0000-000000000071',
+    'role', 'authenticated',
+    'session_id', '20000000-0000-0000-0000-000000000071',
+    'iat', extract(epoch from now())::bigint - 10
+  )::text,
+  true
 );
+select throws_ok(
+  $$ select public.get_my_demand_creator_responses() $$,
+  '42501', 'creator_workspace_required',
+  'demand author cannot read the creator-private response RPC'
+);
+reset role;
 
-select ok(
-  not (
-    private.build_demand_projection(
-      (select id from public.demands where public_id = 'demAAAAAAAAAAAAAAAAAAAAAAAA'),
-      '10000000-0000-0000-0000-000000000073'
-    ) ? 'viewerCreatorResponse'
-  ),
-  'unrelated observer projection omits the creator private response key'
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '10000000-0000-0000-0000-000000000073',
+    'role', 'authenticated',
+    'session_id', '20000000-0000-0000-0000-000000000073',
+    'iat', extract(epoch from now())::bigint - 10
+  )::text,
+  true
 );
+select throws_ok(
+  $$ select public.get_my_demand_creator_responses() $$,
+  '42501', 'creator_workspace_required',
+  'unrelated viewer cannot read the creator-private response RPC'
+);
+reset role;
 
 select * from finish();
 rollback;
