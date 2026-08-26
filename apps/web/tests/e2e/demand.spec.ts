@@ -91,9 +91,9 @@ async function loginAssureAndNavigate(page: Page, email: string, target: string)
     await completeAgeAssurance(page);
   }
 
-  await expect.poll(() => new URL(page.url()).pathname).toBe(assuranceTarget);
+  await expect(page).toHaveURL(/\/app\/feed\?mode=for_you$/);
   await page.goto(target);
-  await expect.poll(() => new URL(page.url()).pathname).toBe(target);
+  await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
 }
 
 async function openSecondaryContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
