@@ -101,7 +101,10 @@ select public.convert_demand_to_project('demaaaaaaaaaaaaaaaaaaaaaaaa', jsonb_bui
   'compensationModel','fixed','distributionScope','Platform release only','rightsDeclarations',jsonb_build_array('original-concept')
 ));
 
-select like((select payload ->> 'publicId' from slice7_project_result limit 1), 'prj%', 'conversion returns an opaque project public ID');
+select ok(
+  (select payload ->> 'publicId' from slice7_project_result limit 1) like 'prj%',
+  'conversion returns an opaque project public ID'
+);
 select is((select owner_user_id::text from public.projects limit 1), '10000000-0000-0000-0000-000000000092', 'converted project belongs only to the interested creator');
 select is((select state::text from public.demands where public_id='demaaaaaaaaaaaaaaaaaaaaaaaa'), 'converted', 'successful conversion atomically marks the source demand converted');
 select throws_ok(
