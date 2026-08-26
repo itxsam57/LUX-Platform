@@ -41,6 +41,6 @@ describe("collaboration invitation policy", () => {
   });
 
   it("never treats invitation acceptance as legal contract or depicted-person consent", () => {
-    expect(invitationAcceptanceCreatesLegalConsent("accepted")).toBe(false);
+    expect(invitationAcceptanceCreatesLegalConsent()).toBe(false);
   });
 });
