@@ -155,13 +155,14 @@ async function login(page: Page, address: string, target: string) {
   await page.getByLabel("Email address").fill(address);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect.poll(() => new URL(page.url()).pathname).toSatisfy((path) => path === "/age-assurance" || path === target);
+  const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  await expect.poll(() => new URL(page.url()).pathname).toMatch(new RegExp(`^(?:/age-assurance|${escapedTarget})$`));
   if (new URL(page.url()).pathname === "/age-assurance") {
     await page.getByLabel("Country code").fill("PK");
     await page.getByLabel(/I confirm that I am at least 18 years old/).check();
     await page.getByRole("button", { name: "Confirm and continue" }).click();
   }
-  await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
+  await expect(page).toHaveURL(new RegExp(`${escapedTarget}$`));
 }
 
 test("exact terms require personal verified acceptance and consent before creator lock", async ({ page }, testInfo) => {
