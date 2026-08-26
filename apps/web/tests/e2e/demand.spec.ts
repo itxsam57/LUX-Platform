@@ -85,12 +85,8 @@ async function loginAndAssureProtected(page: Page, email: string, target: string
 async function loginAssureAndNavigate(page: Page, email: string, target: string) {
   const assuranceTarget = "/app/feed";
   await login(page, email, assuranceTarget);
-  await expect(page).toHaveURL(/\/(?:age-assurance|app\/feed)(?:[/?]|$)/);
-
-  if (new URL(page.url()).pathname === "/age-assurance") {
-    await completeAgeAssurance(page);
-  }
-
+  await expect(page).toHaveURL(/\/age-assurance/);
+  await completeAgeAssurance(page);
   await expect(page).toHaveURL(/\/app\/feed\?mode=for_you$/);
   await page.goto(target);
   await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
