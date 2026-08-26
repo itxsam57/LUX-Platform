@@ -41,6 +41,6 @@ export function shouldInvalidateInvitationAcceptance(input: {
   return input.state === "accepted" && input.boundRevision !== input.currentRevision;
 }
 
-export function invitationAcceptanceCreatesLegalConsent(_state: ProjectInvitationState): false {
+export function invitationAcceptanceCreatesLegalConsent(): false {
   return false;
 }
