@@ -7,7 +7,7 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_6_TDD_RED",
+    "state": "SLICE_6_GATE_PENDING",
     "current_slice": 6,
     "accepted_slices": [0, 1, 2, 3, 4, 5],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Execute Slice 6 Task 1 with strict TDD: write failing unit and pgTAP contracts for demand validation, opaque public IDs, one-account-one-support, anonymous/public support projection, suggested-creator autonomy, quiet decline privacy, block suppression and denial of fan-controlled conversion; verify RED before production implementation.",
+  "next_action": "Run and inspect the exact-head Slice 6 Task 4 cumulative Engineering Gate. Do not add Slice 6 to accepted_slices or begin Slice 7 until repository, secrets, lint, typecheck, unit, integration, dependency, database/RLS, build and required desktop/mobile browser verification are all green for the reconciliation head.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -47,6 +47,19 @@
     "slice_5_checkpoint_run": 32863675260,
     "slice_5_checkpoint_run_number": 459,
     "slice_5_automated_checkpoint_passed": true,
+    "slice_6_task_3_checkpoint_head": "adddb274fbb78eb7ee722d8e4c999ae0bc2a5356",
+    "slice_6_task_3_checkpoint_run": 32981870520,
+    "slice_6_task_3_checkpoint_run_number": 517,
+    "slice_6_task_3_full_gate_passed": true,
+    "slice_6_task_3_database_tests": 310,
+    "slice_6_task_3_browser_passed": 67,
+    "slice_6_task_3_browser_skipped": 1,
+    "slice_6_task_4_red_contract_head": "8f3dc0b764ade71a40119c4fdcfc62291e3fd3a1",
+    "slice_6_task_4_red_ci_emitted": false,
+    "slice_6_checkpoint_head": null,
+    "slice_6_checkpoint_run": null,
+    "slice_6_checkpoint_run_number": null,
+    "slice_6_automated_checkpoint_passed": false,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,

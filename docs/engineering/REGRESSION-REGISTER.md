@@ -16,7 +16,7 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-008 | Notification opens dead/wrong/unauthorized route | Recipient-only notification deep link opens the permitted profile target and blocked actors are suppressed | pgTAP notification rules + `privacy-rights.spec.ts` | ACTIVE |
 | REG-009 | Back action enters another workspace or revives stale permission | Back/Forward/refresh/direct navigation remains inside current authorized workspace | `auth-isolation.spec.ts` desktop/mobile | ACTIVE |
 | REG-010 | White screen, silent crash, or uncontrolled error | Controlled loading/error/404 state; no uncaught page or console errors | route boundaries + Playwright page-error/console/404 checks | ACTIVE |
-| REG-011 | Duplicate click creates duplicate durable effect | Implemented idempotent flows create one durable effect; payment idempotency remains future scope | deletion/follow notification pgTAP + privacy E2E | ACTIVE/PARTIAL |
+| REG-011 | Duplicate click creates duplicate durable effect | Implemented idempotent flows create one durable effect; payment idempotency remains future scope | deletion/follow/demand support pgTAP + E2E | ACTIVE/PARTIAL |
 | REG-012 | Queue item disappears while permanently pending elsewhere | Implemented verification review transitions update the durable subject state; later queues require equivalent atomic projections | Slice 5 review RPC + pgTAP + verification E2E | ACTIVE/PARTIAL |
 | REG-013 | Internal links use raw anchors and fail framework navigation rules | Internal route navigation uses framework-safe navigation and passes lint/browser tests | ESLint + Playwright | ACTIVE |
 | REG-014 | Unit coverage includes framework/config files and creates misleading failure | Coverage floor applies to unit-testable application/domain logic; UI/routes have separate tests | Vitest config + engineering gate | ACTIVE |
@@ -63,14 +63,20 @@ Status is evaluated on the active candidate. **ACTIVE** means the protection exi
 | REG-055 | Reviewer E2E passes/fails based on incidental navigation instead of committed state | Reviewer workflows synchronize on the subject’s durable private verification summary after each mutation | `verification.spec.ts` durable-state polling | ACTIVE |
 | REG-056 | Super-admin verification test is forced through Fan after bootstrap activates staff | Age-assurance helper preserves the requested authorized target, so workspace isolation—not helper drift—determines access | `verification.spec.ts` super-admin reviewer workflow | ACTIVE |
 | REG-057 | Health/home/handoff advertise different active slices | Visible home checkpoint and health/handoff metadata derive from the canonical active foundation contract and are asserted in unit/integration/desktop/mobile tests | `foundation.test.ts`, health route test, `foundation.spec.ts`, handoff generator | ACTIVE |
+| REG-058 | Retried demand support inflates support count or creates duplicate ownership edges | One account has one demand-support primary key; equivalent support retries remain one durable edge while attribution choice stays separate | pgTAP `0009_slice_6_demand` + `demand.spec.ts` desktop/mobile | ACTIVE |
+| REG-059 | Suggested creator is presented as committed or fan support creates creator interest | Public wording remains suggested/requested until the exact creator performs their authorized interest action; fan support never changes creator commitment | demand policy + pgTAP `0009` + demand E2E | ACTIVE |
+| REG-060 | Private creator decline leaks to the fan/public board | Durable decline is creator-private; public demand remains open/suggested and exposes no decline status or reason | pgTAP `0010_slice_6_demand_private_response_projection` + demand E2E | ACTIVE |
+| REG-061 | Fan, unrelated creator, or stale/inactive Creator workspace acquires conversion control | Conversion eligibility requires the suggested creator, active approved Creator workspace and actor-owned durable interest | conversion unit tests + pgTAP `0010b` | ACTIVE |
+| REG-062 | Slice 6 conversion precursor fabricates a project or converted demand before project tables exist | Slice 6 returns validated provenance only; demand remains `creator_interested` until Slice 7 performs atomic project creation | pgTAP `0010b_slice_6_demand_conversion_boundary` | ACTIVE |
+| REG-063 | A later block, decline or expiry is ignored because creator was interested earlier | Conversion revalidates current effective state, durable response and relationship block at execution time and fails closed | conversion unit tests + pgTAP `0010b` | ACTIVE |
 
 ## Evidence baseline
 
 - Accepted Slices 0–3 baseline: `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`.
 - Draft PR #6 is the cumulative Slice 4→10 implementation branch and must remain unmerged while owner testing is deferred.
-- Slice 5 clean functional checkpoint: `192468df4fbe7f764a2761fb5f75764a2da378af`, Engineering Gate run `32856235160` (#443), fully green with 224 database/RLS assertions and zero flaky browser workflows.
-- Task 4 deliberately introduced RED checkpoint-contract tests before updating active Slice metadata/home. Those RED runs are evidence of contract drift detection, not accepted readiness.
-- The final Slice 5 Task 4 reconciliation head must obtain its own green cumulative Engineering Gate. Older green evidence never substitutes for a failed or missing current-head gate.
+- Slice 6 Task 3 functional checkpoint: `adddb274fbb78eb7ee722d8e4c999ae0bc2a5356`, Engineering Gate run `32981870520` (#517), fully green with 72 unit tests, 310 database/RLS assertions, production build and 67 passed / 1 skipped desktop-mobile workflows with no retry/flaky recovery.
+- Slice 6 Task 4 introduced checkpoint-contract tests at `8f3dc0b764ade71a40119c4fdcfc62291e3fd3a1` while production metadata still advertised Slice 5. The connector did not emit an Actions run for that RED commit, so no CI RED result is claimed; the mismatch is preserved as deterministic contract evidence and then reconciled in production.
+- The final Slice 6 Task 4 reconciliation head must obtain its own green cumulative Engineering Gate. Older green evidence never substitutes for a failed or missing current-head gate.
 - Product-owner browser testing remains intentionally deferred to the combined Slice 10 handoff under `BATCH_AFTER_SLICE_10`.
 
 ## Adding regressions

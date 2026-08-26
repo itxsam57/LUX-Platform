@@ -1,7 +1,7 @@
 export const FOUNDATION_SLICE = {
-  id: "slice-5",
-  number: 5,
-  name: "Creator and depicted-person verification",
+  id: "slice-6",
+  number: 6,
+  name: "Crowd Demand Board",
   healthStatus: "ok",
   requiredRoutes: [
     "/",
@@ -23,6 +23,9 @@ export const FOUNDATION_SLICE = {
     "/app/explore",
     "/app/search",
     "/workspace/staff/verification",
+    "/app/demand",
+    "/app/demand/new",
+    "/workspace/creator/demand",
   ] as const,
 } as const;
 

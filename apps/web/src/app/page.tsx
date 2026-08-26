@@ -5,10 +5,10 @@ export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero-card">
-        <span className="eyebrow">Verification with privacy-first identity boundaries</span>
+        <span className="eyebrow">Crowd demand without implied creator commitment</span>
         <h1>LUX Platform</h1>
         <p className="lede">
-          Adult accounts can use provider-neutral identity and depicted-person verification while legal identity evidence stays private, reviewer authority stays constrained, and public surfaces expose only safe verification state.
+          Fans can publish and support demand while referenced creators remain suggested until they explicitly mark interest. Private declines stay private, and only the interested eligible creator can carry provenance into a creator-owned project draft.
         </p>
         <div className="status-row">
           <span className="status-dot" aria-hidden="true" />

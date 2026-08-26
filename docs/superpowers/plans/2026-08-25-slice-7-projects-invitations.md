@@ -28,7 +28,7 @@
 - Create: `apps/web/src/lib/projects/policy.ts`
 - Create: `apps/web/src/lib/projects/policy.test.ts`
 - Create: `supabase/migrations/20260825070100_slice_7_projects.sql`
-- Create: `supabase/tests/0010_slice_7_projects.sql`
+- Create: `supabase/tests/0011_slice_7_projects.sql`
 
 **Interfaces:**
 - Tables: `projects`, `project_versions`, `project_participant_requirements`.
@@ -46,7 +46,7 @@
 - Create: `apps/web/src/lib/invitations/policy.ts`
 - Create: `apps/web/src/lib/invitations/policy.test.ts`
 - Create: `supabase/migrations/20260825070200_slice_7_invitations.sql`
-- Create: `supabase/tests/0011_slice_7_invitations.sql`
+- Create: `supabase/tests/0012_slice_7_invitations.sql`
 
 **Interfaces:**
 - States: `sent`, `viewed`, `interested`, `considering`, `negotiating`, `accepted`, `declined`, `expired`, `withdrawn`.
