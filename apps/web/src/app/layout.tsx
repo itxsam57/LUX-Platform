@@ -6,6 +6,7 @@ import "./profile-privacy.css";
 import "./discovery.css";
 import "./verification.css";
 import "./demand.css";
+import "./studio.css";
 
 export const metadata: Metadata = {
   title: "LUX Platform",
