@@ -8,7 +8,7 @@ export type DemandConversionState =
 export type DemandConversionEligibility = {
   effectiveState: DemandConversionState;
   actorIsSuggestedCreator: boolean;
-  actorHasApprovedCreatorRole: boolean;
+  actorHasActiveApprovedCreatorWorkspace: boolean;
   actorOwnsInterestedResponse: boolean;
   relationshipBlocked: boolean;
 };
@@ -19,7 +19,7 @@ export function canConvertDemandToProject(
   return (
     eligibility.effectiveState === "creator_interested"
     && eligibility.actorIsSuggestedCreator
-    && eligibility.actorHasApprovedCreatorRole
+    && eligibility.actorHasActiveApprovedCreatorWorkspace
     && eligibility.actorOwnsInterestedResponse
     && !eligibility.relationshipBlocked
   );
