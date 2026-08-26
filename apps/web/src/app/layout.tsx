@@ -7,16 +7,7 @@ import "./discovery.css";
 import "./verification.css";
 import "./demand.css";
 import "./studio.css";
+import "./contracts.css";
 
-export const metadata: Metadata = {
-  title: "LUX Platform",
-  description: "Crowd-demanded, creator-controlled productions.",
-};
-
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
+export const metadata: Metadata = { title: "LUX Platform", description: "Crowd-demanded, creator-controlled productions." };
+export default function RootLayout({children}:Readonly<{children:ReactNode}>){return <html lang="en"><body>{children}</body></html>}
