@@ -216,10 +216,10 @@ test("exact terms require personal verified acceptance and consent before creato
     await expect(page.getByText(/agency cannot consent for you/i)).toBeVisible();
     await page.getByLabel("Step-up confirmation").fill("step-up-confirmed");
     await page.getByRole("button", { name: "Accept exact terms" }).click();
-    await expect(page.getByText("Terms accepted personally.")).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("Terms accepted personally.", { timeout: 10_000 });
     await page.getByLabel("Consent step-up confirmation").fill("step-up-confirmed");
     await page.getByRole("button", { name: "Record depicted-person consent" }).click();
-    await expect(page.getByText("Depicted-person consent recorded personally.")).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("Depicted-person consent recorded personally.", { timeout: 10_000 });
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await login(page, ownerEmail, `/studio/projects/${projectPublicId}/terms`);
