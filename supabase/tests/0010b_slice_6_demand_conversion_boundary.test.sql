@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(16);
 
 select has_function(
   'private',
@@ -65,6 +65,15 @@ where user_id in (
   '10000000-0000-0000-0000-000000000083'
 );
 
+insert into public.age_assurance_records(user_id, method, status, jurisdiction_code, policy_version, expires_at)
+select id, 'self_attestation', 'accepted', 'PK', 'slice-6-conversion-test', now() + interval '1 year'
+from auth.users
+where id in (
+  '10000000-0000-0000-0000-000000000081',
+  '10000000-0000-0000-0000-000000000082',
+  '10000000-0000-0000-0000-000000000083'
+);
+
 insert into public.workspace_memberships(user_id, role, status, reviewed_at, reviewed_by)
 values
 (
@@ -120,6 +129,14 @@ select throws_ok(
   'original fan author cannot acquire project conversion control'
 );
 
+update public.active_workspaces active
+set membership_id = membership.id, updated_at = now()
+from public.workspace_memberships membership
+where active.user_id = '10000000-0000-0000-0000-000000000082'
+  and membership.user_id = active.user_id
+  and membership.role = 'creator'
+  and membership.status = 'approved';
+
 select set_config(
   'request.jwt.claims',
   jsonb_build_object(
@@ -131,7 +148,7 @@ select set_config(
 select throws_ok(
   $$ select private.require_demand_conversion_provenance('demconversionboundary000001') $$,
   '42501', 'demand_conversion_not_allowed',
-  'suggested creator cannot convert before explicit interest'
+  'active suggested creator cannot convert before explicit interest'
 );
 
 update public.demands
@@ -149,12 +166,33 @@ select id, '10000000-0000-0000-0000-000000000082', 'interested'
 from public.demands
 where public_id = 'demconversionboundary000001';
 
+update public.active_workspaces active
+set membership_id = membership.id, updated_at = now()
+from public.workspace_memberships membership
+where active.user_id = '10000000-0000-0000-0000-000000000082'
+  and membership.user_id = active.user_id
+  and membership.role = 'fan'
+  and membership.status = 'approved';
+select throws_ok(
+  $$ select private.require_demand_conversion_provenance('demconversionboundary000001') $$,
+  '42501', 'demand_conversion_not_allowed',
+  'approved creator membership alone cannot convert while the fan workspace is active'
+);
+
+update public.active_workspaces active
+set membership_id = membership.id, updated_at = now()
+from public.workspace_memberships membership
+where active.user_id = '10000000-0000-0000-0000-000000000082'
+  and membership.user_id = active.user_id
+  and membership.role = 'creator'
+  and membership.status = 'approved';
+
 select lives_ok(
   $$
     insert into pg_temp.slice6_conversion_json(label, payload)
     select 'eligible', private.require_demand_conversion_provenance('demconversionboundary000001')
   $$,
-  'interested approved suggested creator can obtain conversion provenance'
+  'interested suggested creator in the active approved Creator workspace can obtain conversion provenance'
 );
 select is(
   (select payload ->> 'sourceDemandPublicId' from pg_temp.slice6_conversion_json where label = 'eligible'),
@@ -179,6 +217,13 @@ select is(
   'Slice 6 precursor does not fabricate converted state before a Slice 7 project exists'
 );
 
+update public.active_workspaces active
+set membership_id = membership.id, updated_at = now()
+from public.workspace_memberships membership
+where active.user_id = '10000000-0000-0000-0000-000000000083'
+  and membership.user_id = active.user_id
+  and membership.role = 'creator'
+  and membership.status = 'approved';
 select set_config(
   'request.jwt.claims',
   jsonb_build_object(
@@ -190,7 +235,7 @@ select set_config(
 select throws_ok(
   $$ select private.require_demand_conversion_provenance('demconversionboundary000001') $$,
   '42501', 'demand_conversion_not_allowed',
-  'unrelated approved creator cannot take over another creator interest'
+  'unrelated active approved creator cannot take over another creator interest'
 );
 
 select set_config(
@@ -201,23 +246,20 @@ select set_config(
   )::text,
   true
 );
-delete from public.workspace_memberships
+update public.workspace_memberships
+set status = 'revoked', updated_at = now()
 where user_id = '10000000-0000-0000-0000-000000000082'
   and role = 'creator';
 select throws_ok(
   $$ select private.require_demand_conversion_provenance('demconversionboundary000001') $$,
   '42501', 'demand_conversion_not_allowed',
-  'creator loses conversion eligibility when approved creator membership is absent'
+  'revoked creator membership immediately removes conversion eligibility'
 );
 
-insert into public.workspace_memberships(user_id, role, status, reviewed_at, reviewed_by)
-values (
-  '10000000-0000-0000-0000-000000000082',
-  'creator',
-  'approved',
-  now(),
-  '10000000-0000-0000-0000-000000000082'
-);
+update public.workspace_memberships
+set status = 'approved', updated_at = now()
+where user_id = '10000000-0000-0000-0000-000000000082'
+  and role = 'creator';
 insert into public.profile_blocks(blocker_user_id, blocked_user_id)
 values ('10000000-0000-0000-0000-000000000081', '10000000-0000-0000-0000-000000000082');
 select throws_ok(
