@@ -29,7 +29,7 @@ create temp table s8_project(payload jsonb);
 insert into s8_project select public.create_project_draft(jsonb_build_object('title','Slice 8 contract project','publicSynopsis','A public project synopsis for exact version contract and consent testing.','privateBrief','A private production brief that remains separate from the public terms acceptance projection.','category','concept','format','video','boundaries',jsonb_build_array('closed-set'),'compensationModel','fixed','distributionScope','Platform release only','rightsDeclarations',jsonb_build_array('original-concept')));
 create temp table s8_terms(payload jsonb);
 insert into s8_terms select public.publish_project_terms((select payload->>'publicId' from s8_project),1,jsonb_build_object('participants',jsonb_build_array(jsonb_build_object('handle','s8_performer','role','performer','depicted',true)),'role','performer','boundaries',jsonb_build_array('closed-set'),'collaborators',jsonb_build_array('s8_owner'),'compensation','fixed:10000:USD','distributionScope','platform-only','rightsScope','streaming-only','schedule','September window','cancellation','Either party may leave before contract lock','finalCutApprovalRequired',true));
-select like((select payload->>'hash' from s8_terms),'%','terms publication returns a version hash');
+select ok(length((select payload->>'hash' from s8_terms)) = 64,'terms publication returns a SHA-256 version hash');
 select is(length((select payload->>'hash' from s8_terms)),64,'terms hash is SHA-256 sized');
 select is((select version from public.project_term_versions limit 1),1,'first terms version is immutable v1');
 
