@@ -40,7 +40,7 @@ insert into s7_project select public.create_project_draft(jsonb_build_object(
  'distributionScope','Platform release only','rightsDeclarations',jsonb_build_array('original-concept')));
 create temp table s7_invite(payload jsonb);
 insert into s7_invite select public.send_project_invitation((select payload->>'publicId' from s7_project),'s7_recipient','performer',jsonb_build_object('note','Initial exact-revision proposal'));
-select like((select payload->>'publicId' from s7_invite),'inv%','owner receives an opaque invitation public ID');
+select ok((select payload->>'publicId' from s7_invite) like 'inv%','owner receives an opaque invitation public ID');
 select is((select state::text from public.project_invitations limit 1),'sent','new invitation starts sent');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a3','role','authenticated')::text,true);
