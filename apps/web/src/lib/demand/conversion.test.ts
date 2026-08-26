@@ -8,7 +8,7 @@ import {
 const eligibleConversion: DemandConversionEligibility = {
   effectiveState: "creator_interested",
   actorIsSuggestedCreator: true,
-  actorHasApprovedCreatorRole: true,
+  actorHasActiveApprovedCreatorWorkspace: true,
   actorOwnsInterestedResponse: true,
   relationshipBlocked: false,
 };
@@ -32,17 +32,17 @@ describe("demand-to-project conversion policy", () => {
       canConvertDemandToProject({
         ...eligibleConversion,
         actorIsSuggestedCreator: false,
-        actorHasApprovedCreatorRole: false,
+        actorHasActiveApprovedCreatorWorkspace: false,
         actorOwnsInterestedResponse: false,
       }),
     ).toBe(false);
   });
 
-  it("requires the actor to remain an approved creator", () => {
+  it("requires the actor to be in the active approved Creator workspace", () => {
     expect(
       canConvertDemandToProject({
         ...eligibleConversion,
-        actorHasApprovedCreatorRole: false,
+        actorHasActiveApprovedCreatorWorkspace: false,
       }),
     ).toBe(false);
   });
