@@ -11,7 +11,6 @@
 **Spec:** `docs/superpowers/specs/2026-08-25-slices-4-10-marketplace-core-design.md`
 
 ## Global Constraints
-
 - Preserve accepted Slices 0–8.
 - Only contract-locked, eligible projects can publish a campaign.
 - Current creator/producer verification and every required depicted participant V3 state are rechecked on publish.
@@ -21,15 +20,12 @@
 - Pre-book records bind the exact campaign-terms version and are idempotent.
 - Manual owner acceptance remains deferred to Slice 10.
 
----
-
 ### Task 1: Campaign eligibility policy and schema
-
 **Files:**
 - Create: `apps/web/src/lib/campaigns/policy.ts`
 - Create: `apps/web/src/lib/campaigns/policy.test.ts`
 - Create: `supabase/migrations/20260825090100_slice_9_campaigns.sql`
-- Create: `supabase/tests/0013_slice_9_campaigns.sql`
+- Create: `supabase/tests/0014_slice_9_campaigns.test.sql`
 
 **Interfaces:**
 - Tables: `campaigns`, `campaign_term_versions`, `campaign_tiers`, `campaign_choices`.
@@ -43,12 +39,11 @@
 - [ ] Commit `feat(campaigns): add campaign eligibility and publishing`.
 
 ### Task 2: Pre-book commitment boundary
-
 **Files:**
 - Create: `apps/web/src/lib/funding/prebook-policy.ts`
 - Create: `apps/web/src/lib/funding/prebook-policy.test.ts`
 - Create: `supabase/migrations/20260825090200_slice_9_prebook.sql`
-- Create: `supabase/tests/0014_slice_9_prebook.sql`
+- Create: `supabase/tests/0015_slice_9_prebook.test.sql`
 
 **Interfaces:**
 - Table: `funding_commitments`.
@@ -60,7 +55,6 @@
 - [ ] Commit `feat(funding): add exact-version prebook commitments`.
 
 ### Task 3: Campaign editor/public page/pre-book UI
-
 **Files:**
 - Create: `apps/web/src/app/studio/projects/[publicId]/campaign/page.tsx`
 - Create: `apps/web/src/app/studio/projects/[publicId]/campaign/actions.ts`
@@ -79,7 +73,6 @@
 - [ ] Commit `feat(campaigns): add publishing and prebook surfaces`.
 
 ### Task 4: Slice 9 gate
-
 - [ ] Reconcile Foundation/test matrix/register/Governor.
 - [ ] Run cumulative quick/DB/build/browser/full verification.
 - [ ] Require green exact-head Engineering Gate and record checkpoint before Slice 10.
