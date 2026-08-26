@@ -63,7 +63,7 @@ select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0
 create temp table s7_accept(payload jsonb);
 insert into s7_accept select public.send_project_invitation((select payload->>'publicId' from s7_project),'s7_recipient','performer',jsonb_build_object('note','Acceptance fixture'));
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a2','role','authenticated')::text,true);
-select lives_ok(format($q$select public.respond_project_invitation(%L,'accepted')$q$,(select payload->>'publicId' from s7_accept)),'recipient may accept collaboration into future contracting');
+select lives_ok(format($q$select public.respond_project_invitation(%L,'interested'); select public.respond_project_invitation(%L,'accepted')$q$,(select payload->>'publicId' from s7_accept),(select payload->>'publicId' from s7_accept)),'recipient may move through interest into acceptance for future contracting');
 select is((select state::text from public.projects where public_id=(select payload->>'publicId' from s7_project)),'draft','invitation acceptance never creates contract lock or legal consent');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a1','role','authenticated')::text,true);
