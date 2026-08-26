@@ -69,20 +69,31 @@ async function login(page: Page, email: string, target: string) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-async function loginAndAssure(page: Page, email: string, target: string) {
+async function completeAgeAssurance(page: Page) {
+  await page.getByLabel("Country code").fill("PK");
+  await page.getByLabel(/I confirm that I am at least 18 years old/).check();
+  await page.getByRole("button", { name: "Confirm and continue" }).click();
+}
+
+async function loginAndAssureProtected(page: Page, email: string, target: string) {
+  await login(page, email, target);
+  await expect(page).toHaveURL(/\/age-assurance/);
+  await completeAgeAssurance(page);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(target);
+}
+
+async function loginAssureAndNavigate(page: Page, email: string, target: string) {
   const assuranceTarget = "/app/feed";
   await login(page, email, assuranceTarget);
   await expect(page).toHaveURL(/\/(?:age-assurance|app\/feed)(?:[/?]|$)/);
 
   if (new URL(page.url()).pathname === "/age-assurance") {
-    await page.getByLabel("Country code").fill("PK");
-    await page.getByLabel(/I confirm that I am at least 18 years old/).check();
-    await page.getByRole("button", { name: "Confirm and continue" }).click();
+    await completeAgeAssurance(page);
   }
 
-  await expect(page).toHaveURL(/\/app\/feed$/);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(assuranceTarget);
   await page.goto(target);
-  await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
+  await expect.poll(() => new URL(page.url()).pathname).toBe(target);
 }
 
 async function openSecondaryContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
@@ -110,7 +121,7 @@ async function approveAndActivateCreatorFixture(
   const adminPage = await adminContext.newPage();
 
   try {
-    await loginAndAssure(creatorPage, creatorEmail, "/workspace");
+    await loginAndAssureProtected(creatorPage, creatorEmail, "/workspace");
     await creatorPage.getByRole("button", { name: "Request creator access" }).click();
     await expect(creatorPage).toHaveURL(/notice=creator-requested/);
 
@@ -119,7 +130,7 @@ async function approveAndActivateCreatorFixture(
     });
     if (bootstrapError) throw bootstrapError;
 
-    await loginAndAssure(adminPage, adminEmail, "/workspace/staff");
+    await loginAndAssureProtected(adminPage, adminEmail, "/workspace/staff");
     await approveCreatorRequest(adminPage, creatorUserId);
 
     await creatorPage.goto("/workspace");
@@ -175,7 +186,7 @@ test("fan creates a suggested-creator demand and truthful detail survives refres
     await approveAndActivateCreatorFixture(creatorPage, browser, testInfo, creatorEmail, creator.id);
     const creatorHandle = await readOwnHandle(creatorEmail, creator.id);
 
-    await loginAndAssure(page, authorEmail, "/app/demand");
+    await loginAssureAndNavigate(page, authorEmail, "/app/demand");
     await expect(page.getByRole("heading", { name: "Crowd Demand Board" })).toBeVisible();
     await expectDocumentFitsViewport(page);
 
@@ -215,10 +226,10 @@ test("support remains one edge after an equivalent retry and persists across ref
   try {
     const supporterHandle = await readOwnHandle(supporterEmail, supporter.id);
 
-    await loginAndAssure(page, authorEmail, "/app/demand");
+    await loginAssureAndNavigate(page, authorEmail, "/app/demand");
     const { pathname, publicId } = await createDemandThroughUi(page);
 
-    await loginAndAssure(supporterPage, supporterEmail, pathname);
+    await loginAssureAndNavigate(supporterPage, supporterEmail, pathname);
     await expect(supporterPage.getByTestId("demand-support-count")).toHaveText("0");
     await supporterPage.getByLabel("Show my handle publicly").check();
     await supporterPage.getByRole("button", { name: "Support demand" }).click();
@@ -256,7 +267,7 @@ test("suggested creator can decline privately and only their interest becomes pu
     await approveAndActivateCreatorFixture(creatorPage, browser, testInfo, creatorEmail, creator.id);
     const creatorHandle = await readOwnHandle(creatorEmail, creator.id);
 
-    await loginAndAssure(page, authorEmail, "/app/demand");
+    await loginAssureAndNavigate(page, authorEmail, "/app/demand");
     const { pathname } = await createDemandThroughUi(page, creatorHandle);
 
     await creatorPage.goto("/workspace/creator/demand");
