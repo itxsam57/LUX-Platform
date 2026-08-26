@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,27 +25,54 @@ async function removeUser(id: string) {
   if (error) throw error;
 }
 
+async function authenticatedClient(address: string): Promise<SupabaseClient> {
+  const client = createClient(supabaseUrl!, publishableKey!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error } = await client.auth.signInWithPassword({ email: address, password: PASSWORD });
+  if (error) throw error;
+  return client;
+}
+
 async function loginAndAssure(page: Page, address: string, target = "/workspace") {
   await page.goto(`/auth/login?next=${encodeURIComponent(target)}`);
   await page.getByLabel("Email address").fill(address);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect.poll(() => new URL(page.url()).pathname).toSatisfy((path) => path === "/age-assurance" || path === target);
   if (new URL(page.url()).pathname === "/age-assurance") {
     await page.getByLabel("Country code").fill("PK");
     await page.getByLabel(/I confirm that I am at least 18 years old/).check();
     await page.getByRole("button", { name: "Confirm and continue" }).click();
   }
+  await expect(page).toHaveURL(new RegExp(`${target.replaceAll("/", "\\/")}$`));
 }
 
-async function activateCreator(page: Page, address: string, userId: string, testInfo: TestInfo) {
+async function activateCreator(page: Page, address: string, testInfo: TestInfo) {
   await loginAndAssure(page, address, "/workspace");
   await page.getByRole("button", { name: "Request creator access" }).click();
+  await expect(page).toHaveURL(/notice=creator-requested/);
+
+  const creatorClient = await authenticatedClient(address);
+  const { data: viewerContext, error: contextError } = await creatorClient.rpc("get_viewer_context");
+  if (contextError) throw contextError;
+  const creatorMembership = Array.isArray(viewerContext?.memberships)
+    ? viewerContext.memberships.find((membership: { role?: string }) => membership.role === "creator")
+    : null;
+  if (!creatorMembership?.id) throw new Error("Creator membership fixture unavailable");
+
   const adminEmail = email("s7-admin", testInfo);
   const superAdmin = await createUser(adminEmail);
   try {
     const { error: bootstrapError } = await admin.rpc("bootstrap_super_admin", { target_user_id: superAdmin.id });
     if (bootstrapError) throw bootstrapError;
-    await admin.from("workspace_memberships").update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: superAdmin.id }).eq("user_id", userId).eq("role", "creator");
+    const reviewer = await authenticatedClient(adminEmail);
+    const { error: reviewError } = await reviewer.rpc("review_workspace_request", {
+      target_membership_id: creatorMembership.id,
+      decision: "approved",
+    });
+    if (reviewError) throw reviewError;
+
     await page.goto("/workspace");
     const creator = page.getByRole("region", { name: "Creator workspace" });
     await creator.getByRole("button", { name: "Activate Creator" }).click();
@@ -63,7 +90,7 @@ test("creator can create and revise a durable project without stale overwrite", 
   const address = email("s7-owner", testInfo);
   const user = await createUser(address);
   try {
-    await activateCreator(page, address, user.id, testInfo);
+    await activateCreator(page, address, testInfo);
     await page.goto("/studio/projects/new");
     await expect(page.getByRole("heading", { name: "New project draft" })).toBeVisible();
     await page.getByLabel("Project title").fill("Slice 7 browser project");
@@ -94,7 +121,6 @@ test("studio invitation surfaces explain collaboration acceptance is not legal c
   const user = await createUser(address);
   try {
     await loginAndAssure(page, address, "/studio/invitations");
-    await page.goto("/studio/invitations");
     await expect(page.getByRole("heading", { name: "Collaboration invitations" })).toBeVisible();
     await expect(page.getByText(/accepting an invitation is not a contract or depicted-person consent/i)).toBeVisible();
     await expectFits(page);
