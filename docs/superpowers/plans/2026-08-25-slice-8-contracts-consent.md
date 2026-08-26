@@ -45,7 +45,7 @@
 
 **Files:**
 - Create: `supabase/migrations/20260825080100_slice_8_contracts_consent.sql`
-- Create: `supabase/tests/0012_slice_8_contracts_consent.sql`
+- Create: `supabase/tests/0013_slice_8_contracts_consent.test.sql`
 
 **Interfaces:**
 - Tables: `project_term_versions`, `participant_acceptances`, `depicted_person_consents`, `contract_lock_receipts`.
