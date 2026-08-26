@@ -10,6 +10,7 @@ export type DemandView = {
   state: "open" | "creator_interested" | "converted" | "expired" | "closed";
   author: { handle: string; displayName: string };
   suggestedCreator: { handle: string; displayName: string; relationship: "suggested" | "interested" } | null;
+  viewerCreatorResponse: "declined" | "interested" | null;
   supportCount: number;
   viewerSupported: boolean;
   publicSupporters: Array<{ handle: string; displayName: string }>;
@@ -48,6 +49,10 @@ export function parseDemand(value: unknown): DemandView | null {
     ? { ...suggested, relationship: suggestedRecord.relationship as "suggested" | "interested" }
     : null;
 
+  const viewerCreatorResponse = row.viewerCreatorResponse === "declined" || row.viewerCreatorResponse === "interested"
+    ? row.viewerCreatorResponse
+    : null;
+
   const publicSupporters = Array.isArray(row.publicSupporters)
     ? row.publicSupporters.flatMap((candidate) => {
       const parsed = person(candidate);
@@ -64,6 +69,7 @@ export function parseDemand(value: unknown): DemandView | null {
     state: row.state as DemandView["state"],
     author,
     suggestedCreator,
+    viewerCreatorResponse,
     supportCount: typeof row.supportCount === "number" ? row.supportCount : 0,
     viewerSupported: row.viewerSupported === true,
     publicSupporters,

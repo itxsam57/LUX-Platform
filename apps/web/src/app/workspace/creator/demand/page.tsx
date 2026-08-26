@@ -48,8 +48,8 @@ export default async function CreatorDemandPage({
         ) : (
           <section className="demand-grid" aria-label="Creator demand requests">
             {demands.map((demand) => {
-              const interested = demand.state === "creator_interested";
-              const privatelyDeclined = !interested && query.notice === "declined" && query.demand === demand.publicId;
+              const interested = demand.state === "creator_interested" || demand.viewerCreatorResponse === "interested";
+              const privatelyDeclined = !interested && demand.viewerCreatorResponse === "declined";
               return (
                 <article className="demand-card" data-testid="creator-demand-card" key={demand.publicId}>
                   <div className="demand-card__meta"><span>Suggested/requested</span><span>{demand.format.replaceAll("_", " ")}</span></div>
