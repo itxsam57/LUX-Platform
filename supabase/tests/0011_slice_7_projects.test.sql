@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(19);
 
 select has_table('public', 'projects', 'Slice 7 stores creator-owned projects');
 select has_table('public', 'project_versions', 'Slice 7 stores immutable project revisions');
@@ -67,7 +67,7 @@ insert into public.demands (
   public_id, author_user_id, title, brief, category, format,
   suggested_creator_user_id, state, created_at, updated_at
 ) values (
-  'demslice7conversion000000001',
+  'demaaaaaaaaaaaaaaaaaaaaaaaa',
   '10000000-0000-0000-0000-000000000091',
   'Slice 7 creator-owned project conversion',
   'A demand fixture proving one-time creator-controlled conversion without giving the fan project control.',
@@ -75,11 +75,11 @@ insert into public.demands (
 );
 insert into public.demand_creator_responses(demand_id, creator_user_id, response)
 select id, '10000000-0000-0000-0000-000000000092', 'interested'
-from public.demands where public_id = 'demslice7conversion000000001';
+from public.demands where public_id = 'demaaaaaaaaaaaaaaaaaaaaaaaa';
 
 select set_config('request.jwt.claims', jsonb_build_object('sub','10000000-0000-0000-0000-000000000091','role','authenticated')::text, true);
 select throws_ok(
-  $$ select public.convert_demand_to_project('demslice7conversion000000001', jsonb_build_object(
+  $$ select public.convert_demand_to_project('demaaaaaaaaaaaaaaaaaaaaaaaa', jsonb_build_object(
     'title','Fan must not own this project',
     'publicSynopsis','A long enough public synopsis that must never make the original fan the project owner.',
     'privateBrief','A sufficiently long private production brief that should remain invisible to the demand author.',
@@ -93,7 +93,7 @@ select throws_ok(
 select set_config('request.jwt.claims', jsonb_build_object('sub','10000000-0000-0000-0000-000000000092','role','authenticated')::text, true);
 create temp table slice7_project_result(payload jsonb);
 insert into slice7_project_result
-select public.convert_demand_to_project('demslice7conversion000000001', jsonb_build_object(
+select public.convert_demand_to_project('demaaaaaaaaaaaaaaaaaaaaaaaa', jsonb_build_object(
   'title','Creator owned project',
   'publicSynopsis','A public-safe creator-led synopsis with no private collaborator or legal identity data.',
   'privateBrief','A private production brief that contains scheduling, boundaries, collaborator context, and internal planning.',
@@ -103,9 +103,9 @@ select public.convert_demand_to_project('demslice7conversion000000001', jsonb_bu
 
 select like((select payload ->> 'publicId' from slice7_project_result limit 1), 'prj%', 'conversion returns an opaque project public ID');
 select is((select owner_user_id::text from public.projects limit 1), '10000000-0000-0000-0000-000000000092', 'converted project belongs only to the interested creator');
-select is((select state::text from public.demands where public_id='demslice7conversion000000001'), 'converted', 'successful conversion atomically marks the source demand converted');
+select is((select state::text from public.demands where public_id='demaaaaaaaaaaaaaaaaaaaaaaaa'), 'converted', 'successful conversion atomically marks the source demand converted');
 select throws_ok(
-  $$ select public.convert_demand_to_project('demslice7conversion000000001', '{}'::jsonb) $$,
+  $$ select public.convert_demand_to_project('demaaaaaaaaaaaaaaaaaaaaaaaa', '{}'::jsonb) $$,
   '42501', 'demand_conversion_not_allowed',
   'the same demand cannot be converted twice'
 );
