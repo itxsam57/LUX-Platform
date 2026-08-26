@@ -8,6 +8,26 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+type CreatorDemandResponse = "declined" | "interested";
+
+function parseCreatorResponseMap(value: unknown): Map<string, CreatorDemandResponse> {
+  const responses = new Map<string, CreatorDemandResponse>();
+  if (!Array.isArray(value)) return responses;
+
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) continue;
+    const row = candidate as Record<string, unknown>;
+    if (
+      typeof row.publicId === "string"
+      && (row.response === "declined" || row.response === "interested")
+    ) {
+      responses.set(row.publicId, row.response);
+    }
+  }
+
+  return responses;
+}
+
 export default async function CreatorDemandPage({
   searchParams,
 }: {
@@ -16,11 +36,17 @@ export default async function CreatorDemandPage({
   const viewer = await requireWorkspace("creator", "creator-demand");
   const query = await searchParams;
   const supabase = await createServerSupabaseClient();
-  const [{ data: ownProfile }, { data, error }] = await Promise.all([
+  const [
+    { data: ownProfile },
+    { data, error },
+    { data: creatorResponseData, error: creatorResponseError },
+  ] = await Promise.all([
     supabase.from("profiles").select("handle").eq("user_id", viewer.user.id).maybeSingle(),
     supabase.rpc("list_demands", { page_size: 50, page_cursor: null }),
+    supabase.rpc("get_my_demand_creator_responses"),
   ]);
   const ownHandle = typeof ownProfile?.handle === "string" ? ownProfile.handle : null;
+  const creatorResponses = parseCreatorResponseMap(creatorResponseData);
   const demands = Array.isArray(data) && ownHandle
     ? data.flatMap((item) => {
       const parsed = parseDemand(item);
@@ -41,15 +67,16 @@ export default async function CreatorDemandPage({
         </header>
 
         {query.error ? <div className="demand-error" role="alert">The creator response could not be recorded safely.</div> : null}
-        {error ? (
+        {error || creatorResponseError ? (
           <ErrorState title="Demand requests unavailable" description="LUX could not load creator demand requests safely." />
         ) : demands.length === 0 ? (
           <section className="demand-empty"><h2>No creator requests</h2><p>Suggestions addressed to your approved creator profile will appear here.</p></section>
         ) : (
           <section className="demand-grid" aria-label="Creator demand requests">
             {demands.map((demand) => {
-              const interested = demand.state === "creator_interested" || demand.viewerCreatorResponse === "interested";
-              const privatelyDeclined = !interested && demand.viewerCreatorResponse === "declined";
+              const privateResponse = creatorResponses.get(demand.publicId) ?? null;
+              const interested = demand.state === "creator_interested" || privateResponse === "interested";
+              const privatelyDeclined = !interested && privateResponse === "declined";
               return (
                 <article className="demand-card" data-testid="creator-demand-card" key={demand.publicId}>
                   <div className="demand-card__meta"><span>Suggested/requested</span><span>{demand.format.replaceAll("_", " ")}</span></div>
