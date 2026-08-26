@@ -1,4 +1,5 @@
 // @vitest-environment node
+// Slice 6 Task 4 checkpoint contract: this must fail while production metadata still advertises Slice 5.
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
