@@ -272,6 +272,8 @@ test("suggested creator can decline privately and only their interest becomes pu
     await expect(responseCard).toContainText(/suggested|requested/i);
 
     await responseCard.getByRole("button", { name: "Decline privately" }).click();
+    await expect(creatorPage).toHaveURL(/\/workspace\/creator\/demand\?notice=declined&demand=dem[A-Za-z0-9_-]{24}$/);
+    await creatorPage.goto("/workspace/creator/demand");
     await expect(responseCard.getByTestId("creator-demand-response")).toHaveText("Declined privately");
 
     await page.goto(pathname);
