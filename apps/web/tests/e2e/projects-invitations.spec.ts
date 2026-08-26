@@ -39,13 +39,11 @@ async function loginAndAssure(page: Page, address: string, target = "/workspace"
   await page.getByLabel("Email address").fill(address);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/age-assurance(?:\?|$)/);
+  await page.getByLabel("Country code").fill("PK");
+  await page.getByLabel(/I confirm that I am at least 18 years old/).check();
+  await page.getByRole("button", { name: "Confirm and continue" }).click();
   const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  await expect.poll(() => new URL(page.url()).pathname).toMatch(new RegExp(`^(?:/age-assurance|${escapedTarget})$`));
-  if (new URL(page.url()).pathname === "/age-assurance") {
-    await page.getByLabel("Country code").fill("PK");
-    await page.getByLabel(/I confirm that I am at least 18 years old/).check();
-    await page.getByRole("button", { name: "Confirm and continue" }).click();
-  }
   await expect(page).toHaveURL(new RegExp(`${escapedTarget}$`));
 }
 
