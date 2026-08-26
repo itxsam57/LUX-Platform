@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(31);
 
 select has_table('public','project_term_versions','Slice 8 stores immutable project terms');
 select has_table('public','participant_acceptances','Slice 8 stores exact-version participant acceptances');
@@ -33,35 +33,34 @@ select like((select payload->>'hash' from s8_terms),'%','terms publication retur
 select is(length((select payload->>'hash' from s8_terms)),64,'terms hash is SHA-256 sized');
 select is((select version from public.project_term_versions limit 1),1,'first terms version is immutable v1');
 
-select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b1','role','authenticated')::text,true);
-select throws_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','terms_acceptance_not_allowed','project owner cannot accept on behalf of the performer');
+select throws_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','terms_acceptance_not_allowed','project owner cannot accept on behalf of performer');
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b3','role','authenticated')::text,true);
-select throws_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','depicted_consent_not_allowed','agency cannot consent for a performer');
+select throws_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','depicted_consent_not_allowed','agency cannot consent for performer');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b2','role','authenticated')::text,true);
-select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'current V2 performer can accept exact terms');
+select throws_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','terms_acceptance_not_allowed','depicted participant cannot accept terms with V2 only');
+insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values ('10000000-0000-0000-0000-0000000000b2','v3','verified',now(),now()+interval '1 year');
+select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'current V3 performer accepts exact terms');
 select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'duplicate exact acceptance is idempotent');
 select is((select count(*)::integer from public.participant_acceptances where superseded_at is null),1,'duplicate acceptance creates one current receipt');
-select throws_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','depicted_consent_not_allowed','V2 alone cannot execute depicted-person consent');
-insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values ('10000000-0000-0000-0000-0000000000b2','v3','verified',now(),now()+interval '1 year');
 select lives_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'current V3 performer personally records depicted consent');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b1','role','authenticated')::text,true);
 create temp table s8_terms2(payload jsonb);
 insert into s8_terms2 select public.publish_project_terms((select payload->>'publicId' from s8_project),1,jsonb_build_object('participants',jsonb_build_array(jsonb_build_object('handle','s8_performer','role','performer','depicted',true)),'role','performer','boundaries',jsonb_build_array('closed-set','no-surprises'),'collaborators',jsonb_build_array('s8_owner'),'compensation','fixed:10000:USD','distributionScope','platform-only','rightsScope','streaming-only','schedule','September window','cancellation','Either party may leave before contract lock','finalCutApprovalRequired',true));
-select is((select count(*)::integer from public.project_term_versions),2,'material change creates a new immutable terms version');
+select is((select count(*)::integer from public.project_term_versions),2,'material change creates new immutable terms version');
 select ok((select superseded_at is not null from public.participant_acceptances order by accepted_at limit 1),'material terms change supersedes old acceptance');
-select ok((select superseded_at is not null from public.depicted_person_consents order by consented_at limit 1),'material terms change supersedes old depicted consent');
-select throws_ok(format($q$select public.lock_project_contract(%L,%L)$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'42501','contract_lock_not_allowed','owner cannot lock while latest obligations are incomplete');
+select ok((select superseded_at is not null from public.depicted_person_consents order by consented_at limit 1),'material terms change supersedes old consent');
+select throws_ok(format($q$select public.lock_project_contract(%L,%L)$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'42501','contract_lock_not_allowed','owner cannot lock while latest obligations incomplete');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b2','role','authenticated')::text,true);
 select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'performer accepts latest exact terms');
 select lives_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'performer consents to latest depicted scope');
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b1','role','authenticated')::text,true);
-select lives_ok(format($q$select public.lock_project_contract(%L,%L)$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'owner may lock only after all latest obligations are satisfied');
+select lives_ok(format($q$select public.lock_project_contract(%L,%L)$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms2)),'owner locks only after latest obligations satisfied');
 select is((select state::text from public.projects where public_id=(select payload->>'publicId' from s8_project)),'contract_locked','contract lock changes project state only through constrained transition');
 select is((select count(*)::integer from public.contract_lock_receipts),1,'contract lock writes one immutable receipt');
-select throws_ok(format($q$select public.publish_project_terms(%L,1,'{}'::jsonb)$q$,(select payload->>'publicId' from s8_project)),'42501','project_terms_not_editable','locked project cannot publish mutable replacement terms');
+select throws_ok(format($q$select public.publish_project_terms(%L,1,'{}'::jsonb)$q$,(select payload->>'publicId' from s8_project)),'42501','project_terms_not_editable','locked project cannot publish replacement terms');
 
 select * from finish();
 rollback;
