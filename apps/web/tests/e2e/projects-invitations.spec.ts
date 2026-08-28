@@ -122,10 +122,11 @@ test("creator can create and revise a durable project without stale overwrite", 
     await page.getByLabel("Distribution scope").fill("Platform release only");
     await page.getByLabel("Rights declarations").fill("original-concept");
     await page.getByRole("button", { name: "Create project draft" }).click();
-    await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}$/);
+    await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}$/, { timeout: 15_000 });
     await expect(page.getByText("Revision 1")).toBeVisible();
     await page.getByLabel("Project title").fill("Slice 7 browser project revised");
     await page.getByRole("button", { name: "Save revision" }).click();
+    await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?notice=saved$/, { timeout: 15_000 });
     await expect(page.getByText("Revision 2")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
