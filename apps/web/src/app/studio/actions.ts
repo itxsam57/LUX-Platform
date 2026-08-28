@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { requireAdultViewer, requireWorkspace } from "@/lib/auth/context";
 import { normalizeProjectDraft } from "@/lib/projects/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  INITIAL_PROJECT_MUTATION_STATE,
+  type ProjectMutationState,
+} from "./project-mutation-state";
 
 const projectIdPattern = /^prj[0-9a-f]{24}$/;
 const demandIdPattern = /^dem[A-Za-z0-9_-]{24}$/;
@@ -39,10 +43,24 @@ function publicId(data: unknown, pattern: RegExp): string | null {
   return typeof value === "string" && pattern.test(value) ? value : null;
 }
 
-export async function createProjectAction(formData: FormData): Promise<void> {
+function projectMutationError(message: string, destination: string): ProjectMutationState {
+  return { status: "error", message, destination };
+}
+
+export async function createProjectAction(
+  previous: ProjectMutationState = INITIAL_PROJECT_MUTATION_STATE,
+  formData: FormData,
+): Promise<ProjectMutationState> {
+  void previous;
   await requireWorkspace("creator", "studio-project-create");
+
   let input;
-  try { input = projectInput(formData); } catch { redirect("/studio/projects/new?error=invalid"); }
+  try {
+    input = projectInput(formData);
+  } catch {
+    return projectMutationError("The project draft is invalid.", "/studio/projects/new?error=invalid");
+  }
+
   const sourceDemand = text(formData, "source_demand_public_id");
   const supabase = await createServerSupabaseClient();
   const result = sourceDemand
@@ -51,27 +69,70 @@ export async function createProjectAction(formData: FormData): Promise<void> {
       : { data: null, error: new Error("invalid demand") })
     : await supabase.rpc("create_project_draft", { project_input: input });
   const id = publicId(result.data, projectIdPattern);
-  if (result.error || !id) redirect(`/studio/projects/new?error=${sourceDemand ? "conversion" : "create"}`);
+
+  if (result.error || !id) {
+    return projectMutationError(
+      sourceDemand ? "The demand could not be converted into a project safely." : "The project draft could not be created safely.",
+      `/studio/projects/new?error=${sourceDemand ? "conversion" : "create"}`,
+    );
+  }
+
   revalidatePath("/studio/projects");
   revalidatePath("/workspace/creator/demand");
   if (sourceDemand) revalidatePath(`/demand/${sourceDemand}`);
-  redirect(`/studio/projects/${id}`);
+
+  return {
+    status: "success",
+    message: "Project draft created.",
+    destination: `/studio/projects/${id}`,
+  };
 }
 
-export async function updateProjectAction(formData: FormData): Promise<void> {
+export async function updateProjectAction(
+  previous: ProjectMutationState = INITIAL_PROJECT_MUTATION_STATE,
+  formData: FormData,
+): Promise<ProjectMutationState> {
+  void previous;
   await requireWorkspace("creator", "studio-project-edit");
+
   const id = text(formData, "project_public_id");
   const revision = Number(text(formData, "expected_revision"));
-  if (!projectIdPattern.test(id) || !Number.isSafeInteger(revision)) redirect("/studio/projects?error=invalid");
+  if (!projectIdPattern.test(id) || !Number.isSafeInteger(revision)) {
+    return projectMutationError("The project revision request is invalid.", "/studio/projects?error=invalid");
+  }
+
   let input;
-  try { input = projectInput(formData); } catch { redirect(`/studio/projects/${id}?error=invalid`); }
+  try {
+    input = projectInput(formData);
+  } catch {
+    return projectMutationError("The project draft is invalid.", `/studio/projects/${id}?error=invalid`);
+  }
+
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.rpc("update_project_draft", { requested_public_id: id, expected_revision: revision, project_input: input });
-  if (error) redirect(`/studio/projects/${id}?error=${error.code === "40001" ? "conflict" : "save"}`);
+  const { error } = await supabase.rpc("update_project_draft", {
+    requested_public_id: id,
+    expected_revision: revision,
+    project_input: input,
+  });
+  if (error) {
+    const code = error.code === "40001" ? "conflict" : "save";
+    return projectMutationError(
+      code === "conflict"
+        ? "This draft changed elsewhere. Reloaded state must be reviewed before saving again."
+        : "The project revision could not be saved safely.",
+      `/studio/projects/${id}?error=${code}`,
+    );
+  }
+
   revalidatePath(`/studio/projects/${id}`);
   revalidatePath("/studio/projects");
   revalidatePath("/studio/invitations");
-  redirect(`/studio/projects/${id}?notice=saved`);
+
+  return {
+    status: "success",
+    message: "Revision saved.",
+    destination: `/studio/projects/${id}?notice=saved`,
+  };
 }
 
 export async function setAgencyAuthorityAction(formData: FormData): Promise<void> {
