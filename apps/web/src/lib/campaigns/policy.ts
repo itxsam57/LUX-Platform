@@ -22,14 +22,46 @@ export type CampaignTermsInput = {
 
 export type CanonicalCampaignTerms = CampaignTermsInput;
 
-// RED scaffold: Slice 9 tests define the policy before implementation.
 export function canPublishCampaign(input: CampaignEligibilityInput): boolean {
-  void input;
-  return true;
+  return input.actorIsOwner
+    && input.projectState === "contract_locked"
+    && input.creatorVerificationCurrent
+    && input.allDepictedParticipantsV3Current
+    && input.allCampaignConsentsCurrent
+    && !input.projectRestricted
+    && input.paymentEnvironmentEligible
+    && input.campaignTermsComplete;
 }
 
-// RED scaffold: validation/normalization is intentionally not implemented yet.
 export function normalizeCampaignTerms(input: CampaignTermsInput, now: Date): CanonicalCampaignTerms {
-  void now;
-  return input;
+  if (!Number.isSafeInteger(input.fundingTargetMinor) || input.fundingTargetMinor <= 0) {
+    throw new Error("invalid_campaign_funding_target");
+  }
+
+  if (!/^[A-Z]{3}$/.test(input.currency)) {
+    throw new Error("invalid_campaign_currency");
+  }
+
+  const deadlineTime = new Date(input.deadline).getTime();
+  if (!Number.isFinite(deadlineTime) || deadlineTime <= now.getTime()) {
+    throw new Error("invalid_campaign_deadline");
+  }
+
+  if (
+    input.guarantees.length === 0
+    || input.expectedDeliveryWindow.trim() === ""
+    || input.refundRules.trim() === ""
+    || input.materialChangeRules.trim() === ""
+  ) {
+    throw new Error("incomplete_campaign_terms");
+  }
+
+  return {
+    ...input,
+    expectedDeliveryWindow: input.expectedDeliveryWindow.trim(),
+    guarantees: input.guarantees.map((item) => item.trim()),
+    optionalChoices: input.optionalChoices.map((item) => item.trim()),
+    refundRules: input.refundRules.trim(),
+    materialChangeRules: input.materialChangeRules.trim(),
+  };
 }

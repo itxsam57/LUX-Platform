@@ -59,7 +59,8 @@ describe("campaign term validation", () => {
     expect(() => normalizeCampaignTerms({ ...terms, fundingTargetMinor: Number.MAX_SAFE_INTEGER + 1 }, now)).toThrow("invalid_campaign_funding_target");
   });
 
-  it("rejects a deadline that is not in the future", () => {
+  it("rejects an invalid or non-future deadline", () => {
+    expect(() => normalizeCampaignTerms({ ...terms, deadline: "not-a-date" }, now)).toThrow("invalid_campaign_deadline");
     expect(() => normalizeCampaignTerms({ ...terms, deadline: now.toISOString() }, now)).toThrow("invalid_campaign_deadline");
   });
 
