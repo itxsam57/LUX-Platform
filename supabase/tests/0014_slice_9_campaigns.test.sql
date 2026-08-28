@@ -62,14 +62,38 @@ select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0
 select lives_ok(format($q$select public.lock_project_contract(%L,%L)$q$,(select payload->>'publicId' from s9_project),(select payload->>'hash' from s9_terms)),'eligible project reaches contract lock before campaign work');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000c3','role','authenticated')::text,true);
-select throws_ok(format($q$select public.save_campaign_draft(%L,%L::jsonb)$q$,(select payload->>'publicId' from s9_project),'{"fundingTargetMinor":250000,"currency":"USD","deadline":"2026-10-15T00:00:00Z","expectedDeliveryWindow":"January-March 2027","guarantees":["One completed platform release"],"optionalChoices":["Creator-approved poster vote"],"refundRules":"Refund path shown on failure or cancellation","materialChangeRules":"Material changes require fresh action"}'),'42501','campaign_edit_not_allowed','unrelated account cannot create campaign state');
+select throws_ok(
+  format($q$select public.save_campaign_draft(%L,%L::jsonb)$q$,
+    (select payload->>'publicId' from s9_project),
+    jsonb_build_object(
+      'fundingTargetMinor',250000,'currency','USD',
+      'deadline',to_char((now()+interval '60 days') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      'expectedDeliveryWindow','January-March 2027','guarantees',jsonb_build_array('One completed platform release'),
+      'optionalChoices',jsonb_build_array('Creator-approved poster vote'),
+      'refundRules','Refund path shown on failure or cancellation','materialChangeRules','Material changes require fresh action'
+    )::text
+  ),
+  '42501','campaign_edit_not_allowed','unrelated account cannot create campaign state'
+);
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000c1','role','authenticated')::text,true);
-select throws_ok(format($q$select public.save_campaign_draft(%L,%L::jsonb)$q$,(select payload->>'publicId' from s9_project),'{"fundingTargetMinor":0,"currency":"USD","deadline":"2026-10-15T00:00:00Z","expectedDeliveryWindow":"January-March 2027","guarantees":["One completed platform release"],"optionalChoices":[],"refundRules":"Refund path shown","materialChangeRules":"Fresh action required"}'),'22023','invalid_campaign_funding_target','non-positive campaign target is rejected');
+select throws_ok(
+  format($q$select public.save_campaign_draft(%L,%L::jsonb)$q$,
+    (select payload->>'publicId' from s9_project),
+    jsonb_build_object(
+      'fundingTargetMinor',0,'currency','USD',
+      'deadline',to_char((now()+interval '60 days') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      'expectedDeliveryWindow','January-March 2027','guarantees',jsonb_build_array('One completed platform release'),
+      'optionalChoices',jsonb_build_array(),'refundRules','Refund path shown','materialChangeRules','Fresh action required'
+    )::text
+  ),
+  '22023','invalid_campaign_funding_target','non-positive campaign target is rejected'
+);
 
 create temp table s9_campaign(payload jsonb);
 insert into s9_campaign select public.save_campaign_draft((select payload->>'publicId' from s9_project),jsonb_build_object(
-  'fundingTargetMinor',250000,'currency','USD','deadline','2026-10-15T00:00:00Z',
+  'fundingTargetMinor',250000,'currency','USD',
+  'deadline',to_char((now()+interval '60 days') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),
   'expectedDeliveryWindow','January-March 2027','guarantees',jsonb_build_array('One completed platform release'),
   'optionalChoices',jsonb_build_array('Creator-approved poster vote'),
   'refundRules','If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.',
