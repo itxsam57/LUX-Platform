@@ -23,11 +23,13 @@ export type CampaignTermsInput = {
 export type CanonicalCampaignTerms = CampaignTermsInput;
 
 // RED scaffold: Slice 9 tests define the policy before implementation.
-export function canPublishCampaign(_input: CampaignEligibilityInput): boolean {
+export function canPublishCampaign(input: CampaignEligibilityInput): boolean {
+  void input;
   return true;
 }
 
 // RED scaffold: validation/normalization is intentionally not implemented yet.
-export function normalizeCampaignTerms(input: CampaignTermsInput, _now: Date): CanonicalCampaignTerms {
+export function normalizeCampaignTerms(input: CampaignTermsInput, now: Date): CanonicalCampaignTerms {
+  void now;
   return input;
 }
