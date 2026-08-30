@@ -98,7 +98,7 @@ insert into s9_campaign select public.save_campaign_draft((select payload->>'pub
   'optionalChoices',jsonb_build_array('Creator-approved poster vote'),
   'refundRules','If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.',
   'materialChangeRules','Material campaign changes require a new version and fresh supporter action where applicable.'));
-select like((select payload->>'publicId' from s9_campaign),'cmp%','campaign uses an opaque public identifier');
+select ok((select payload->>'publicId' from s9_campaign) like 'cmp%','campaign uses an opaque public identifier');
 select is((select payload->>'state' from s9_campaign),'draft','campaign starts as draft');
 select is((select (payload->>'termsVersion')::integer from s9_campaign),1,'first campaign terms version is v1');
 select lives_ok(format($q$select public.submit_campaign_for_publish(%L,1)$q$,(select payload->>'publicId' from s9_campaign)),'owner submits exact campaign version for review');
