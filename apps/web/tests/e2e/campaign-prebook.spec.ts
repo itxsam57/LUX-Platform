@@ -215,7 +215,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
 
     await setFundingRestriction(projectPublicId, true);
     await page.getByRole("button", { name: "Publish campaign" }).click();
-    await expect(page.getByRole("alert")).toContainText("Campaign publication denied");
+    await expect(page.locator("p.studio-error[role=\"alert\"]")).toContainText("Campaign publication denied");
 
     await setFundingRestriction(projectPublicId, false);
     await page.getByRole("button", { name: "Publish campaign" }).click();
