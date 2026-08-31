@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/auth/context";
+import { navigationActionResult, type NavigationActionResult } from "@/lib/actions/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const projectPattern = /^prj[0-9a-f]{24}$/;
@@ -29,10 +29,12 @@ function campaignPath(projectPublicId: string, campaignPublicId?: string, versio
   return `/studio/projects/${projectPublicId}/campaign${query ? `?${query}` : ""}`;
 }
 
-export async function saveCampaignDraftAction(formData: FormData): Promise<void> {
+export async function saveCampaignDraftAction(formData: FormData): Promise<NavigationActionResult> {
   await requireWorkspace("creator", "campaign-draft-save");
   const projectPublicId = text(formData, "project_public_id");
-  if (!projectPattern.test(projectPublicId)) redirect("/studio/projects");
+  if (!projectPattern.test(projectPublicId)) {
+    return navigationActionResult("error", "The campaign project is invalid.", "/studio/projects?error=invalid");
+  }
 
   const target = Number(text(formData, "funding_target_minor"));
   const deadline = text(formData, "deadline");
@@ -53,27 +55,39 @@ export async function saveCampaignDraftAction(formData: FormData): Promise<void>
     requested_terms: requestedTerms,
   });
   if (error || !data || typeof data !== "object" || Array.isArray(data)) {
-    redirect(campaignPath(projectPublicId, text(formData, "campaign_public_id"), Number(text(formData, "terms_version")), "error=save"));
+    return navigationActionResult(
+      "error",
+      "The campaign draft could not be saved safely.",
+      campaignPath(projectPublicId, text(formData, "campaign_public_id"), Number(text(formData, "terms_version")), "error=save"),
+    );
   }
 
   const result = data as Record<string, unknown>;
   const campaignPublicId = String(result.publicId ?? "");
   const version = Number(result.termsVersion ?? 0);
   if (!campaignPattern.test(campaignPublicId) || !Number.isInteger(version) || version < 1) {
-    redirect(campaignPath(projectPublicId, undefined, undefined, "error=save"));
+    return navigationActionResult(
+      "error",
+      "The campaign draft returned an invalid identifier.",
+      campaignPath(projectPublicId, undefined, undefined, "error=save"),
+    );
   }
 
   revalidatePath(`/studio/projects/${projectPublicId}/campaign`);
-  redirect(campaignPath(projectPublicId, campaignPublicId, version, "notice=saved"));
+  return navigationActionResult(
+    "success",
+    "Campaign draft saved.",
+    campaignPath(projectPublicId, campaignPublicId, version, "notice=saved"),
+  );
 }
 
-export async function submitCampaignForPublishAction(formData: FormData): Promise<void> {
+export async function submitCampaignForPublishAction(formData: FormData): Promise<NavigationActionResult> {
   await requireWorkspace("creator", "campaign-submit-publish");
   const projectPublicId = text(formData, "project_public_id");
   const campaignPublicId = text(formData, "campaign_public_id");
   const version = Number(text(formData, "terms_version"));
   if (!projectPattern.test(projectPublicId) || !campaignPattern.test(campaignPublicId) || !Number.isInteger(version) || version < 1) {
-    redirect("/studio/projects");
+    return navigationActionResult("error", "The campaign review request is invalid.", "/studio/projects?error=invalid");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -81,19 +95,29 @@ export async function submitCampaignForPublishAction(formData: FormData): Promis
     requested_campaign_public_id: campaignPublicId,
     expected_terms_version: version,
   });
-  if (error) redirect(campaignPath(projectPublicId, campaignPublicId, version, "error=submit"));
+  if (error) {
+    return navigationActionResult(
+      "error",
+      "The campaign could not be submitted for publish review.",
+      campaignPath(projectPublicId, campaignPublicId, version, "error=submit"),
+    );
+  }
 
   revalidatePath(`/studio/projects/${projectPublicId}/campaign`);
-  redirect(campaignPath(projectPublicId, campaignPublicId, version, "notice=review"));
+  return navigationActionResult(
+    "success",
+    "Campaign ready for publish review.",
+    campaignPath(projectPublicId, campaignPublicId, version, "notice=review"),
+  );
 }
 
-export async function publishCampaignAction(formData: FormData): Promise<void> {
+export async function publishCampaignAction(formData: FormData): Promise<NavigationActionResult> {
   await requireWorkspace("creator", "campaign-publish");
   const projectPublicId = text(formData, "project_public_id");
   const campaignPublicId = text(formData, "campaign_public_id");
   const version = Number(text(formData, "terms_version"));
   if (!projectPattern.test(projectPublicId) || !campaignPattern.test(campaignPublicId) || !Number.isInteger(version) || version < 1) {
-    redirect("/studio/projects");
+    return navigationActionResult("error", "The campaign publish request is invalid.", "/studio/projects?error=invalid");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -101,9 +125,19 @@ export async function publishCampaignAction(formData: FormData): Promise<void> {
     requested_campaign_public_id: campaignPublicId,
     expected_terms_version: version,
   });
-  if (error) redirect(campaignPath(projectPublicId, campaignPublicId, version, "error=publish"));
+  if (error) {
+    return navigationActionResult(
+      "error",
+      "Campaign publication denied.",
+      campaignPath(projectPublicId, campaignPublicId, version, "error=publish"),
+    );
+  }
 
   revalidatePath(`/studio/projects/${projectPublicId}/campaign`);
   revalidatePath(`/p/${campaignPublicId}`);
-  redirect(campaignPath(projectPublicId, campaignPublicId, version, "notice=published"));
+  return navigationActionResult(
+    "success",
+    "Campaign published.",
+    campaignPath(projectPublicId, campaignPublicId, version, "notice=published"),
+  );
 }

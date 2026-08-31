@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+import type { NavigationActionResult } from "@/lib/actions/navigation";
 
 type CampaignEditorProps = {
   projectPublicId: string;
@@ -6,9 +8,9 @@ type CampaignEditorProps = {
   state: string | null;
   termsVersion: number | null;
   terms: Record<string, unknown> | null;
-  saveAction: (formData: FormData) => Promise<void>;
-  submitAction: (formData: FormData) => Promise<void>;
-  publishAction: (formData: FormData) => Promise<void>;
+  saveAction: (formData: FormData) => Promise<NavigationActionResult>;
+  submitAction: (formData: FormData) => Promise<NavigationActionResult>;
+  publishAction: (formData: FormData) => Promise<NavigationActionResult>;
 };
 
 function strings(value: unknown) {
@@ -35,7 +37,7 @@ export function CampaignEditor({
   return (
     <div className="campaign-editor-stack">
       {editable ? (
-        <form action={saveAction} className="studio-form campaign-editor">
+        <NavigationActionForm action={saveAction} className="studio-form campaign-editor">
           <input type="hidden" name="project_public_id" value={projectPublicId} />
           <input type="hidden" name="campaign_public_id" value={campaignPublicId ?? ""} />
           <input type="hidden" name="terms_version" value={version || ""} />
@@ -76,25 +78,25 @@ export function CampaignEditor({
             <textarea name="material_change_rules" rows={4} required maxLength={1000} defaultValue={String(terms?.materialChangeRules ?? "")} />
           </label>
           <button className="studio-button studio-button--primary" type="submit">Save campaign draft</button>
-        </form>
+        </NavigationActionForm>
       ) : null}
 
       {campaignPublicId && state === "draft" && version > 0 ? (
-        <form action={submitAction} className="campaign-stage-action">
+        <NavigationActionForm action={submitAction} className="campaign-stage-action">
           <input type="hidden" name="project_public_id" value={projectPublicId} />
           <input type="hidden" name="campaign_public_id" value={campaignPublicId} />
           <input type="hidden" name="terms_version" value={version} />
           <button className="studio-button" type="submit">Submit for publish review</button>
-        </form>
+        </NavigationActionForm>
       ) : null}
 
       {campaignPublicId && state === "review_ready" && version > 0 ? (
-        <form action={publishAction} className="campaign-stage-action">
+        <NavigationActionForm action={publishAction} className="campaign-stage-action">
           <input type="hidden" name="project_public_id" value={projectPublicId} />
           <input type="hidden" name="campaign_public_id" value={campaignPublicId} />
           <input type="hidden" name="terms_version" value={version} />
           <button className="studio-button studio-button--primary" type="submit">Publish campaign</button>
-        </form>
+        </NavigationActionForm>
       ) : null}
 
       {campaignPublicId && state === "published" ? (

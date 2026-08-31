@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
 import {
   INITIAL_PROJECT_MUTATION_STATE,
   type ProjectMutationState,
 } from "@/app/studio/project-mutation-state";
+import type { NavigationActionResult } from "@/lib/actions/navigation";
 
 type ProjectDefaults = {
   title?: string;
@@ -38,18 +39,17 @@ export function ProjectEditor({
   revision?: number;
   sourceDemandPublicId?: string;
 }) {
-  const [state, formAction, pending] = useActionState(
-    action,
-    INITIAL_PROJECT_MUTATION_STATE,
-  );
-
-  useEffect(() => {
-    if (!state.destination) return;
-    window.location.replace(state.destination);
-  }, [state.destination]);
+  async function navigationAction(formData: FormData): Promise<NavigationActionResult> {
+    const result = await action(INITIAL_PROJECT_MUTATION_STATE, formData);
+    return {
+      status: result.status === "success" ? "success" : "error",
+      message: result.message,
+      destination: result.destination ?? "/studio/projects?error=action",
+    };
+  }
 
   return (
-    <form action={formAction} className="studio-form" aria-busy={pending}>
+    <NavigationActionForm action={navigationAction} className="studio-form">
       {projectPublicId ? <input type="hidden" name="project_public_id" value={projectPublicId} /> : null}
       {revision ? <input type="hidden" name="expected_revision" value={revision} /> : null}
       {sourceDemandPublicId ? <input type="hidden" name="source_demand_public_id" value={sourceDemandPublicId} /> : null}
@@ -64,8 +64,7 @@ export function ProjectEditor({
       <label>Compensation model<select name="compensation_model" defaultValue={defaults.compensationModel ?? "fixed"}><option value="fixed">Fixed</option><option value="revenue_share">Revenue share</option><option value="hybrid">Hybrid</option><option value="unpaid">Unpaid / voluntary</option></select></label>
       <label>Distribution scope<input name="distribution_scope" defaultValue={defaults.distributionScope ?? "Platform release only"} required /></label>
       <label>Rights declarations<input name="rights_declarations" defaultValue={(defaults.rightsDeclarations ?? []).join(", ")} placeholder="original-concept" /></label>
-      <button className="studio-button studio-button--primary" type="submit" disabled={pending}>{submitLabel}</button>
-      {state.status === "error" ? <p className="studio-error" role="alert">{state.message}</p> : null}
-    </form>
+      <button className="studio-button studio-button--primary" type="submit">{submitLabel}</button>
+    </NavigationActionForm>
   );
 }
