@@ -91,7 +91,7 @@ create temp table s9b_public_override(payload jsonb);
 insert into s9b_public_override select public.create_prebook((select payload->>'publicId' from s9b_campaign),2500,'public',null,'prebook:fixture-002');
 select is((select (payload->>'supporterAnonymous')::boolean from s9b_public_override),false,'supporter can explicitly choose public attribution for a commitment');
 select is((select count(distinct supporter_user_id)::integer from public.funding_commitments),1,'multiple commitments from one supporter still represent one supporter');
-select is((select sum(amount_minor) from public.funding_commitments),7500::bigint,'multiple distinct commitments contribute exact amounts');
+select is((select sum(amount_minor)::bigint from public.funding_commitments),7500::bigint,'multiple distinct commitments contribute exact amounts');
 
 update public.campaign_term_versions
 set body=jsonb_set(body,'{deadline}',to_jsonb(to_char((now()-interval '1 day') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"')))
