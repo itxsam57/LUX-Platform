@@ -7,7 +7,7 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_10_RED_ADAPTER",
+    "state": "SLICE_10_RED_PERSISTENCE",
     "current_slice": 10,
     "accepted_slices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Verify the Slice 10 Task 1 payment-adapter contract fails RED on the intended sandbox/provider, idempotency, raw-card rejection, webhook-signature, refund and runtime-environment assertions. Implement only enough payment adapter code to make that contract green, then require the Slice 10 payment-persistence pgTAP contract to fail RED before adding payment tables or transition RPCs.",
+  "next_action": "Verify the Slice 10 Task 2 pgTAP persistence contract fails RED only because payment/private funding tables, legal transition RPCs, webhook replay handling, refund/change requests, badge state and owner-safe funding reads are not implemented. Then add only the constrained Slice 10 persistence migration required to make the unchanged 0017 contract and the complete cumulative DB suite green.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -64,6 +64,14 @@
     "slice_9_browser_passed": 75,
     "slice_9_browser_skipped": 1,
     "slice_9_browser_flaky": 0,
+    "slice_10_task_1_red_head": "10ff4757a8ed9ed7b717e72d8e0800d141f57b42",
+    "slice_10_task_1_red_run": 33394342256,
+    "slice_10_task_1_red_run_number": 618,
+    "slice_10_task_1_green_head": "4d978f140986c6be454366d23bf2e9d05859c73c",
+    "slice_10_task_1_green_run": 33398925428,
+    "slice_10_task_1_green_run_number": 620,
+    "slice_10_task_1_green_passed": true,
+    "slice_10_task_1_unit_tests": 142,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,
