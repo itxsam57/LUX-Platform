@@ -1,4 +1,5 @@
 import type { AgeAssuranceMode } from "../auth/policy";
+import { resolvePaymentProviderMode } from "../payments/adapter";
 import type { PaymentProviderEnvironment, PaymentProviderMode } from "../payments/types";
 import { resolveVerificationProviderMode } from "../verification/policy";
 import type {
@@ -52,6 +53,16 @@ function getVerificationEnvironment(): VerificationProviderEnvironment {
   return "development";
 }
 
+function getPaymentEnvironment(): PaymentProviderEnvironment {
+  const explicitTestOverride = process.env.PAYMENT_ENVIRONMENT === "test";
+  const ciLoopbackRuntime = process.env.CI === "true" && isLoopbackAppUrl(getPublicAppUrl());
+
+  if (explicitTestOverride && ciLoopbackRuntime) return "test";
+  if (process.env.NODE_ENV === "production") return "production";
+  if (process.env.NODE_ENV === "test") return "test";
+  return "development";
+}
+
 export function getVerificationProviderRuntime(): VerificationProviderRuntime {
   const environment = getVerificationEnvironment();
   const providerKey = process.env.IDENTITY_VERIFICATION_PROVIDER?.trim() || null;
@@ -69,10 +80,18 @@ export function getVerificationProviderRuntime(): VerificationProviderRuntime {
 }
 
 export function getPaymentProviderRuntime(): PaymentProviderRuntime {
+  const environment = getPaymentEnvironment();
+  const providerKey = process.env.PAYMENT_PROVIDER?.trim() || null;
+  const sandboxEnabled = process.env.PAYMENT_MODE === "sandbox";
+
   return {
-    environment: "production",
-    mode: "unavailable",
-    providerKey: null,
+    environment,
+    providerKey,
+    mode: resolvePaymentProviderMode({
+      environment,
+      approvedProviderConfigured: providerKey !== null,
+      sandboxEnabled,
+    }),
   };
 }
 
