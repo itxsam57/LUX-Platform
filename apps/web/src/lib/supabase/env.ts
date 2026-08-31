@@ -1,4 +1,5 @@
 import type { AgeAssuranceMode } from "../auth/policy";
+import type { PaymentProviderEnvironment, PaymentProviderMode } from "../payments/types";
 import { resolveVerificationProviderMode } from "../verification/policy";
 import type {
   VerificationProviderEnvironment,
@@ -13,6 +14,12 @@ export type PublicSupabaseConfig = {
 export type VerificationProviderRuntime = {
   environment: VerificationProviderEnvironment;
   mode: VerificationProviderMode;
+  providerKey: string | null;
+};
+
+export type PaymentProviderRuntime = {
+  environment: PaymentProviderEnvironment;
+  mode: PaymentProviderMode;
   providerKey: string | null;
 };
 
@@ -58,6 +65,14 @@ export function getVerificationProviderRuntime(): VerificationProviderRuntime {
       approvedProviderConfigured: providerKey !== null,
       syntheticEnabled,
     }),
+  };
+}
+
+export function getPaymentProviderRuntime(): PaymentProviderRuntime {
+  return {
+    environment: "production",
+    mode: "unavailable",
+    providerKey: null,
   };
 }
 

@@ -7,9 +7,9 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_9_RED_POLICY",
-    "current_slice": 9,
-    "accepted_slices": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    "state": "SLICE_10_RED_ADAPTER",
+    "current_slice": 10,
+    "accepted_slices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
     "owner_testing_policy": "BATCH_AFTER_SLICE_10",
     "max_root_cause_revisions_per_blocker": 3,
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Verify the Slice 9 Task 1 pure campaign-policy contract fails RED for the intended eligibility and campaign-term requirements. Implement only enough pure policy to make that contract green, then require the committed 0014 pgTAP campaign contract to fail RED before adding campaign schema/RPCs. Do not begin Slice 10 until Slice 9 has its own green exact-head cumulative Engineering Gate.",
+  "next_action": "Verify the Slice 10 Task 1 payment-adapter contract fails RED on the intended sandbox/provider, idempotency, raw-card rejection, webhook-signature, refund and runtime-environment assertions. Implement only enough payment adapter code to make that contract green, then require the Slice 10 payment-persistence pgTAP contract to fail RED before adding payment tables or transition RPCs.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -55,7 +55,15 @@
     "slice_6_to_8_database_tests": 383,
     "slice_6_to_8_browser_passed": 73,
     "slice_6_to_8_browser_skipped": 1,
-    "slice_9_task_1_red_contract_head": null,
+    "slice_9_checkpoint_head": "7a40867003f7ddcee9de9c818988a11c08a82355",
+    "slice_9_checkpoint_run": 33393119520,
+    "slice_9_checkpoint_run_number": 616,
+    "slice_9_automated_checkpoint_passed": true,
+    "slice_9_unit_tests": 133,
+    "slice_9_database_tests": 447,
+    "slice_9_browser_passed": 75,
+    "slice_9_browser_skipped": 1,
+    "slice_9_browser_flaky": 0,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,
