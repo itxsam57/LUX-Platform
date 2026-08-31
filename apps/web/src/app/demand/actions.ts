@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdultViewer, requireWorkspace } from "@/lib/auth/context";
+import { navigationActionResult, type NavigationActionResult } from "@/lib/actions/navigation";
 import { normalizeDemandDraft } from "@/lib/demand/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -66,12 +67,16 @@ export async function setDemandSupportAction(formData: FormData): Promise<void> 
   revalidatePath("/app/demand");
 }
 
-export async function respondToDemandAction(formData: FormData): Promise<void> {
+export async function respondToDemandAction(formData: FormData): Promise<NavigationActionResult> {
   await requireWorkspace("creator", "creator-demand");
   const publicId = safePublicId(formData.get("public_id"));
   const requestedResponse = formText(formData, "response");
   if (!publicId || (requestedResponse !== "declined" && requestedResponse !== "interested")) {
-    redirect("/workspace/creator/demand?error=response");
+    return navigationActionResult(
+      "error",
+      "The creator response could not be recorded safely.",
+      "/workspace/creator/demand?error=response",
+    );
   }
 
   const supabase = await createServerSupabaseClient();
@@ -80,10 +85,21 @@ export async function respondToDemandAction(formData: FormData): Promise<void> {
     requested_response: requestedResponse,
   });
 
-  if (error) redirect("/workspace/creator/demand?error=response");
+  if (error) {
+    return navigationActionResult(
+      "error",
+      "The creator response could not be recorded safely.",
+      "/workspace/creator/demand?error=response",
+    );
+  }
 
   revalidatePath("/workspace/creator/demand");
   revalidatePath(`/demand/${publicId}`);
   revalidatePath("/app/demand");
-  redirect(`/workspace/creator/demand?notice=${requestedResponse}&demand=${encodeURIComponent(publicId)}`);
+
+  return navigationActionResult(
+    "success",
+    requestedResponse === "interested" ? "Interest recorded." : "Private decline recorded.",
+    `/workspace/creator/demand?notice=${requestedResponse}&demand=${encodeURIComponent(publicId)}`,
+  );
 }
