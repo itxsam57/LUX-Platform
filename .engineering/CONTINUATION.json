@@ -7,7 +7,7 @@
   "mission": "Build canonical LUX Slices 4 through 10 sequentially, fully test each cumulative slice, and present one combined owner browser handoff only after Slice 10.",
   "governor": {
     "mode": "CRITICAL",
-    "state": "SLICE_10_RED_PERSISTENCE",
+    "state": "SLICE_10_GREEN_PERSISTENCE_CANDIDATE",
     "current_slice": 10,
     "accepted_slices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     "target_slices": [4, 5, 6, 7, 8, 9, 10],
@@ -26,7 +26,7 @@
     "docs/superpowers/plans/2026-08-25-slice-9-campaign-prebook.md",
     "docs/superpowers/plans/2026-08-25-slice-10-funding-dashboard.md"
   ],
-  "next_action": "Verify the Slice 10 Task 2 pgTAP persistence contract fails RED only because payment/private funding tables, legal transition RPCs, webhook replay handling, refund/change requests, badge state and owner-safe funding reads are not implemented. Then add only the constrained Slice 10 persistence migration required to make the unchanged 0017 contract and the complete cumulative DB suite green.",
+  "next_action": "Verify the unchanged Slice 10 Task 2 0017 pgTAP contract and complete cumulative database suite are green on the persistence candidate. If green, begin Task 3 with failing funding-dashboard browser coverage before extending the existing funding routes/actions/UI. If not green, classify the exact persistence defect and revise the root cause without weakening the contract.",
   "provider_policy": {
     "identity": "Deterministic synthetic adapter allowed only in dev/CI; production fails closed until approved provider is configured.",
     "payments": "Deterministic sandbox adapter allowed only in dev/CI; no raw card storage; production fails closed until approved provider is configured."
@@ -72,6 +72,12 @@
     "slice_10_task_1_green_run_number": 620,
     "slice_10_task_1_green_passed": true,
     "slice_10_task_1_unit_tests": 142,
+    "slice_10_task_2_red_head": "db60d3a79d6582858cc578f465d9ed3a8039e322",
+    "slice_10_task_2_red_run": 33401090981,
+    "slice_10_task_2_red_run_number": 622,
+    "slice_10_task_2_red_contract_assertions": 58,
+    "slice_10_task_2_red_expected_failures": 48,
+    "slice_10_task_2_red_valid": true,
     "implementation_started": true,
     "automated_acceptance_complete": false,
     "owner_acceptance_complete": false,
