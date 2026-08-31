@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CampaignEditor } from "@/components/campaigns/campaign-editor";
+import { UrlActionFeedback } from "@/components/feedback/url-action-feedback";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { requireWorkspace } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -14,15 +16,12 @@ function record(value: unknown): Record<string, unknown> | null {
 
 export default async function CampaignEditorPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
   const { publicId } = await params;
   if (!/^prj[0-9a-f]{24}$/.test(publicId)) notFound();
   const viewer = await requireWorkspace("creator", "campaign-editor");
-  const query = await searchParams;
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("get_campaign_editor_context", {
     requested_project_public_id: publicId,
@@ -48,11 +47,19 @@ export default async function CampaignEditorPage({
           <Link className="studio-button" href={`/studio/projects/${publicId}`}>Project</Link>
         </header>
 
-        {query.error === "publish" ? <p className="studio-error" role="alert">Campaign publication denied. Current eligibility gates must pass before publication.</p> : null}
-        {query.error && query.error !== "publish" ? <p className="studio-error" role="alert">The requested campaign action could not be completed safely.</p> : null}
-        {query.notice === "saved" ? <p className="studio-notice" role="status">Campaign draft saved.</p> : null}
-        {query.notice === "review" ? <p className="studio-notice" role="status">Campaign ready for publish review.</p> : null}
-        {query.notice === "published" ? <p className="studio-notice" role="status">Campaign published.</p> : null}
+        <Suspense fallback={null}>
+          <UrlActionFeedback
+            notices={{
+              saved: "Campaign draft saved.",
+              review: "Campaign ready for publish review.",
+              published: "Campaign published.",
+            }}
+            errors={{
+              publish: "Campaign publication denied. Current eligibility gates must pass before publication.",
+            }}
+            genericError="The requested campaign action could not be completed safely."
+          />
+        </Suspense>
 
         <section className="studio-card campaign-boundary">
           <div className="studio-meta">

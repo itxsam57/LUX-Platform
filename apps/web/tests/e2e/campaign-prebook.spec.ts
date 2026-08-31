@@ -157,6 +157,14 @@ async function lockedProject(ownerClient: SupabaseClient, ownerId: string) {
   return projectPublicId;
 }
 
+async function setFundingRestriction(projectPublicId: string, restrictionEnabled: boolean) {
+  const { error } = await admin.rpc("set_project_funding_restriction", {
+    requested_project_public_id: projectPublicId,
+    restriction_enabled: restrictionEnabled,
+  });
+  if (error) throw error;
+}
+
 function futureDate(days: number) {
   const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   return date.toISOString().slice(0, 10);
@@ -205,19 +213,11 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await page.getByRole("button", { name: "Submit for publish review" }).click();
     await expect(page.getByRole("status")).toContainText("Campaign ready for publish review");
 
-    const { error: restrictError } = await admin
-      .from("projects")
-      .update({ funding_restricted: true })
-      .eq("public_id", projectPublicId);
-    if (restrictError) throw restrictError;
+    await setFundingRestriction(projectPublicId, true);
     await page.getByRole("button", { name: "Publish campaign" }).click();
     await expect(page.getByRole("alert")).toContainText("Campaign publication denied");
 
-    const { error: clearRestrictionError } = await admin
-      .from("projects")
-      .update({ funding_restricted: false })
-      .eq("public_id", projectPublicId);
-    if (clearRestrictionError) throw clearRestrictionError;
+    await setFundingRestriction(projectPublicId, false);
     await page.getByRole("button", { name: "Publish campaign" }).click();
     await expect(page.getByRole("status")).toContainText("Campaign published");
     await page.getByRole("link", { name: "View public campaign" }).click();

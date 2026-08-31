@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { UrlActionFeedback } from "@/components/feedback/url-action-feedback";
 import { PrebookForm } from "@/components/funding/prebook-form";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { requireAdultViewer } from "@/lib/auth/context";
@@ -15,15 +17,12 @@ function record(value: unknown): Record<string, unknown> | null {
 
 export default async function CampaignPrebookPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
   const { publicId } = await params;
   if (!/^cmp[0-9a-f]{24}$/.test(publicId)) notFound();
   const viewer = await requireAdultViewer(`/app/funding/${publicId}`);
-  const query = await searchParams;
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("get_public_campaign", { requested_campaign_public_id: publicId });
   const campaign = record(data);
@@ -42,10 +41,12 @@ export default async function CampaignPrebookPage({
           <Link className="studio-button" href={`/p/${publicId}`}>Campaign</Link>
         </header>
 
-        {query.notice === "confirmed" ? (
-          <p className="studio-notice" role="status">Pre-book confirmed. This is not a payment or card authorization.</p>
-        ) : null}
-        {query.error ? <p className="studio-error" role="alert">The pre-book could not be confirmed safely. Review the amount and current campaign eligibility.</p> : null}
+        <Suspense fallback={null}>
+          <UrlActionFeedback
+            notices={{ confirmed: "Pre-book confirmed. This is not a payment or card authorization." }}
+            genericError="The pre-book could not be confirmed safely. Review the amount and current campaign eligibility."
+          />
+        </Suspense>
 
         <section className="studio-card prebook-summary">
           <h2>What you are confirming</h2>
