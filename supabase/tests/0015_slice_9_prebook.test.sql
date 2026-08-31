@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(26);
 
 select has_table('public','funding_commitments','Slice 9 stores durable pre-book commitments');
 select has_function('public','create_prebook',array['text','bigint','text','text','text'],'pre-book RPC exists with an exact typed boundary');
