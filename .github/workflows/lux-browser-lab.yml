@@ -16,6 +16,9 @@ concurrency:
 env:
   TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
   NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.LUX_DEV_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LUX_DEV_SUPABASE_PUBLISHABLE_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY_FROM_GITHUB: ${{ secrets.LUX_DEV_SUPABASE_SERVICE_ROLE_KEY }}
   AGE_ASSURANCE_MODE: self_attestation
   IDENTITY_VERIFICATION_ENVIRONMENT: test
   IDENTITY_VERIFICATION_MODE: synthetic
@@ -26,10 +29,10 @@ jobs:
   brave-acceptance:
     name: Exact-SHA Brave acceptance
     runs-on: [self-hosted, Linux, X64, lux-browser, brave, headless, rdp, ubuntu-24-04]
-    timeout-minutes: 45
+    timeout-minutes: 35
 
     steps:
-      - name: Wait for Email Shield live runner to be idle
+      - name: Wait for Email Shield live work to be idle
         shell: bash
         run: |
           set -euo pipefail
@@ -46,34 +49,51 @@ jobs:
           echo 'Timed out waiting for Email Shield live runner to become idle.' >&2
           exit 1
 
-      - name: Verify dedicated runner and Brave
+      - name: Verify Email Shield-style XFCE runner contract
         shell: bash
         run: |
           set -euo pipefail
           test "$RUNNER_NAME" = "lux-browser-rdp-01"
-          echo "RUNNER=$RUNNER_NAME"
-          echo "OS=$(uname -s)"
-          echo "ARCH=$(uname -m)"
-          echo "NODE=$(node --version)"
-          brave_bin="$(command -v brave-browser || command -v brave-browser-stable || command -v brave || true)"
-          test -n "$brave_bin"
-          echo "BRAVE=$brave_bin"
-          echo "LUX_BROWSER_BRAVE=$brave_bin" >> "$GITHUB_ENV"
+          source "$HOME/lux-live/runtime.env"
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          [[ "$(node --version)" == v22.* ]]
+          test -n "${DISPLAY:-}"
+          test -n "${DBUS_SESSION_BUS_ADDRESS:-}"
+          command -v secret-tool >/dev/null
+          command -v xdpyinfo >/dev/null
+          test -x "$LUX_TEST_BROWSER"
+          xdpyinfo -display "$DISPLAY" >/dev/null
+          {
+            echo "LUX_TEST_BROWSER=$LUX_TEST_BROWSER"
+            echo "LUX_BROWSER_MODE=$LUX_BROWSER_MODE"
+            echo "LUX_LIVE_PRODUCT_ROOT=$LUX_LIVE_PRODUCT_ROOT"
+            echo "LUX_PROFILE_ROOT=$LUX_PROFILE_ROOT"
+            echo "LUX_ARTIFACT_ROOT=$LUX_ARTIFACT_ROOT"
+          } >> "$GITHUB_ENV"
+          echo 'LUX_XFCE_RUNNER_READY=true'
 
-      - name: Checkout exact Slice 10 candidate
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TARGET_SHA }}
-          fetch-depth: 1
-
-      - name: Prove immutable checkout
+      - name: Resolve protected LUX development database credentials
         shell: bash
         run: |
           set -euo pipefail
-          actual="$(git rev-parse HEAD)"
-          echo "Expected candidate: $TARGET_SHA"
-          echo "Actual checkout:    $actual"
-          test "$actual" = "$TARGET_SHA"
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+
+          service_role="${SUPABASE_SERVICE_ROLE_KEY_FROM_GITHUB:-}"
+          if [ -z "$service_role" ]; then
+            service_role="$(secret-tool lookup application lux-browser-lab credential supabase-service-role 2>/dev/null || true)"
+          fi
+          if [ -z "$service_role" ]; then
+            echo 'LUX_DEV_SERVICE_ROLE_MISSING=true' >&2
+            echo 'Store it once in Linux Secret Service; Docker/local Supabase is not used.' >&2
+            exit 9
+          fi
+
+          echo "::add-mask::$service_role"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$service_role" >> "$GITHUB_ENV"
+          unset service_role
+          echo 'LUX_DEV_DATABASE_CREDENTIALS_READY=true'
 
       - uses: pnpm/action-setup@v4
         with:
@@ -82,52 +102,38 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Frozen dependency install
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify Docker availability
+      - name: Prepare exact Slice 10 product SHA like Email Shield
         shell: bash
         run: |
           set -euo pipefail
-          docker version
-          docker info >/dev/null
-          echo 'DOCKER_READY=true'
+          root="$LUX_LIVE_PRODUCT_ROOT"
+          rm -rf "$root"
+          mkdir -p "$root"
+          cd "$root"
+          git init -q
+          git remote add origin https://github.com/itxsam57/LUX-Platform.git
+          git -c protocol.version=2 fetch --no-tags --depth=1 origin "$TARGET_SHA"
+          git checkout --detach -q FETCH_HEAD
+          actual="$(git rev-parse HEAD)"
+          echo "Expected candidate: $TARGET_SHA"
+          echo "Actual checkout:    $actual"
+          test "$actual" = "$TARGET_SHA"
+          pnpm install --frozen-lockfile
+          echo "LUX_EXACT_PRODUCT_PREP_PASS=$actual"
 
-      - uses: supabase/setup-cli@v3
-        with:
-          version: 2.111.0
-
-      - name: Start isolated Supabase test stack
-        run: supabase start
-
-      - name: Export isolated Supabase environment
+      - name: Generate disposable real-Brave Playwright config
         shell: bash
         run: |
           set -euo pipefail
-          eval "$(supabase status -o env)"
-          {
-            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
-            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
-          test -n "$API_URL"
-          test -n "$ANON_KEY"
-          test -n "$SERVICE_ROLE_KEY"
-          echo 'ISOLATED_SUPABASE_READY=true'
-
-      - name: Generate disposable Brave Playwright config
-        shell: bash
-        run: |
-          set -euo pipefail
+          cd "$LUX_LIVE_PRODUCT_ROOT"
           cat > apps/web/playwright.browser-lab.config.ts <<'EOF'
           import { defineConfig, devices } from "@playwright/test";
 
           const localBaseUrl = "http://127.0.0.1:30002";
-          const braveExecutable = process.env.LUX_BROWSER_BRAVE;
-          if (!braveExecutable) throw new Error("LUX_BROWSER_BRAVE is required");
+          const braveExecutable = process.env.LUX_TEST_BROWSER;
+          const visible = process.env.LUX_BROWSER_MODE === "visible";
+          if (!braveExecutable) throw new Error("LUX_TEST_BROWSER is required");
 
           export default defineConfig({
             testDir: "./tests/e2e",
@@ -138,12 +144,15 @@ jobs:
             reporter: [["line"], ["html", { open: "never" }]],
             use: {
               baseURL: localBaseUrl,
+              headless: !visible,
               trace: "retain-on-failure",
               screenshot: "only-on-failure",
               video: "off",
               launchOptions: {
                 executablePath: braveExecutable,
-                args: ["--no-sandbox", "--disable-dev-shm-usage"],
+                args: visible
+                  ? ["--ozone-platform=x11", "--disable-gpu", "--disable-dev-shm-usage"]
+                  : ["--disable-gpu", "--disable-dev-shm-usage"],
               },
             },
             projects: [
@@ -160,10 +169,26 @@ jobs:
           EOF
 
       - name: Run cumulative Slices 4-10 journey in real Brave
-        run: >-
-          pnpm --filter @lux/web exec playwright test
-          tests/e2e/marketplace-4-10-journey.spec.ts
-          --config=playwright.browser-lab.config.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LUX_LIVE_PRODUCT_ROOT"
+          pnpm --filter @lux/web exec playwright test \
+            tests/e2e/marketplace-4-10-journey.spec.ts \
+            --config=playwright.browser-lab.config.ts
+
+      - name: Copy bounded failure evidence to LUX artifact root
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$LUX_ARTIFACT_ROOT"
+          stamp="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          dest="$LUX_ARTIFACT_ROOT/$stamp"
+          mkdir -p "$dest"
+          cp -a "$LUX_LIVE_PRODUCT_ROOT/apps/web/playwright-report" "$dest/" 2>/dev/null || true
+          cp -a "$LUX_LIVE_PRODUCT_ROOT/apps/web/test-results" "$dest/" 2>/dev/null || true
+          echo "LUX_FAILURE_EVIDENCE_LOCAL=$dest"
 
       - name: Publish acceptance summary
         if: always()
@@ -174,23 +199,8 @@ jobs:
             echo ''
             echo "- target product SHA: \`$TARGET_SHA\`"
             echo "- runner: \`$RUNNER_NAME\`"
-            echo '- browser: installed Brave on dedicated Ubuntu RDP runner'
-            echo '- database: disposable isolated Supabase stack on the browser VM'
-            echo '- projects: Brave desktop + Pixel 7 mobile emulation'
+            echo '- architecture: same persistent XFCE/VNC + Brave model as Email Shield'
+            echo '- database: hosted LUX development Supabase; no Docker/local Supabase'
+            echo '- projects: real Brave desktop + Pixel 7 mobile emulation'
             echo '- product branch/PR were not modified by this workflow'
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload bounded failure evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lux-brave-failure-evidence
-          path: |
-            apps/web/playwright-report/
-            apps/web/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Stop isolated Supabase test stack
-        if: always()
-        run: supabase stop --no-backup || true
