@@ -13,6 +13,7 @@ export type FundingSummary = {
   refundedMinor: number;
   currency: string;
   supporterAnonymous: boolean;
+  sandbox: boolean;
   badge: { key: string; visibility: "public" | "private" | "hidden" } | null;
   materialChangeState: string | null;
   refundRequestState: string | null;
@@ -54,7 +55,7 @@ export function parseFundingSummary(value: unknown): FundingSummary | null {
   const currency = typeof row.currency === "string" && /^[A-Z]{3}$/.test(row.currency) ? row.currency : null;
   const createdAt = safeDate(row.createdAt);
   const updatedAt = safeDate(row.updatedAt);
-  if (!publicId || !campaignPublicId || !title || !paymentState || requestedMinor === null || authorizedMinor === null || capturedMinor === null || refundedMinor === null || !currency || typeof row.supporterAnonymous !== "boolean" || !createdAt || !updatedAt) return null;
+  if (!publicId || !campaignPublicId || !title || !paymentState || requestedMinor === null || authorizedMinor === null || capturedMinor === null || refundedMinor === null || !currency || typeof row.supporterAnonymous !== "boolean" || typeof row.sandbox !== "boolean" || !createdAt || !updatedAt) return null;
 
   let safeBadge: FundingSummary["badge"] = null;
   if (badge) {
@@ -76,6 +77,7 @@ export function parseFundingSummary(value: unknown): FundingSummary | null {
     refundedMinor,
     currency,
     supporterAnonymous: row.supporterAnonymous,
+    sandbox: row.sandbox,
     badge: safeBadge,
     materialChangeState: typeof row.materialChangeState === "string" ? row.materialChangeState : null,
     refundRequestState: typeof row.refundRequestState === "string" ? row.refundRequestState : null,
@@ -96,7 +98,7 @@ export function FundingCard({ funding }: { funding: FundingSummary }) {
         <span>{funding.requestedMinor} {funding.currency}</span>
       </div>
       <h2>{funding.title}</h2>
-      <p className="funding-sandbox-note">Sandbox payment state — not production revenue.</p>
+      <p className="funding-sandbox-note">{funding.sandbox ? "Sandbox payment state — not production revenue." : "Payment state is shown without processor identifiers."}</p>
       <dl className="funding-amounts">
         <div><dt>Authorized</dt><dd>{funding.authorizedMinor}</dd></div>
         <div><dt>Captured</dt><dd>{funding.capturedMinor}</dd></div>
