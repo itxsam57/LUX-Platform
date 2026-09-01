@@ -27,6 +27,7 @@ begin
         'refundedMinor',coalesce(transaction_row.refunded_minor,0),
         'currency',version_row.body ->> 'currency',
         'supporterAnonymous',commitment.supporter_anonymous,
+        'sandbox',case when transaction_row.id is null then false else transaction_row.provider_key='sandbox' end,
         'badge',case when badge_row.funding_commitment_id is null then null else jsonb_build_object(
           'key',badge_row.badge_key,
           'visibility',badge_row.visibility
@@ -330,6 +331,7 @@ begin
     'authorizedMinor',coalesce(transaction_row.authorized_minor,0),
     'capturedMinor',coalesce(transaction_row.captured_minor,0),
     'refundedMinor',coalesce(transaction_row.refunded_minor,0),
+    'sandbox',case when transaction_row.id is null then false else transaction_row.provider_key='sandbox' end,
     'badge',case when badge_row.funding_commitment_id is null then null else jsonb_build_object('key',badge_row.badge_key,'visibility',badge_row.visibility) end,
     'materialChange',case when change_row.id is null then null else jsonb_build_object(
       'requestPublicId',change_row.public_id,
