@@ -49,27 +49,11 @@ jobs:
           echo 'Timed out waiting for Email Shield live runner to become idle.' >&2
           exit 1
 
-      - name: Diagnose and verify Email Shield-style XFCE runner contract
+      - name: Verify Email Shield-style XFCE runner contract
         shell: bash
         run: |
           set -euo pipefail
           source "$HOME/lux-live/runtime.env"
-          echo "RUNNER=$RUNNER_NAME"
-          echo "OS=$(uname -s)"
-          echo "ARCH=$(uname -m)"
-          echo "NODE=$(node --version 2>/dev/null || echo missing)"
-          echo "DISPLAY_VALUE=${DISPLAY:-missing}"
-          echo "DBUS_PRESENT=$([ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && echo true || echo false)"
-          echo "XAUTHORITY_VALUE=${XAUTHORITY:-missing}"
-          echo "SECRET_TOOL_PRESENT=$(command -v secret-tool >/dev/null 2>&1 && echo true || echo false)"
-          echo "XDPYINFO_PRESENT=$(command -v xdpyinfo >/dev/null 2>&1 && echo true || echo false)"
-          echo "BRAVE_EXECUTABLE=$LUX_TEST_BROWSER"
-          if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
-            echo 'XDISPLAY_USABLE=true'
-          else
-            echo 'XDISPLAY_USABLE=false'
-          fi
-
           test "$RUNNER_NAME" = "lux-browser-rdp-01"
           test "$(uname -s)" = Linux
           test "$(uname -m)" = x86_64
@@ -80,6 +64,8 @@ jobs:
           command -v xdpyinfo >/dev/null
           test -x "$LUX_TEST_BROWSER"
           xdpyinfo -display "$DISPLAY" >/dev/null
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
           {
             echo "LUX_TEST_BROWSER=$LUX_TEST_BROWSER"
             echo "LUX_BROWSER_MODE=$LUX_BROWSER_MODE"
@@ -88,25 +74,7 @@ jobs:
             echo "LUX_ARTIFACT_ROOT=$LUX_ARTIFACT_ROOT"
           } >> "$GITHUB_ENV"
           echo 'LUX_XFCE_RUNNER_READY=true'
-
-      - name: Resolve protected LUX development database credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$NEXT_PUBLIC_SUPABASE_URL"
-          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-          service_role="${SUPABASE_SERVICE_ROLE_KEY_FROM_GITHUB:-}"
-          if [ -z "$service_role" ]; then
-            service_role="$(secret-tool lookup application lux-browser-lab credential supabase-service-role 2>/dev/null || true)"
-          fi
-          if [ -z "$service_role" ]; then
-            echo 'LUX_DEV_SERVICE_ROLE_MISSING=true' >&2
-            exit 9
-          fi
-          echo "::add-mask::$service_role"
-          echo "SUPABASE_SERVICE_ROLE_KEY=$service_role" >> "$GITHUB_ENV"
-          unset service_role
-          echo 'LUX_DEV_DATABASE_CREDENTIALS_READY=true'
+          echo 'LUX_PUBLIC_DEV_DATABASE_READY=true'
 
       - uses: pnpm/action-setup@v4
         with:
@@ -179,7 +147,38 @@ jobs:
           });
           EOF
 
+      - name: Run public Slice 10 foundation in real Brave
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LUX_LIVE_PRODUCT_ROOT"
+          pnpm --filter @lux/web exec playwright test \
+            tests/e2e/foundation.spec.ts \
+            --config=playwright.browser-lab.config.ts
+          echo 'LUX_REAL_BRAVE_PUBLIC_SMOKE_PASS=true'
+
+      - name: Resolve protected service-role credential for privileged owner suite
+        id: privileged
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_role="${SUPABASE_SERVICE_ROLE_KEY_FROM_GITHUB:-}"
+          if [ -z "$service_role" ]; then
+            service_role="$(secret-tool lookup application lux-browser-lab credential supabase-service-role 2>/dev/null || true)"
+          fi
+          if [ -z "$service_role" ]; then
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo 'LUX_PRIVILEGED_OWNER_SUITE_BLOCKED=missing-service-role'
+            exit 0
+          fi
+          echo "::add-mask::$service_role"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$service_role" >> "$GITHUB_ENV"
+          echo 'available=true' >> "$GITHUB_OUTPUT"
+          unset service_role
+          echo 'LUX_PRIVILEGED_CREDENTIAL_READY=true'
+
       - name: Run cumulative Slices 4-10 journey in real Brave
+        if: steps.privileged.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -187,6 +186,7 @@ jobs:
           pnpm --filter @lux/web exec playwright test \
             tests/e2e/marketplace-4-10-journey.spec.ts \
             --config=playwright.browser-lab.config.ts
+          echo 'LUX_REAL_BRAVE_MARKETPLACE_4_10_PASS=true'
 
       - name: Copy bounded failure evidence to LUX artifact root
         if: failure()
@@ -211,8 +211,13 @@ jobs:
             echo ''
             echo "- target product SHA: \`$TARGET_SHA\`"
             echo "- runner: \`$RUNNER_NAME\`"
-            echo '- architecture: same persistent XFCE/VNC + Brave model as Email Shield'
+            echo '- architecture: persistent XFCE/VNC + installed Brave, matching Email Shield'
             echo '- database: hosted LUX development Supabase; no Docker/local Supabase'
-            echo '- projects: real Brave desktop + Pixel 7 mobile emulation'
-            echo '- product branch/PR were not modified by this workflow'
+            echo '- public foundation: real Brave desktop + Pixel 7 mobile'
+            if [ "${{ steps.privileged.outputs.available }}" = "true" ]; then
+              echo '- privileged Slice 4-10 journey: executed'
+            else
+              echo '- privileged Slice 4-10 journey: waiting only for protected service-role credential'
+            fi
+            echo '- product feature branch/PR were not modified by this workflow'
           } >> "$GITHUB_STEP_SUMMARY"
