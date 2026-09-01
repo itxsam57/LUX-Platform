@@ -108,6 +108,7 @@ async function expectFits(page: Page) {
 test("creator can create and revise a durable project without stale overwrite", async ({ page }, testInfo) => {
   const address = email("s7-owner", testInfo);
   const user = await createUser(address);
+  const stalePage = await page.context().newPage();
   try {
     await activateCreator(page, address, testInfo);
     await page.goto("/studio/projects/new");
@@ -124,14 +125,29 @@ test("creator can create and revise a durable project without stale overwrite", 
     await page.getByRole("button", { name: "Create project draft" }).click();
     await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}$/, { timeout: 15_000 });
     await expect(page.getByText("Revision 1")).toBeVisible();
+
+    const projectUrl = page.url();
+    await stalePage.goto(projectUrl);
+    await expect(stalePage.getByText("Revision 1")).toBeVisible();
+
     await page.getByLabel("Project title").fill("Slice 7 browser project revised");
     await page.getByRole("button", { name: "Save revision" }).click();
     await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?notice=saved$/, { timeout: 15_000 });
     await expect(page.getByText("Revision 2")).toBeVisible();
+
+    await stalePage.getByLabel("Project title").fill("STALE OVERWRITE MUST NOT WIN");
+    await stalePage.getByRole("button", { name: "Save revision" }).click();
+    await expect(stalePage).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?error=conflict$/, { timeout: 15_000 });
+    await expect(stalePage.getByRole("alert")).toContainText("This draft changed elsewhere");
+    await expect(stalePage.getByText("Revision 2")).toBeVisible();
+    await expect(stalePage.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
+
     await page.reload();
     await expect(page.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
     await expectFits(page);
+    await expectFits(stalePage);
   } finally {
+    await stalePage.close();
     await removeUser(user.id);
   }
 });
