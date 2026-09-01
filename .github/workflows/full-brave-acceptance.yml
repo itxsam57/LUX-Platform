@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARGET_SHA: ea04fc226330e33c45fb54e864b143adbdf474a0
+  TARGET_SHA: 0495b1a0e132f7d511624cfcbde09cecbaeb6556
   NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
   AGE_ASSURANCE_MODE: self_attestation
   IDENTITY_VERIFICATION_ENVIRONMENT: test
