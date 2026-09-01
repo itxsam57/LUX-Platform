@@ -43,7 +43,7 @@ jobs:
           echo "LUX_TEST_BROWSER=$LUX_TEST_BROWSER" >> "$GITHUB_ENV"
           echo "LUX_LIVE_PRODUCT_ROOT=$LUX_LIVE_PRODUCT_ROOT" >> "$GITHUB_ENV"
 
-      - name: Identify real-Brave 404 resource exactly
+      - name: Trace exact foundation console error source
         shell: bash
         run: |
           set -euo pipefail
@@ -66,18 +66,34 @@ jobs:
             args: ['--disable-gpu', '--disable-dev-shm-usage'],
           });
           const page = await browser.newPage();
-          const failures = [];
+          const responses = [];
+          const consoleErrors = [];
+          const failedRequests = [];
           page.on('response', (response) => {
-            if (response.status() >= 400) failures.push({ status: response.status(), url: response.url() });
+            if (response.status() >= 400) responses.push({ status: response.status(), url: response.url() });
           });
-          for (const route of ['/', '/auth/login', '/design-system']) {
-            await page.goto(`http://127.0.0.1:30002${route}`);
-            await page.waitForLoadState('networkidle');
-          }
+          page.on('requestfailed', (request) => {
+            failedRequests.push({ url: request.url(), failure: request.failure()?.errorText ?? null });
+          });
+          page.on('console', (message) => {
+            if (message.type() === 'error') {
+              consoleErrors.push({ text: message.text(), location: message.location() });
+            }
+          });
+
+          await page.goto('http://127.0.0.1:30002/');
+          await page.getByRole('link', { name: 'Sign in' }).click();
+          await page.goBack();
+          await page.getByRole('link', { name: 'Design system' }).click();
+          await page.goBack();
+          await page.goForward();
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+
           await browser.close();
-          console.log('BRAVE_HTTP_FAILURES=' + JSON.stringify(failures));
-          const notFound = [...new Set(failures.filter((x) => x.status === 404).map((x) => x.url))];
-          console.log('BRAVE_404_URLS=' + JSON.stringify(notFound));
-          if (!notFound.length) process.exit(4);
+          console.log('BRAVE_HTTP_FAILURES=' + JSON.stringify(responses));
+          console.log('BRAVE_REQUEST_FAILURES=' + JSON.stringify(failedRequests));
+          console.log('BRAVE_CONSOLE_ERRORS=' + JSON.stringify(consoleErrors));
+          if (!consoleErrors.length) process.exit(4);
           EOF
           (cd apps/web && node browser-lab-network-diagnostic.mjs)
