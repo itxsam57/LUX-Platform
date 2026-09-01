@@ -108,9 +108,10 @@ async function expectFits(page: Page) {
 test("creator can create and revise a durable project without stale overwrite", async ({ page }, testInfo) => {
   const address = email("s7-owner", testInfo);
   const user = await createUser(address);
-  const stalePage = await page.context().newPage();
   try {
     await activateCreator(page, address, testInfo);
+    const creatorClient = await authenticatedClient(address);
+
     await page.goto("/studio/projects/new");
     await expect(page.getByRole("heading", { name: "New project draft" })).toBeVisible();
     await page.getByLabel("Project title").fill("Slice 7 browser project");
@@ -125,29 +126,47 @@ test("creator can create and revise a durable project without stale overwrite", 
     await page.getByRole("button", { name: "Create project draft" }).click();
     await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}$/, { timeout: 15_000 });
     await expect(page.getByText("Revision 1")).toBeVisible();
+    await expect(page.locator('input[name="expected_revision"]')).toHaveValue("1");
 
-    const projectUrl = page.url();
-    await stalePage.goto(projectUrl);
-    await expect(stalePage.getByText("Revision 1")).toBeVisible();
+    const projectPublicId = new URL(page.url()).pathname.split("/").at(-1);
+    if (!projectPublicId) throw new Error("Project public id unavailable");
 
-    await page.getByLabel("Project title").fill("Slice 7 browser project revised");
+    const { error: competingUpdateError } = await creatorClient.rpc("update_project_draft", {
+      requested_public_id: projectPublicId,
+      expected_revision: 1,
+      project_input: {
+        title: "Slice 7 browser project revised",
+        publicSynopsis: "A public-safe voluntary creator-led project synopsis for the browser workflow.",
+        privateBrief: "A private production brief with exact boundaries, schedule assumptions, and collaborator planning.",
+        category: "concept",
+        format: "video",
+        boundaries: ["closed-set", "no-surprises"],
+        compensationModel: "fixed",
+        distributionScope: "Platform release only",
+        rightsDeclarations: ["original-concept"],
+      },
+    });
+    if (competingUpdateError) throw competingUpdateError;
+
+    // This page deliberately still holds Revision 1. Its stale write must be rejected.
+    await expect(page.locator('input[name="expected_revision"]')).toHaveValue("1");
+    await page.getByLabel("Project title").fill("STALE OVERWRITE MUST NOT WIN");
+    await page.getByRole("button", { name: "Save revision" }).click();
+    await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?error=conflict$/, { timeout: 15_000 });
+    await expect(page.locator('p.studio-error[role="alert"]')).toContainText("This draft changed elsewhere");
+    await expect(page.getByText("Revision 2")).toBeVisible();
+    await expect(page.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
+
+    // A fresh edit based on the current revision still succeeds through the browser.
+    await expect(page.locator('input[name="expected_revision"]')).toHaveValue("2");
+    await page.getByLabel("Project title").fill("Slice 7 browser project final");
     await page.getByRole("button", { name: "Save revision" }).click();
     await expect(page).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?notice=saved$/, { timeout: 15_000 });
-    await expect(page.getByText("Revision 2")).toBeVisible();
-
-    await stalePage.getByLabel("Project title").fill("STALE OVERWRITE MUST NOT WIN");
-    await stalePage.getByRole("button", { name: "Save revision" }).click();
-    await expect(stalePage).toHaveURL(/\/studio\/projects\/prj[0-9a-f]{24}\?error=conflict$/, { timeout: 15_000 });
-    await expect(stalePage.getByRole("alert")).toContainText("This draft changed elsewhere");
-    await expect(stalePage.getByText("Revision 2")).toBeVisible();
-    await expect(stalePage.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
-
+    await expect(page.getByText("Revision 3")).toBeVisible();
     await page.reload();
-    await expect(page.getByLabel("Project title")).toHaveValue("Slice 7 browser project revised");
+    await expect(page.getByLabel("Project title")).toHaveValue("Slice 7 browser project final");
     await expectFits(page);
-    await expectFits(stalePage);
   } finally {
-    await stalePage.close();
     await removeUser(user.id);
   }
 });
