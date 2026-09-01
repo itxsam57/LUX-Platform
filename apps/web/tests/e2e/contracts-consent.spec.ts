@@ -231,7 +231,7 @@ test("exact terms require personal verified acceptance and consent before creato
 
     await page.getByRole("button", { name: "Lock contract" }).click();
     await expect(page).toHaveURL(new RegExp(`/studio/projects/${projectPublicId}/terms\\?error=lock$`));
-    await expect(page.getByRole("alert")).toContainText("The legal action was denied");
+    await expect(page.locator('p.studio-error[role="alert"]')).toContainText("The legal action was denied");
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await login(page, performerEmail, `/studio/projects/${projectPublicId}/terms`);
