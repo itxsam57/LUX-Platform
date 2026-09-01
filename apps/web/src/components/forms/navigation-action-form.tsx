@@ -1,9 +1,19 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type FormHTMLAttributes,
+  type ReactNode,
+} from "react";
 import type { NavigationActionResult } from "@/lib/actions/navigation";
 
 type NavigationAction = (formData: FormData) => Promise<NavigationActionResult>;
+type NavigationActionFormProps = Omit<FormHTMLAttributes<HTMLFormElement>, "action" | "children" | "onSubmit"> & {
+  action: NavigationAction;
+  children: ReactNode;
+};
 
 function safeInternalDestination(destination: string) {
   return destination.startsWith("/") && !destination.startsWith("//");
@@ -13,11 +23,8 @@ export function NavigationActionForm({
   action,
   children,
   className,
-}: {
-  action: NavigationAction;
-  children: ReactNode;
-  className?: string;
-}) {
+  ...formAttributes
+}: NavigationActionFormProps) {
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState("");
@@ -45,7 +52,7 @@ export function NavigationActionForm({
   }
 
   return (
-    <form onSubmit={submit} className={className} aria-busy={pending}>
+    <form {...formAttributes} onSubmit={submit} className={className} aria-busy={pending}>
       {children}
       {failure ? <p className="studio-error" role="alert">{failure}</p> : null}
     </form>

@@ -77,7 +77,7 @@ export function MaterialChangePanel({
         {refundRequest ? (
           <p className="funding-refund-status">Current request: {refundRequest.amountMinor} minor units · {refundRequest.state}. Reason: {refundRequest.reason}</p>
         ) : null}
-        <NavigationActionForm action={refundAction} className="studio-form studio-form--compact">
+        <NavigationActionForm action={refundAction} className="studio-form studio-form--compact" data-refund-form="">
           <input type="hidden" name="commitment_public_id" value={commitmentPublicId} />
           <input type="hidden" name="idempotency_key" value={refundIdempotencyKey} />
           <label>
