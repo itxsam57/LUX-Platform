@@ -5,10 +5,10 @@ export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero-card">
-        <span className="eyebrow">Crowd demand without implied creator commitment</span>
+        <span className="eyebrow">Creator-controlled marketplace through funding</span>
         <h1>LUX Platform</h1>
         <p className="lede">
-          Fans can publish and support demand while referenced creators remain suggested until they explicitly mark interest. Private declines stay private, and only the interested eligible creator can carry provenance into a creator-owned project draft.
+          Adult fans can discover creators, signal demand, and support published campaigns while creators and depicted people keep control over participation, negotiation, exact terms, consent, and release decisions. Current funding flows use privacy-safe persisted state; synthetic identity and payment adapters remain development and CI tools only.
         </p>
         <div className="status-row">
           <span className="status-dot" aria-hidden="true" />
