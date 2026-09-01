@@ -157,7 +157,9 @@ test("fan funding dashboard preserves private, truthful payment and change state
     });
     if (changeError || !changedTerms?.termsVersion || !changedTerms?.termsHash) throw changeError ?? new Error("Material change fixture unavailable");
     await page.reload(); await expect(page.getByRole("heading", { name: "Campaign terms changed" })).toBeVisible();
-    await expect(page.getByText("January to March 2027")).toBeVisible(); await expect(page.getByText("April to June 2027")).toBeVisible();
+    const deliveryChange = page.getByLabel("Changed campaign delivery window");
+    await expect(deliveryChange.getByText("January to March 2027", { exact: true })).toBeVisible();
+    await expect(deliveryChange.getByText("April to June 2027", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Accept changed terms" }).click(); await expect(page.getByRole("status")).toContainText("Changed terms accepted");
     const refundForm = page.locator("form[data-refund-form]");
     await refundForm.getByLabel("Refund amount (minor units)").fill("1500"); await refundForm.getByLabel("Refund reason").fill("Campaign no longer fits my needs");
