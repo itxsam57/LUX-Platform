@@ -271,21 +271,18 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     const projectPublicId = new URL(creatorPage.url()).pathname.split("/").at(-1);
     if (!projectPublicId) throw new Error("Marketplace project public id unavailable");
 
-    const { data: projectRows, error: projectRowsError } = await admin
-      .from("projects")
-      .select("owner_user_id,source_demand_id")
-      .eq("public_id", projectPublicId)
-      .limit(1);
-    if (projectRowsError || !projectRows?.[0]?.source_demand_id) throw projectRowsError ?? new Error("Demand provenance was not persisted");
-    expect(projectRows[0].owner_user_id).toBe(creator.id);
-    const { data: demandRows, error: demandRowsError } = await admin
-      .from("demands")
-      .select("id,state")
-      .eq("public_id", demandPublicId)
-      .limit(1);
-    if (demandRowsError || !demandRows?.[0]) throw demandRowsError ?? new Error("Converted demand unavailable");
-    expect(demandRows[0].id).toBe(projectRows[0].source_demand_id);
-    expect(demandRows[0].state).toBe("converted");
+    const { data: ownedProject, error: ownedProjectError } = await creatorClient.rpc("get_project_private", {
+      requested_public_id: projectPublicId,
+    });
+    if (ownedProjectError || !ownedProject || typeof ownedProject !== "object" || Array.isArray(ownedProject)) {
+      throw ownedProjectError ?? new Error("Converted project is not visible through the creator-owner projection");
+    }
+    const ownedProjectRecord = ownedProject as Record<string, unknown>;
+    expect(ownedProjectRecord.publicId).toBe(projectPublicId);
+    expect(ownedProjectRecord.title).toBe("Marketplace journey project");
+
+    await page.goto(`/demand/${demandPublicId}`);
+    await expect(page.getByTestId("demand-state")).toHaveText("Converted");
 
     await creatorPage.getByLabel("Recipient handle").fill(performerHandle);
     await creatorPage.getByLabel("Role").fill("performer");
