@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - infra/lux-browser-lab
+    paths:
+      - '.github/workflows/lux-browser-lab.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
+  TARGET_SHA: 86746a9810dcc558eeace34ae29017d2f36b9e3f
   NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.LUX_DEV_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LUX_DEV_SUPABASE_PUBLISHABLE_KEY }}
