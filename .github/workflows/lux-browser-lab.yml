@@ -1,0 +1,169 @@
+name: LUX Browser Lab
+
+on:
+  push:
+    branches:
+      - infra/lux-browser-lab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lux-browser-lab-rdp
+  cancel-in-progress: false
+
+env:
+  TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.LUX_DEV_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LUX_DEV_SUPABASE_PUBLISHABLE_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LUX_DEV_SUPABASE_SERVICE_ROLE_KEY }}
+  AGE_ASSURANCE_MODE: self_attestation
+  IDENTITY_VERIFICATION_ENVIRONMENT: test
+  IDENTITY_VERIFICATION_MODE: synthetic
+  PAYMENT_ENVIRONMENT: test
+  PAYMENT_MODE: sandbox
+
+jobs:
+  brave-acceptance:
+    name: Exact-SHA Brave acceptance
+    runs-on: [self-hosted, Linux, X64, lux-browser, brave, headless, rdp]
+    timeout-minutes: 35
+
+    steps:
+      - name: Wait for Email Shield live runner to be idle
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 180); do
+            if ! ps -eo args= | grep -F '/actions-runner-email-shield/bin/Runner.Worker' | grep -v grep >/dev/null; then
+              echo 'Email Shield live runner is idle.'
+              exit 0
+            fi
+            if [ "$attempt" -eq 1 ]; then
+              echo 'Email Shield live browser work is active; waiting before using shared VM resources.'
+            fi
+            sleep 10
+          done
+          echo 'Timed out waiting for Email Shield live runner to become idle.' >&2
+          exit 1
+
+      - name: Verify dedicated runner health
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "OS=$(uname -s)"
+          echo "ARCH=$(uname -m)"
+          echo "NODE=$(node --version)"
+          echo "PNPM=$(pnpm --version)"
+          brave_bin="$(command -v brave-browser || command -v brave-browser-stable || command -v brave || true)"
+          if [ -z "$brave_bin" ]; then
+            echo 'Brave executable is unavailable.' >&2
+            exit 1
+          fi
+          echo "BRAVE=$brave_bin"
+          echo "LUX_BROWSER_BRAVE=$brave_bin" >> "$GITHUB_ENV"
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          echo 'Required LUX development secrets are present.'
+
+      - name: Checkout exact Slice 10 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 1
+
+      - name: Prove immutable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Expected candidate: $TARGET_SHA"
+          echo "Actual checkout:    $actual"
+          test "$actual" = "$TARGET_SHA"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Frozen dependency install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate disposable Brave Playwright config
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > apps/web/playwright.browser-lab.config.ts <<'EOF'
+          import { defineConfig, devices } from "@playwright/test";
+
+          const localBaseUrl = "http://127.0.0.1:30002";
+          const braveExecutable = process.env.LUX_BROWSER_BRAVE;
+          if (!braveExecutable) throw new Error("LUX_BROWSER_BRAVE is required");
+
+          export default defineConfig({
+            testDir: "./tests/e2e",
+            fullyParallel: false,
+            workers: 1,
+            forbidOnly: true,
+            retries: 0,
+            reporter: [["line"], ["html", { open: "never" }]],
+            use: {
+              baseURL: localBaseUrl,
+              trace: "retain-on-failure",
+              screenshot: "only-on-failure",
+              video: "off",
+              launchOptions: {
+                executablePath: braveExecutable,
+                args: ["--no-sandbox", "--disable-dev-shm-usage"],
+              },
+            },
+            projects: [
+              { name: "brave-desktop", use: { ...devices["Desktop Chrome"] } },
+              { name: "brave-mobile", use: { ...devices["Pixel 7"] } },
+            ],
+            webServer: {
+              command: "pnpm build && pnpm start",
+              url: `${localBaseUrl}/health`,
+              reuseExistingServer: false,
+              timeout: 180_000,
+            },
+          });
+          EOF
+
+      - name: Run cumulative Slices 4-10 journey in real Brave
+        run: >-
+          pnpm --filter @lux/web exec playwright test
+          tests/e2e/marketplace-4-10-journey.spec.ts
+          --config=playwright.browser-lab.config.ts
+
+      - name: Publish acceptance summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## LUX Browser Lab'
+            echo ''
+            echo "- target product SHA: \`$TARGET_SHA\`"
+            echo '- browser: installed Brave on dedicated Ubuntu RDP runner'
+            echo '- projects: Brave desktop + Pixel 7 mobile emulation'
+            echo '- product branch/PR were not modified by this workflow'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bounded failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lux-brave-failure-evidence
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
