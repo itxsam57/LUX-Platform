@@ -36,6 +36,7 @@ export default async function PublicCampaignPage({ params }: { params: Promise<{
         </div>
       </nav>
       <CampaignPublicCard campaign={campaign} />
+      <Link className="studio-button studio-button--primary" href={`/app/funding/${publicId}`}>Pre-book</Link>
     </main>
   );
 }
