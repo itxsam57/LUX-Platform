@@ -107,9 +107,10 @@ async function fundedFixture(ownerClient: SupabaseClient, supporterClient: Supab
   });
   if (prebookError || !commitment?.publicId) throw prebookError ?? new Error("Funding commitment unavailable");
   const commitmentPublicId = String(commitment.publicId);
+  const processorSuffix = commitmentPublicId.slice(3);
   const { error: paymentError } = await admin.rpc("record_payment_transition", {
-    requested_commitment_public_id: commitmentPublicId, requested_provider_key: "sandbox", requested_customer_ref: "cus_sbx_dashboard_fixture",
-    requested_payment_method_ref: "pm_sbx_dashboard_fixture", requested_transaction_ref: "txn_sbx_dashboard_fixture", requested_state: "authorized",
+    requested_commitment_public_id: commitmentPublicId, requested_provider_key: "sandbox", requested_customer_ref: `cus_sbx_${processorSuffix}`,
+    requested_payment_method_ref: `pm_sbx_${processorSuffix}`, requested_transaction_ref: `txn_sbx_${processorSuffix}`, requested_state: "authorized",
     requested_authorized_minor: 5000, requested_captured_minor: 0, requested_refunded_minor: 0, requested_idempotency_key: `payment:${crypto.randomUUID()}`,
   });
   if (paymentError) throw paymentError;
@@ -162,9 +163,10 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await refundForm.getByLabel("Refund amount (minor units)").fill("1500"); await refundForm.getByLabel("Refund reason").fill("Campaign no longer fits my needs");
     await refundForm.evaluate((node) => { const form = node as HTMLFormElement; form.requestSubmit(); form.requestSubmit(); });
     await expect(page.getByRole("status")).toContainText("Refund requested"); await expect(page.getByText(/1500/)).toBeVisible();
+    const captureSuffix = fixture.commitmentPublicId.slice(3);
     const { error: captureError } = await admin.rpc("record_payment_transition", {
-      requested_commitment_public_id: fixture.commitmentPublicId, requested_provider_key: "sandbox", requested_customer_ref: "cus_sbx_dashboard_fixture",
-      requested_payment_method_ref: "pm_sbx_dashboard_fixture", requested_transaction_ref: "txn_sbx_dashboard_fixture", requested_state: "captured",
+      requested_commitment_public_id: fixture.commitmentPublicId, requested_provider_key: "sandbox", requested_customer_ref: `cus_sbx_${captureSuffix}`,
+      requested_payment_method_ref: `pm_sbx_${captureSuffix}`, requested_transaction_ref: `txn_sbx_${captureSuffix}`, requested_state: "captured",
       requested_authorized_minor: 5000, requested_captured_minor: 5000, requested_refunded_minor: 0, requested_idempotency_key: `capture:${crypto.randomUUID()}`,
     });
     if (captureError) throw captureError;
