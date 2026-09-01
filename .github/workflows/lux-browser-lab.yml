@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: lux-browser-lab-rdp
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
@@ -28,7 +28,7 @@ env:
 jobs:
   brave-acceptance:
     name: Exact-SHA Brave acceptance
-    runs-on: [self-hosted, Linux, X64, lux-browser, brave, headless, rdp]
+    runs-on: [self-hosted]
     timeout-minutes: 35
 
     steps:
