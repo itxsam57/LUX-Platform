@@ -138,7 +138,7 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await expect(page.getByRole("heading", { name: "Funding dashboard" })).toBeVisible();
     for (const tab of ["Active", "Successful", "Refunded", "All"]) await expect(page.getByRole("link", { name: tab })).toBeVisible();
     await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
-    await expect(page.getByText(/authorized/i)).toBeVisible();
+    await expect(page.locator(".funding-state").filter({ hasText: /^authorized$/ })).toBeVisible();
     await expect(page.getByText(/sandbox.*not production/i)).toBeVisible();
     await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
     await page.getByRole("link", { name: "Successful" }).click(); await expect(page.getByText("No successful funding yet")).toBeVisible();
@@ -171,6 +171,6 @@ test("fan funding dashboard preserves private, truthful payment and change state
     });
     if (captureError) throw captureError;
     await page.goto("/app/funding?status=successful"); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
-    await expect(page.getByText(/captured/i)).toBeVisible(); await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
+    await expect(page.locator(".funding-state").filter({ hasText: /^captured$/ })).toBeVisible(); await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
   } finally { await admin.auth.admin.deleteUser(owner.id); await admin.auth.admin.deleteUser(supporter.id); }
 });
