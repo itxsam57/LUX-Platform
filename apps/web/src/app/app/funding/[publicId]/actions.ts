@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { navigationActionResult, type NavigationActionResult } from "@/lib/actions/navigation";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -51,14 +52,16 @@ export async function createPrebookAction(formData: FormData): Promise<void> {
   redirect(fundingPath(campaignPublicId, "notice=confirmed"));
 }
 
-export async function saveSupporterBadgeAction(formData: FormData): Promise<void> {
+export async function saveSupporterBadgeAction(formData: FormData): Promise<NavigationActionResult> {
   const commitmentPublicId = text(formData, "commitment_public_id");
-  if (!fundingPattern.test(commitmentPublicId)) redirect("/app/funding");
+  if (!fundingPattern.test(commitmentPublicId)) {
+    return navigationActionResult("error", "The badge request is invalid.", "/app/funding?error=badge");
+  }
   await requireAdultViewer(fundingPath(commitmentPublicId));
   const badgeKey = text(formData, "badge_key");
   const visibility = text(formData, "visibility");
   if (badgeKey.length < 2 || badgeKey.length > 64 || !badgeVisibility.has(visibility)) {
-    redirect(fundingPath(commitmentPublicId, "error=badge"));
+    return navigationActionResult("error", "The badge request is invalid.", fundingPath(commitmentPublicId, "error=badge"));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -67,20 +70,24 @@ export async function saveSupporterBadgeAction(formData: FormData): Promise<void
     requested_badge_key: badgeKey,
     requested_visibility: visibility,
   });
-  if (error) redirect(fundingPath(commitmentPublicId, "error=badge"));
+  if (error) {
+    return navigationActionResult("error", "The badge could not be updated safely.", fundingPath(commitmentPublicId, "error=badge"));
+  }
   revalidateFunding(commitmentPublicId);
-  redirect(fundingPath(commitmentPublicId, "notice=badge"));
+  return navigationActionResult("success", "Badge updated", fundingPath(commitmentPublicId, "notice=badge"));
 }
 
-export async function acceptChangedTermsAction(formData: FormData): Promise<void> {
+export async function acceptChangedTermsAction(formData: FormData): Promise<NavigationActionResult> {
   const commitmentPublicId = text(formData, "commitment_public_id");
-  if (!fundingPattern.test(commitmentPublicId)) redirect("/app/funding");
+  if (!fundingPattern.test(commitmentPublicId)) {
+    return navigationActionResult("error", "The changed-terms request is invalid.", "/app/funding?error=changed");
+  }
   await requireAdultViewer(fundingPath(commitmentPublicId));
   const termsVersion = Number(text(formData, "terms_version"));
   const termsHash = text(formData, "terms_hash");
   const idempotencyKey = text(formData, "idempotency_key");
   if (!Number.isSafeInteger(termsVersion) || termsVersion < 1 || !hashPattern.test(termsHash) || idempotencyKey.length < 8) {
-    redirect(fundingPath(commitmentPublicId, "error=changed"));
+    return navigationActionResult("error", "The changed-terms request is invalid.", fundingPath(commitmentPublicId, "error=changed"));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -90,20 +97,24 @@ export async function acceptChangedTermsAction(formData: FormData): Promise<void
     requested_terms_hash: termsHash,
     requested_idempotency_key: idempotencyKey,
   });
-  if (error) redirect(fundingPath(commitmentPublicId, "error=changed"));
+  if (error) {
+    return navigationActionResult("error", "The changed campaign terms could not be accepted safely.", fundingPath(commitmentPublicId, "error=changed"));
+  }
   revalidateFunding(commitmentPublicId);
-  redirect(fundingPath(commitmentPublicId, "notice=changed"));
+  return navigationActionResult("success", "Changed terms accepted", fundingPath(commitmentPublicId, "notice=changed"));
 }
 
-export async function requestFundingRefundAction(formData: FormData): Promise<void> {
+export async function requestFundingRefundAction(formData: FormData): Promise<NavigationActionResult> {
   const commitmentPublicId = text(formData, "commitment_public_id");
-  if (!fundingPattern.test(commitmentPublicId)) redirect("/app/funding");
+  if (!fundingPattern.test(commitmentPublicId)) {
+    return navigationActionResult("error", "The refund request is invalid.", "/app/funding?error=refund");
+  }
   await requireAdultViewer(fundingPath(commitmentPublicId));
   const amountMinor = Number(text(formData, "amount_minor"));
   const reason = text(formData, "reason");
   const idempotencyKey = text(formData, "idempotency_key");
   if (!Number.isSafeInteger(amountMinor) || amountMinor < 1 || reason.length < 3 || reason.length > 1000 || idempotencyKey.length < 8) {
-    redirect(fundingPath(commitmentPublicId, "error=refund"));
+    return navigationActionResult("error", "The refund request is invalid.", fundingPath(commitmentPublicId, "error=refund"));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -113,7 +124,9 @@ export async function requestFundingRefundAction(formData: FormData): Promise<vo
     requested_reason: reason,
     requested_idempotency_key: idempotencyKey,
   });
-  if (error) redirect(fundingPath(commitmentPublicId, "error=refund"));
+  if (error) {
+    return navigationActionResult("error", "The refund request could not be recorded safely.", fundingPath(commitmentPublicId, "error=refund"));
+  }
   revalidateFunding(commitmentPublicId);
-  redirect(fundingPath(commitmentPublicId, "notice=refund"));
+  return navigationActionResult("success", "Refund requested", fundingPath(commitmentPublicId, "notice=refund"));
 }

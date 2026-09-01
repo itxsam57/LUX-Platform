@@ -1,3 +1,6 @@
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+import type { NavigationActionResult } from "@/lib/actions/navigation";
+
 type MaterialChange = {
   requestPublicId: string;
   state: string;
@@ -21,8 +24,8 @@ type MaterialChangePanelProps = {
   refundRequest: RefundRequest | null;
   acceptIdempotencyKey: string;
   refundIdempotencyKey: string;
-  acceptAction: (formData: FormData) => Promise<void>;
-  refundAction: (formData: FormData) => Promise<void>;
+  acceptAction: (formData: FormData) => Promise<NavigationActionResult>;
+  refundAction: (formData: FormData) => Promise<NavigationActionResult>;
 };
 
 export function MaterialChangePanel({
@@ -51,14 +54,14 @@ export function MaterialChangePanel({
             </div>
           </div>
           {materialChange.state === "pending" ? (
-            <form action={acceptAction} className="studio-form studio-form--compact">
+            <NavigationActionForm action={acceptAction} className="studio-form studio-form--compact">
               <input type="hidden" name="commitment_public_id" value={commitmentPublicId} />
               <input type="hidden" name="terms_version" value={materialChange.termsVersion} />
               <input type="hidden" name="terms_hash" value={materialChange.termsHash} />
               <input type="hidden" name="idempotency_key" value={acceptIdempotencyKey} />
               <p className="funding-disclosure">Acceptance applies only to this exact changed terms hash. LUX does not silently move your original commitment to a new version.</p>
               <button className="studio-button studio-button--primary" type="submit">Accept changed terms</button>
-            </form>
+            </NavigationActionForm>
           ) : <p className="studio-notice">Changed terms accepted for this commitment.</p>}
         </div>
       ) : (
@@ -74,7 +77,7 @@ export function MaterialChangePanel({
         {refundRequest ? (
           <p className="funding-refund-status">Current request: {refundRequest.amountMinor} minor units · {refundRequest.state}. Reason: {refundRequest.reason}</p>
         ) : null}
-        <form action={refundAction} className="studio-form studio-form--compact" data-refund-form>
+        <NavigationActionForm action={refundAction} className="studio-form studio-form--compact">
           <input type="hidden" name="commitment_public_id" value={commitmentPublicId} />
           <input type="hidden" name="idempotency_key" value={refundIdempotencyKey} />
           <label>
@@ -87,7 +90,7 @@ export function MaterialChangePanel({
           </label>
           <p className="funding-disclosure">A refund can remove or change supporter attribution according to the campaign policy. Your badge choice is shown separately and is never treated as financial settlement state.</p>
           <button className="studio-button" type="submit">Request refund</button>
-        </form>
+        </NavigationActionForm>
       </div>
     </section>
   );

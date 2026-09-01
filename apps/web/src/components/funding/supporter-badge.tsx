@@ -1,7 +1,10 @@
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+import type { NavigationActionResult } from "@/lib/actions/navigation";
+
 type SupporterBadgeProps = {
   commitmentPublicId: string;
   badge: { key: string; visibility: "public" | "private" | "hidden" } | null;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<NavigationActionResult>;
 };
 
 export function SupporterBadge({ commitmentPublicId, badge, action }: SupporterBadgeProps) {
@@ -10,7 +13,7 @@ export function SupporterBadge({ commitmentPublicId, badge, action }: SupporterB
       <h2>Supporter badge</h2>
       <p>Choose whether this campaign badge may be shown publicly. Hidden and private choices stay out of public supporter attribution.</p>
       {badge ? <p className="funding-current-badge">Current badge: <strong>{badge.key}</strong> · {badge.visibility} badge</p> : <p>No supporter badge is currently set.</p>}
-      <form action={action} className="studio-form studio-form--compact">
+      <NavigationActionForm action={action} className="studio-form studio-form--compact">
         <input type="hidden" name="commitment_public_id" value={commitmentPublicId} />
         <label>
           Supporter badge
@@ -25,7 +28,7 @@ export function SupporterBadge({ commitmentPublicId, badge, action }: SupporterB
           </select>
         </label>
         <button className="studio-button studio-button--primary" type="submit">Save badge</button>
-      </form>
+      </NavigationActionForm>
     </section>
   );
 }

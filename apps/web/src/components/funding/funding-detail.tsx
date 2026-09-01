@@ -1,3 +1,4 @@
+import type { NavigationActionResult } from "@/lib/actions/navigation";
 import { MaterialChangePanel } from "./material-change-panel";
 import { SupporterBadge } from "./supporter-badge";
 import type { FundingPaymentState } from "./funding-card";
@@ -106,9 +107,9 @@ export function FundingDetail({
   refundIdempotencyKey,
 }: {
   funding: FundingDetailRecord;
-  badgeAction: (formData: FormData) => Promise<void>;
-  acceptAction: (formData: FormData) => Promise<void>;
-  refundAction: (formData: FormData) => Promise<void>;
+  badgeAction: (formData: FormData) => Promise<NavigationActionResult>;
+  acceptAction: (formData: FormData) => Promise<NavigationActionResult>;
+  refundAction: (formData: FormData) => Promise<NavigationActionResult>;
   acceptIdempotencyKey: string;
   refundIdempotencyKey: string;
 }) {
