@@ -9,6 +9,7 @@ import "./demand.css";
 import "./studio.css";
 import "./contracts.css";
 import "./campaigns.css";
+import "./funding.css";
 
 export const metadata: Metadata = { title: "LUX Platform", description: "Crowd-demanded, creator-controlled productions." };
 export default function RootLayout({children}:Readonly<{children:ReactNode}>){return <html lang="en"><body>{children}</body></html>}
