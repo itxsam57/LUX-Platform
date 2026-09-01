@@ -223,6 +223,30 @@ test("exact terms require personal verified acceptance and consent before creato
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await login(page, ownerEmail, `/studio/projects/${projectPublicId}/terms`);
+    await expect(page.getByText("Terms version 1")).toBeVisible();
+    await page.getByLabel("Schedule").fill("October revised window");
+    await page.getByRole("button", { name: "Publish immutable terms" }).click();
+    await expect(page.getByRole("status")).toContainText("Immutable terms published.", { timeout: 10_000 });
+    await expect(page.getByText("Terms version 2")).toBeVisible();
+
+    await page.getByRole("button", { name: "Lock contract" }).click();
+    await expect(page).toHaveURL(new RegExp(`/studio/projects/${projectPublicId}/terms\\?error=lock$`));
+    await expect(page.getByRole("alert")).toContainText("The legal action was denied");
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await login(page, performerEmail, `/studio/projects/${projectPublicId}/terms`);
+    await expect(page.getByText("Terms version 2")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Accept exact terms" })).toBeVisible();
+    await page.getByLabel("Step-up confirmation").fill("step-up-confirmed");
+    await page.getByRole("button", { name: "Accept exact terms" }).click();
+    await expect(page.getByRole("status")).toContainText("Terms accepted personally.", { timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Record depicted-person consent" })).toBeVisible();
+    await page.getByLabel("Consent step-up confirmation").fill("step-up-confirmed");
+    await page.getByRole("button", { name: "Record depicted-person consent" }).click();
+    await expect(page.getByRole("status")).toContainText("Depicted-person consent recorded personally.", { timeout: 10_000 });
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await login(page, ownerEmail, `/studio/projects/${projectPublicId}/terms`);
     await page.getByRole("button", { name: "Lock contract" }).click();
     await expect(page.getByText("Contract locked")).toBeVisible();
     await page.reload();
