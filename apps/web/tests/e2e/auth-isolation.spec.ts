@@ -110,11 +110,15 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
     await confirmAdultAccess(page, /\/workspace\/fan$/);
     await expect(page.getByRole("heading", { name: "Fan workspace" })).toBeVisible();
 
+    await page.goto("/workspace/fan?history=before-creator");
+    await expect(page).toHaveURL(/\/workspace\/fan\?history=before-creator$/);
+    await expect(page.getByRole("heading", { name: "Fan workspace" })).toBeVisible();
     await page.goto("/workspace/creator");
     await expect(page).toHaveURL(/\/access-denied\?route=workspace-creator/);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
     await page.goBack();
+    await expect(page).toHaveURL(/\/workspace\/fan\?history=before-creator$/);
     await expect(page.getByRole("heading", { name: "Fan workspace" })).toBeVisible();
     await page.goForward();
     await expect(page).toHaveURL(/\/access-denied\?route=workspace-creator/);
@@ -148,12 +152,15 @@ test("fan, pending creator, approved creator, and staff routes remain isolated",
     await expect(page).toHaveURL(/\/workspace\/creator$/);
     await expect(page.getByRole("heading", { name: "Creator workspace" })).toBeVisible();
 
+    await page.goto("/workspace/creator?history=before-staff");
+    await expect(page).toHaveURL(/\/workspace\/creator\?history=before-staff$/);
+    await expect(page.getByRole("heading", { name: "Creator workspace" })).toBeVisible();
     await page.goto("/workspace/staff");
     await expect(page).toHaveURL(/\/access-denied\?route=workspace-staff/);
-
     await page.reload();
     await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
     await page.goBack();
+    await expect(page).toHaveURL(/\/workspace\/creator\?history=before-staff$/);
     await expect(page.getByRole("heading", { name: "Creator workspace" })).toBeVisible();
     await page.goForward();
     await expect(page).toHaveURL(/\/access-denied\?route=workspace-staff/);
