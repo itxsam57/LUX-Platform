@@ -49,12 +49,28 @@ jobs:
           echo 'Timed out waiting for Email Shield live runner to become idle.' >&2
           exit 1
 
-      - name: Verify Email Shield-style XFCE runner contract
+      - name: Diagnose and verify Email Shield-style XFCE runner contract
         shell: bash
         run: |
           set -euo pipefail
-          test "$RUNNER_NAME" = "lux-browser-rdp-01"
           source "$HOME/lux-live/runtime.env"
+          echo "RUNNER=$RUNNER_NAME"
+          echo "OS=$(uname -s)"
+          echo "ARCH=$(uname -m)"
+          echo "NODE=$(node --version 2>/dev/null || echo missing)"
+          echo "DISPLAY_VALUE=${DISPLAY:-missing}"
+          echo "DBUS_PRESENT=$([ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && echo true || echo false)"
+          echo "XAUTHORITY_VALUE=${XAUTHORITY:-missing}"
+          echo "SECRET_TOOL_PRESENT=$(command -v secret-tool >/dev/null 2>&1 && echo true || echo false)"
+          echo "XDPYINFO_PRESENT=$(command -v xdpyinfo >/dev/null 2>&1 && echo true || echo false)"
+          echo "BRAVE_EXECUTABLE=$LUX_TEST_BROWSER"
+          if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
+            echo 'XDISPLAY_USABLE=true'
+          else
+            echo 'XDISPLAY_USABLE=false'
+          fi
+
+          test "$RUNNER_NAME" = "lux-browser-rdp-01"
           test "$(uname -s)" = Linux
           test "$(uname -m)" = x86_64
           [[ "$(node --version)" == v22.* ]]
@@ -79,17 +95,14 @@ jobs:
           set -euo pipefail
           test -n "$NEXT_PUBLIC_SUPABASE_URL"
           test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-
           service_role="${SUPABASE_SERVICE_ROLE_KEY_FROM_GITHUB:-}"
           if [ -z "$service_role" ]; then
             service_role="$(secret-tool lookup application lux-browser-lab credential supabase-service-role 2>/dev/null || true)"
           fi
           if [ -z "$service_role" ]; then
             echo 'LUX_DEV_SERVICE_ROLE_MISSING=true' >&2
-            echo 'Store it once in Linux Secret Service; Docker/local Supabase is not used.' >&2
             exit 9
           fi
-
           echo "::add-mask::$service_role"
           echo "SUPABASE_SERVICE_ROLE_KEY=$service_role" >> "$GITHUB_ENV"
           unset service_role
@@ -129,12 +142,10 @@ jobs:
           cd "$LUX_LIVE_PRODUCT_ROOT"
           cat > apps/web/playwright.browser-lab.config.ts <<'EOF'
           import { defineConfig, devices } from "@playwright/test";
-
           const localBaseUrl = "http://127.0.0.1:30002";
           const braveExecutable = process.env.LUX_TEST_BROWSER;
           const visible = process.env.LUX_BROWSER_MODE === "visible";
           if (!braveExecutable) throw new Error("LUX_TEST_BROWSER is required");
-
           export default defineConfig({
             testDir: "./tests/e2e",
             fullyParallel: false,
@@ -181,7 +192,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
+          source "$HOME/lux-live/runtime.env"
           mkdir -p "$LUX_ARTIFACT_ROOT"
           stamp="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           dest="$LUX_ARTIFACT_ROOT/$stamp"
