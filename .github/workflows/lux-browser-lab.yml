@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: lux-browser-lab-rdp
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
@@ -28,7 +28,7 @@ env:
 jobs:
   brave-acceptance:
     name: Exact-SHA Brave acceptance
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, Linux, X64, lux-browser, brave, headless, rdp, ubuntu-24-04]
     timeout-minutes: 35
 
     steps:
@@ -53,6 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$RUNNER_NAME" = "lux-browser-rdp-01"
+          echo "RUNNER=$RUNNER_NAME"
           echo "OS=$(uname -s)"
           echo "ARCH=$(uname -m)"
           echo "NODE=$(node --version)"
@@ -152,6 +154,7 @@ jobs:
             echo '## LUX Browser Lab'
             echo ''
             echo "- target product SHA: \`$TARGET_SHA\`"
+            echo "- runner: \`$RUNNER_NAME\`"
             echo '- browser: installed Brave on dedicated Ubuntu RDP runner'
             echo '- projects: Brave desktop + Pixel 7 mobile emulation'
             echo '- product branch/PR were not modified by this workflow'
