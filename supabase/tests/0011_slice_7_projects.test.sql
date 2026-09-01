@@ -120,7 +120,7 @@ select throws_ok(
     'category','concept','format','video','boundaries',jsonb_build_array('closed-set'),
     'compensationModel','fixed','distributionScope','Platform release only','rightsDeclarations',jsonb_build_array('original-concept')
   )) $q$, (select payload ->> 'publicId' from slice7_project_result limit 1)),
-  '40001', 'project_revision_conflict',
+  'PT409', 'project_revision_conflict',
   'stale expected revisions fail instead of overwriting current state'
 );
 
