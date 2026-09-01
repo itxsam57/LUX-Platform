@@ -106,7 +106,7 @@ export function FundingCard({ funding }: { funding: FundingSummary }) {
       </dl>
       {funding.materialChangeState === "pending" ? <p className="studio-warning">Campaign terms need your review.</p> : null}
       <div className="studio-actions">
-        <Link className="studio-button studio-button--primary" href={`/app/funding/${funding.publicId}`}>View funding</Link>
+        <a className="studio-button studio-button--primary" href={`/app/funding/${funding.publicId}`}>View funding</a>
         <Link className="studio-button" href={`/p/${funding.campaignPublicId}`}>Campaign</Link>
       </div>
     </article>
