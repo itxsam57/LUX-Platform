@@ -1,0 +1,174 @@
+name: Full Real-Brave Acceptance
+
+on:
+  push:
+    branches:
+      - infra/full-brave-acceptance
+    paths:
+      - '.github/workflows/full-brave-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-real-brave-acceptance
+  cancel-in-progress: true
+
+env:
+  TARGET_SHA: 86746a9810dcc558eeace34ae29017d2f36b9e3f
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
+  AGE_ASSURANCE_MODE: self_attestation
+  IDENTITY_VERIFICATION_ENVIRONMENT: test
+  IDENTITY_VERIFICATION_MODE: synthetic
+  PAYMENT_ENVIRONMENT: test
+  PAYMENT_MODE: sandbox
+  CI: 'true'
+
+jobs:
+  real-brave:
+    name: Exact-SHA all-feature Brave desktop + mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout exact product candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Prove exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Expected: $TARGET_SHA"
+          echo "Actual:   $actual"
+          test "$actual" = "$TARGET_SHA"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Frozen dependency install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install real Brave on ephemeral runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
+            https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main' \
+            | sudo tee /etc/apt/sources.list.d/brave-browser-release.list >/dev/null
+          sudo apt-get update -y >/dev/null
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y brave-browser >/dev/null
+          command -v brave-browser
+          brave-browser --version
+          echo "LUX_TEST_BROWSER=$(command -v brave-browser)" >> "$GITHUB_ENV"
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.111.0
+
+      - name: Start fresh isolated Supabase
+        run: supabase start
+
+      - name: Export isolated test credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+          echo 'ISOLATED_SUPABASE_READY=true'
+
+      - name: Create full real-Brave Playwright configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > apps/web/playwright.real-brave-full.config.ts <<'EOF'
+          import { defineConfig, devices } from "@playwright/test";
+
+          const baseURL = "http://127.0.0.1:30002";
+          const executablePath = process.env.LUX_TEST_BROWSER;
+          if (!executablePath) throw new Error("LUX_TEST_BROWSER is required");
+
+          export default defineConfig({
+            testDir: "./tests/e2e",
+            fullyParallel: true,
+            workers: 2,
+            forbidOnly: true,
+            retries: 0,
+            reporter: [["line"], ["html", { open: "never" }]],
+            use: {
+              baseURL,
+              headless: true,
+              trace: "retain-on-failure",
+              screenshot: "only-on-failure",
+              video: "retain-on-failure",
+              launchOptions: {
+                executablePath,
+                args: ["--disable-gpu", "--disable-dev-shm-usage"],
+              },
+            },
+            projects: [
+              { name: "brave-desktop", use: { ...devices["Desktop Chrome"] } },
+              { name: "brave-mobile", use: { ...devices["Pixel 7"] } },
+            ],
+            webServer: {
+              command: "pnpm build && pnpm start",
+              url: `${baseURL}/health`,
+              reuseExistingServer: false,
+              timeout: 180_000,
+            },
+          });
+          EOF
+
+      - name: Run every LUX E2E feature test in real Brave
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @lux/web exec playwright test \
+            --config=playwright.real-brave-full.config.ts
+          echo 'LUX_ALL_FEATURE_REAL_BRAVE_PASS=true'
+
+      - name: Upload bounded failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-real-brave-failure-evidence
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Publish acceptance summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Full Real-Brave Acceptance'
+            echo ''
+            echo "- exact product SHA: \`$TARGET_SHA\`"
+            echo '- browser: installed Brave stable on ephemeral Ubuntu'
+            echo '- database: fresh isolated Supabase on ephemeral GitHub runner'
+            echo '- projects: Brave desktop + Pixel 7 mobile'
+            echo '- scope: every existing LUX Playwright E2E spec, including auth, role isolation, privacy, verification, demand, projects, invitations, contracts, campaigns, pre-book, funding and cumulative Slices 4–10'
+            echo '- no Docker/Supabase data stored on the owner VM'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop isolated Supabase
+        if: always()
+        run: supabase stop --no-backup
