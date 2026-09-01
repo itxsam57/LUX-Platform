@@ -150,7 +150,7 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await expect(page.getByText(/sandbox.*not production revenue/i)).toBeVisible(); await expectNoSensitiveFundingIds(page);
     await page.getByLabel("Supporter badge").fill("founding-supporter"); await page.getByLabel("Badge visibility").selectOption("public");
     await page.getByRole("button", { name: "Save badge" }).click(); await expect(page.getByRole("status")).toContainText("Badge updated");
-    await page.reload(); await expect(page.getByText(/founding-supporter/i)).toBeVisible(); await expect(page.getByText(/public badge/i)).toBeVisible();
+    await page.reload(); await expect(page.locator(".funding-current-badge")).toContainText(/founding-supporter.*public badge/i);
     const { data: changedTerms, error: changeError } = await admin.rpc("register_funding_material_change", {
       requested_commitment_public_id: fixture.commitmentPublicId, requested_expected_delivery_window: "April to June 2027",
       requested_reason: "Delivery window changed after the original commitment.", requested_idempotency_key: `change:${crypto.randomUUID()}`,
