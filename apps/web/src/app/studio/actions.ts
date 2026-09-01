@@ -115,7 +115,7 @@ export async function updateProjectAction(
     project_input: input,
   });
   if (error) {
-    const code = error.code === "40001" ? "conflict" : "save";
+    const code = error.code === "PT409" ? "conflict" : "save";
     return projectMutationError(
       code === "conflict"
         ? "This draft changed elsewhere. Reloaded state must be reviewed before saving again."
