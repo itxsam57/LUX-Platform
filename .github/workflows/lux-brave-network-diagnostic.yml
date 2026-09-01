@@ -3,7 +3,7 @@ name: LUX Brave Network Diagnostic
 on:
   push:
     branches:
-      - infra/lux-browser-lab
+      - infra/lux-browser-diagnostic
     paths:
       - '.github/workflows/lux-brave-network-diagnostic.yml'
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: lux-browser-lab-rdp
+  group: lux-browser-diagnostic-rdp
   cancel-in-progress: false
 
 env:
@@ -83,11 +83,20 @@ jobs:
 
           await page.goto('http://127.0.0.1:30002/');
           await page.getByRole('link', { name: 'Sign in' }).click();
+          await page.waitForURL(/\/auth\/login$/);
           await page.goBack();
-          await page.getByRole('link', { name: 'Design system' }).click();
+          await page.waitForURL(/\/$/);
+          await page.getByRole('heading', { name: 'LUX Platform' }).waitFor();
+          const design = page.getByRole('link', { name: 'Design system' });
+          await design.waitFor();
+          await design.click();
+          await page.waitForURL(/\/design-system$/);
           await page.goBack();
+          await page.waitForURL(/\/$/);
           await page.goForward();
+          await page.waitForURL(/\/design-system$/);
           await page.reload();
+          await page.getByRole('heading', { name: 'Design system', exact: true }).waitFor();
           await page.waitForLoadState('networkidle');
 
           await browser.close();
