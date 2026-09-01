@@ -116,7 +116,7 @@ jobs:
               headless: true,
               trace: "retain-on-failure",
               screenshot: "only-on-failure",
-              video: "retain-on-failure",
+              video: "off",
               launchOptions: {
                 executablePath,
                 args: ["--disable-gpu", "--disable-dev-shm-usage"],
@@ -166,6 +166,7 @@ jobs:
             echo '- database: fresh isolated Supabase on ephemeral GitHub runner'
             echo '- projects: Brave desktop + Pixel 7 mobile'
             echo '- scope: every existing LUX Playwright E2E spec, including auth, role isolation, privacy, verification, demand, projects, invitations, contracts, campaigns, pre-book, funding and cumulative Slices 4–10'
+            echo '- failure evidence: retained trace + screenshot only; video disabled to avoid unnecessary Playwright FFmpeg dependency'
             echo '- no Docker/Supabase data stored on the owner VM'
           } >> "$GITHUB_STEP_SUMMARY"
 
