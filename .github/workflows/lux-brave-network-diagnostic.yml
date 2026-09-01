@@ -1,0 +1,83 @@
+name: LUX Brave Network Diagnostic
+
+on:
+  push:
+    branches:
+      - infra/lux-browser-lab
+    paths:
+      - '.github/workflows/lux-brave-network-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lux-browser-lab-rdp
+  cancel-in-progress: false
+
+env:
+  TARGET_SHA: 3c78889cf2545cdc6c9586fe621a5e12014d0594
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:30002
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.LUX_DEV_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.LUX_DEV_SUPABASE_PUBLISHABLE_KEY }}
+  AGE_ASSURANCE_MODE: self_attestation
+  IDENTITY_VERIFICATION_ENVIRONMENT: test
+  IDENTITY_VERIFICATION_MODE: synthetic
+  PAYMENT_ENVIRONMENT: test
+  PAYMENT_MODE: sandbox
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, Linux, X64, lux-browser, brave, headless, rdp, ubuntu-24-04]
+    timeout-minutes: 8
+    steps:
+      - name: Prove prepared exact SHA and browser runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$HOME/lux-live/runtime.env"
+          cd "$LUX_LIVE_PRODUCT_ROOT"
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -x "$LUX_TEST_BROWSER"
+          test -d apps/web/.next
+          echo "LUX_TEST_BROWSER=$LUX_TEST_BROWSER" >> "$GITHUB_ENV"
+          echo "LUX_LIVE_PRODUCT_ROOT=$LUX_LIVE_PRODUCT_ROOT" >> "$GITHUB_ENV"
+
+      - name: Identify real-Brave 404 resource exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LUX_LIVE_PRODUCT_ROOT"
+          pnpm --filter @lux/web start > /tmp/lux-browser-diagnostic-server.log 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" >/dev/null 2>&1 || true; wait "$server_pid" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for _ in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:30002/health >/dev/null 2>&1; then break; fi
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:30002/health >/dev/null
+
+          cat > apps/web/browser-lab-network-diagnostic.mjs <<'EOF'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch({
+            executablePath: process.env.LUX_TEST_BROWSER,
+            headless: true,
+            args: ['--disable-gpu', '--disable-dev-shm-usage'],
+          });
+          const page = await browser.newPage();
+          const failures = [];
+          page.on('response', (response) => {
+            if (response.status() >= 400) failures.push({ status: response.status(), url: response.url() });
+          });
+          for (const route of ['/', '/auth/login', '/design-system']) {
+            await page.goto(`http://127.0.0.1:30002${route}`);
+            await page.waitForLoadState('networkidle');
+          }
+          await browser.close();
+          console.log('BRAVE_HTTP_FAILURES=' + JSON.stringify(failures));
+          const notFound = [...new Set(failures.filter((x) => x.status === 404).map((x) => x.url))];
+          console.log('BRAVE_404_URLS=' + JSON.stringify(notFound));
+          if (!notFound.length) process.exit(4);
+          EOF
+          (cd apps/web && node browser-lab-network-diagnostic.mjs)
