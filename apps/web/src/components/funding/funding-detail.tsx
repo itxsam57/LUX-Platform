@@ -16,6 +16,7 @@ export type FundingDetailRecord = {
   authorizedMinor: number;
   capturedMinor: number;
   refundedMinor: number;
+  sandbox: boolean;
   badge: { key: string; visibility: "public" | "private" | "hidden" } | null;
   materialChange: {
     requestPublicId: string;
@@ -61,7 +62,7 @@ export function parseFundingDetail(value: unknown): FundingDetailRecord | null {
   const paymentState = typeof row.paymentState === "string" && paymentStates.has(row.paymentState as FundingPaymentState) ? row.paymentState as FundingPaymentState : null;
   const authorizedMinor = minor(row.authorizedMinor); const capturedMinor = minor(row.capturedMinor); const refundedMinor = minor(row.refundedMinor);
   const createdAt = date(row.createdAt); const updatedAt = date(row.updatedAt);
-  if (!publicId || !campaignPublicId || !title || amountMinor === null || !currency || typeof row.supporterAnonymous !== "boolean" || !termsVersion || !termsHash || !expectedDeliveryWindow || !paymentState || authorizedMinor === null || capturedMinor === null || refundedMinor === null || !createdAt || !updatedAt) return null;
+  if (!publicId || !campaignPublicId || !title || amountMinor === null || !currency || typeof row.supporterAnonymous !== "boolean" || typeof row.sandbox !== "boolean" || !termsVersion || !termsHash || !expectedDeliveryWindow || !paymentState || authorizedMinor === null || capturedMinor === null || refundedMinor === null || !createdAt || !updatedAt) return null;
 
   const badgeRow = object(row.badge);
   let badge: FundingDetailRecord["badge"] = null;
@@ -93,7 +94,7 @@ export function parseFundingDetail(value: unknown): FundingDetailRecord | null {
     if (requestPublicId && state && amount !== null && reason) refundRequest = { requestPublicId, state, amountMinor: amount, reason };
   }
 
-  return { publicId, campaignPublicId, title, amountMinor, currency, supporterAnonymous: row.supporterAnonymous, termsVersion, termsHash, expectedDeliveryWindow, paymentState, authorizedMinor, capturedMinor, refundedMinor, badge, materialChange, refundRequest, createdAt, updatedAt };
+  return { publicId, campaignPublicId, title, amountMinor, currency, supporterAnonymous: row.supporterAnonymous, termsVersion, termsHash, expectedDeliveryWindow, paymentState, authorizedMinor, capturedMinor, refundedMinor, sandbox: row.sandbox, badge, materialChange, refundRequest, createdAt, updatedAt };
 }
 
 export function FundingDetail({
@@ -118,7 +119,7 @@ export function FundingDetail({
           <span className="funding-state">{funding.paymentState.replaceAll("_", " ")}</span>
           <span>{funding.amountMinor} {funding.currency}</span>
         </div>
-        <p className="funding-sandbox-note">Sandbox payment state — not production revenue. Processor references stay private and are never rendered here.</p>
+        <p className="funding-sandbox-note">{funding.sandbox ? "Sandbox payment state — not production revenue. Processor references stay private and are never rendered here." : "Payment state is shown without exposing processor references or claiming sandbox revenue."}</p>
         <dl className="funding-amounts funding-amounts--detail">
           <div><dt>Authorized</dt><dd>{funding.authorizedMinor}</dd></div>
           <div><dt>Captured</dt><dd>{funding.capturedMinor}</dd></div>
