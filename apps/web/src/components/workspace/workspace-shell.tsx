@@ -27,9 +27,13 @@ export function WorkspaceShell({
           </span>
         </Link>
         <nav className="workspace-header__nav" aria-label="Account workspace navigation">
+          <Link href="/app/feed">Feed</Link>
+          <Link href="/app/explore">Explore</Link>
+          <Link href="/app/demand">Demand</Link>
           <Link href="/workspace">Workspaces</Link>
           <Link href={activeRoute}>Current context</Link>
           <Link href="/settings/profile">Profile</Link>
+          <Link href="/settings/verification">Verification</Link>
           <Link href="/settings/privacy">Privacy</Link>
           <Link href="/notifications">Notifications</Link>
           <Link href="/settings/security">Security</Link>

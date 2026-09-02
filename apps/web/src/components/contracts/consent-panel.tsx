@@ -1,0 +1,52 @@
+import { acceptTermsAction, recordConsentAction } from "@/app/studio/projects/[publicId]/terms/actions";
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+
+export function ConsentPanel({
+  projectPublicId,
+  hash,
+  participant,
+  accepted,
+  consented,
+}: {
+  projectPublicId: string;
+  hash: string;
+  participant: Record<string, unknown>;
+  accepted: boolean;
+  consented: boolean;
+}) {
+  const depicted = participant.depicted === true;
+
+  return (
+    <section className="studio-card contract-consent">
+      <h2>Your acceptance</h2>
+      <p><strong>Role:</strong> {String(participant.role ?? "participant")}{depicted ? " · depicted participant" : ""}</p>
+      <p className="studio-warning">This action is personal. An agency cannot consent for you. Accepting a collaboration invitation did not accept these terms.</p>
+
+      {accepted ? (
+        <p className="studio-notice">Terms accepted personally.</p>
+      ) : (
+        <NavigationActionForm action={acceptTermsAction} className="studio-form studio-form--compact">
+          <input type="hidden" name="project_public_id" value={projectPublicId} />
+          <input type="hidden" name="terms_hash" value={hash} />
+          <label>Step-up confirmation<input name="step_up_proof" type="password" minLength={8} required autoComplete="off" /></label>
+          <button className="studio-button studio-button--primary" type="submit">Accept exact terms</button>
+        </NavigationActionForm>
+      )}
+
+      {depicted ? (
+        consented ? (
+          <p className="studio-notice">Depicted-person consent recorded personally.</p>
+        ) : accepted ? (
+          <NavigationActionForm action={recordConsentAction} className="studio-form studio-form--compact">
+            <input type="hidden" name="project_public_id" value={projectPublicId} />
+            <input type="hidden" name="terms_hash" value={hash} />
+            <label>Consent step-up confirmation<input name="step_up_proof" type="password" minLength={8} required autoComplete="off" /></label>
+            <button className="studio-button studio-button--primary" type="submit">Record depicted-person consent</button>
+          </NavigationActionForm>
+        ) : (
+          <p>Accept the exact terms before personal depicted-person consent can be recorded.</p>
+        )
+      ) : null}
+    </section>
+  );
+}

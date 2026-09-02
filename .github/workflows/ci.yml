@@ -83,6 +83,8 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:30002"
             echo "AGE_ASSURANCE_MODE=self_attestation"
+            echo "IDENTITY_VERIFICATION_ENVIRONMENT=test"
+            echo "IDENTITY_VERIFICATION_MODE=synthetic"
             echo "RUN_DATABASE_TESTS=1"
           } >> "$GITHUB_ENV"
 

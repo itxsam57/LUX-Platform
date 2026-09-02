@@ -1,0 +1,171 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ConsentPanel } from "@/components/contracts/consent-panel";
+import { TermsDiff } from "@/components/contracts/terms-diff";
+import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+import { WorkspaceShell } from "@/components/workspace/workspace-shell";
+import { requireAdultViewer } from "@/lib/auth/context";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { lockContractAction, publishTermsAction } from "./actions";
+
+export const dynamic = "force-dynamic";
+
+function object(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+export default async function TermsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ publicId: string }>;
+  searchParams: Promise<{ notice?: string; error?: string }>;
+}) {
+  const { publicId } = await params;
+  if (!/^prj[0-9a-f]{24}$/.test(publicId)) notFound();
+
+  const viewer = await requireAdultViewer(`/studio/projects/${publicId}/terms`);
+  const query = await searchParams;
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("get_project_contract_context", {
+    requested_project_public_id: publicId,
+  });
+  const context = object(data);
+  if (error || !context) notFound();
+
+  const terms = object(context.terms);
+  const body = object(terms?.body);
+  const participant = object(context.viewerParticipant);
+  const isOwner = context.isOwner === true;
+  const locked = context.locked === true;
+  const hash = typeof terms?.hash === "string" ? terms.hash : "";
+  const revision = Number(context.projectRevision ?? 1);
+
+  return (
+    <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
+      <main className="studio-page studio-page--narrow">
+        <header className="studio-header">
+          <div>
+            <span className="eyebrow">Immutable legal boundary</span>
+            <h1>Contract terms and consent</h1>
+            <p>Every acceptance binds this exact terms version and hash. Material changes create a new version and require fresh acceptance.</p>
+          </div>
+          <Link className="studio-button" href={`/studio/projects/${publicId}`}>Project</Link>
+        </header>
+
+        {query.error ? (
+          <p className="studio-error" role="alert">The legal action was denied. Check current verification, exact version and required personal authority.</p>
+        ) : null}
+        {query.notice === "published" ? <p className="studio-notice" role="status">Immutable terms published.</p> : null}
+        {query.notice === "accepted" ? <p className="studio-notice" role="status">Terms accepted personally.</p> : null}
+        {query.notice === "consented" ? <p className="studio-notice" role="status">Depicted-person consent recorded personally.</p> : null}
+        {query.notice === "locked" || locked ? <p className="studio-notice" role="status">Contract locked</p> : null}
+
+        {terms && body ? (
+          <>
+            <section className="studio-card contract-version">
+              <div className="studio-meta">
+                <span>Terms version {String(terms.version ?? 1)}</span>
+                <span>Project revision {String(terms.projectRevision ?? revision)}</span>
+              </div>
+              <h2>Exact current terms</h2>
+              <p className="contract-hash"><strong>Version hash</strong><code>{hash}</code></p>
+              <TermsDiff terms={body} />
+              <p className="studio-warning">No acceptance from an older hash carries forward to a newly published version.</p>
+            </section>
+
+            {participant ? (
+              <ConsentPanel
+                projectPublicId={publicId}
+                hash={hash}
+                participant={participant}
+                accepted={context.viewerAccepted === true}
+                consented={context.viewerConsented === true}
+              />
+            ) : null}
+
+            {isOwner && !locked ? (
+              <section className="studio-card">
+                <h2>Contract lock</h2>
+                <p>The database rechecks every current participant acceptance, depicted consent and verification before lock.</p>
+                <NavigationActionForm action={lockContractAction}>
+                  <input type="hidden" name="project_public_id" value={publicId} />
+                  <input type="hidden" name="terms_hash" value={hash} />
+                  <button className="studio-button studio-button--primary" type="submit">Lock contract</button>
+                </NavigationActionForm>
+              </section>
+            ) : null}
+          </>
+        ) : isOwner && !locked ? (
+          <section className="studio-card">
+            <h2>Publish first terms version</h2>
+            <p>Participant lines use <code>handle|role|depicted</code>. Example: <code>creator_handle|performer|true</code>.</p>
+            <TermsForm publicId={publicId} revision={revision} />
+          </section>
+        ) : (
+          <section className="studio-card">
+            <h2>Terms not yet published</h2>
+            <p>The project owner has not presented an exact contract version yet.</p>
+          </section>
+        )}
+
+        {isOwner && !locked && terms ? (
+          <section className="studio-card">
+            <h2>Publish a new immutable version</h2>
+            <p>Changing legal terms never mutates the accepted historical version. Existing acceptance and consent become superseded.</p>
+            <TermsForm publicId={publicId} revision={revision} defaults={body ?? undefined} />
+          </section>
+        ) : null}
+      </main>
+    </WorkspaceShell>
+  );
+}
+
+function TermsForm({
+  publicId,
+  revision,
+  defaults,
+}: {
+  publicId: string;
+  revision: number;
+  defaults?: Record<string, unknown>;
+}) {
+  const arr = (value: unknown) => Array.isArray(value) ? value.map(String).join(", ") : "";
+  const participants = Array.isArray(defaults?.participants)
+    ? defaults.participants
+      .map((item) => {
+        const participant = object(item);
+        return participant
+          ? `${String(participant.handle ?? "")}|${String(participant.role ?? "")}|${participant.depicted === true}`
+          : "";
+      })
+      .filter(Boolean)
+      .join("\n")
+    : "";
+
+  return (
+    <NavigationActionForm action={publishTermsAction} className="studio-form">
+      <input type="hidden" name="project_public_id" value={publicId} />
+      <input type="hidden" name="project_revision" value={revision} />
+      <label>Participants<textarea name="participants" defaultValue={participants} rows={4} required /></label>
+      <label>Primary role<input name="role" defaultValue={String(defaults?.role ?? "performer")} required /></label>
+      <label>Boundaries<input name="boundaries" defaultValue={arr(defaults?.boundaries)} required /></label>
+      <label>Collaborators<input name="collaborators" defaultValue={arr(defaults?.collaborators)} required /></label>
+      <label>Compensation<input name="compensation" defaultValue={String(defaults?.compensation ?? "")} required /></label>
+      <label>Distribution scope<input name="distribution_scope" defaultValue={String(defaults?.distributionScope ?? "")} required /></label>
+      <label>Rights scope<input name="rights_scope" defaultValue={String(defaults?.rightsScope ?? "")} required /></label>
+      <label>Schedule<input name="schedule" defaultValue={String(defaults?.schedule ?? "")} required /></label>
+      <label>Cancellation terms<textarea name="cancellation" defaultValue={String(defaults?.cancellation ?? "")} rows={3} required /></label>
+      <label>
+        <span>Final-cut approval required</span>
+        <select name="final_cut" defaultValue={defaults?.finalCutApprovalRequired === false ? "false" : "true"}>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </label>
+      <button className="studio-button studio-button--primary" type="submit">Publish immutable terms</button>
+    </NavigationActionForm>
+  );
+}

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { changedFiles, currentBranch, currentCommit } from "./git-changes.mjs";
 
@@ -23,7 +23,23 @@ function activeSlice() {
   }
 }
 
+function ownerTestingPolicy() {
+  const path = ".engineering/CONTINUATION.json";
+  if (!existsSync(path)) return "PER_SLICE";
+  try {
+    const state = JSON.parse(readFileSync(path, "utf8"));
+    return state?.governor?.owner_testing_policy === "BATCH_AFTER_SLICE_10"
+      ? "BATCH_AFTER_SLICE_10"
+      : "PER_SLICE";
+  } catch {
+    return "PER_SLICE";
+  }
+}
+
 const slice = activeSlice();
+const testingPolicy = ownerTestingPolicy();
+const ownerTestingDeferred = testingPolicy === "BATCH_AFTER_SLICE_10" && slice.number >= 4 && slice.number < 10;
+
 const featureRules = [
   [/^apps\/web\/src\/app\/page\.tsx$/, "Foundation home page"],
   [/^apps\/web\/src\/app\/design-system\//, "Design-system catalogue"],
@@ -31,7 +47,7 @@ const featureRules = [
   [/^apps\/web\/src\/app\/(loading|error)\.tsx$/, "Route loading and error states"],
   [/^apps\/web\/src\/app\/health\/route\.ts$/, "Health endpoint"],
   [/^apps\/web\/src\/app\/not-found\.tsx$/, "Controlled 404 recovery"],
-  [/^apps\/web\/src\/app\/(layout\.tsx|globals\.css|auth-workspace\.css|profile-privacy\.css)$/, "Global responsive presentation"],
+  [/^apps\/web\/src\/app\/(layout\.tsx|globals\.css|auth-workspace\.css|profile-privacy\.css|discovery\.css|verification\.css|demand\.css|studio\.css|contracts\.css|campaigns\.css|funding\.css)$/, "Global responsive presentation"],
   [/^apps\/web\/src\/(app\/auth\/|components\/auth\/|lib\/supabase\/|middleware\.ts)/, "Authentication and account recovery"],
   [/^apps\/web\/src\/app\/age-assurance\//, "Adult access assurance"],
   [/^apps\/web\/src\/(app\/workspace\/|components\/workspace\/|lib\/auth\/context\.ts)/, "Workspace selection and isolation"],
@@ -41,7 +57,14 @@ const featureRules = [
   [/^apps\/web\/src\/(app\/u\/|app\/profile-media\/|components\/profile\/(public-profile|profile-social-actions))/, "Public profile visibility and social controls"],
   [/^apps\/web\/src\/(app\/settings\/privacy\/|components\/profile\/privacy-settings)/, "Privacy preferences, export, and deletion requests"],
   [/^apps\/web\/src\/app\/notifications\//, "Profile notifications"],
-  [/^supabase\/(config\.toml|migrations\/|tests\/)/, "Authentication, profile, privacy, and media database/RLS boundary"],
+  [/^apps\/web\/src\/(app\/app\/(feed|explore|search)\/|components\/discovery\/|lib\/discovery\/)/, "Feed, explore, and public discovery"],
+  [/^apps\/web\/src\/(app\/settings\/verification\/|components\/verification\/|lib\/verification\/)/, "Creator and depicted-person verification"],
+  [/^apps\/web\/src\/(app\/app\/demand\/|app\/demand\/|components\/demand\/|lib\/demand\/)/, "Crowd Demand Board"],
+  [/^apps\/web\/src\/(app\/studio\/projects\/|app\/studio\/invitations\/|components\/(projects|invitations)\/|lib\/(projects|invitations)\/)/, "Project drafts and collaboration invitations"],
+  [/^apps\/web\/src\/(components\/contracts\/|lib\/contracts\/|app\/studio\/projects\/[^/]+\/terms\/)/, "Contracts, consent, and boundaries"],
+  [/^apps\/web\/src\/(components\/campaigns\/|lib\/campaigns\/|app\/p\/|app\/studio\/projects\/[^/]+\/campaign\/)/, "Campaign publishing and public pre-booking"],
+  [/^apps\/web\/src\/(components\/funding\/|lib\/(funding|payments)\/|app\/app\/funding\/)/, "Fan funding dashboard, badges, and payment state"],
+  [/^supabase\/(config\.toml|migrations\/|tests\/)/, "Database/RLS marketplace boundary"],
 ];
 const visibleFeatures = [...new Set(files.flatMap((file) =>
   featureRules.filter(([pattern]) => pattern.test(file)).map(([, name]) => name),
@@ -49,13 +72,15 @@ const visibleFeatures = [...new Set(files.flatMap((file) =>
 const automationOnly = visibleFeatures.length === 0;
 const status = gateStatus !== "pass"
   ? "NOT READY — AUTOMATED ENGINEERING GATE FAILED"
-  : automationOnly
-    ? "NO MANUAL FEATURE TEST REQUIRED"
-    : "READY FOR MANUAL BROWSER TESTING";
+  : ownerTestingDeferred
+    ? `AUTOMATED SLICE ${slice.number} CHECKPOINT PASS — OWNER TESTING DEFERRED TO SLICE 10`
+    : automationOnly
+      ? "NO MANUAL FEATURE TEST REQUIRED"
+      : "READY FOR MANUAL BROWSER TESTING";
 
 const steps = [];
 if (visibleFeatures.includes("Foundation home page") || visibleFeatures.includes("Global responsive presentation")) {
-  steps.push(`Open \`${localUrl}/\` in desktop Chrome and at a narrow mobile width. Confirm the Slice ${slice.number} account entry card is readable, balanced, and free of horizontal scrolling.`);
+  steps.push(`Open \`${localUrl}/\` in desktop Brave and at a narrow mobile width. Confirm the Slice ${slice.number} account entry card is readable, balanced, and free of horizontal scrolling.`);
 }
 if (visibleFeatures.includes("Authentication and account recovery")) {
   steps.push("Create a new test account with an email you can access. Confirm weak passwords show a clear field error and a valid submission gives the generic check-email response without revealing whether an address already exists.");
@@ -84,6 +109,27 @@ if (visibleFeatures.includes("Privacy preferences, export, and deletion requests
 if (visibleFeatures.includes("Profile notifications")) {
   steps.push("Create a follower notification, open `/notifications`, confirm only the recipient can read it, mark it read, follow its profile deep link, then block the actor and confirm that actor’s notification is suppressed.");
 }
+if (visibleFeatures.includes("Feed, explore, and public discovery")) {
+  steps.push("With two adult-assured accounts, open `/app/feed`, `/app/explore`, and `/app/search`. Confirm public profiles appear, Following only includes followed eligible profiles, private/unlisted profiles are not publicly discoverable, and blocking either direction removes the profile from feed/explore/search after refresh.");
+}
+if (visibleFeatures.includes("Creator and depicted-person verification")) {
+  steps.push("Complete the configured development V2 identity workflow and, on the depicted-performer test account, the V3 performer requirements. Confirm public surfaces show only safe verification state, while expired/revoked or incomplete verification blocks the protected creator/performer action without exposing evidence.");
+}
+if (visibleFeatures.includes("Crowd Demand Board")) {
+  steps.push("Create a demand, support it from a second account, repeat the support action and confirm it remains one support. Reference a creator and confirm public wording says suggested/requested, then decline privately from the creator account and verify no public decline is exposed; finally mark creator interest and confirm only that eligible creator can begin conversion.");
+}
+if (visibleFeatures.includes("Project drafts and collaboration invitations")) {
+  steps.push("Convert an interested demand into a creator-owned project draft, edit and refresh it, then use two tabs to confirm a stale revision cannot overwrite a newer revision. Send a collaboration invitation, exercise interested/considering/negotiating/accepted/declined states, and confirm invitation acceptance does not create legal consent or contract lock.");
+}
+if (visibleFeatures.includes("Contracts, consent, and boundaries")) {
+  steps.push("Publish exact project terms, accept them with the required verified participant, and complete depicted-person consent personally from the performer account. Change a material term and confirm affected acceptance reopens. Confirm an agency cannot execute performer consent and contract lock is unavailable until every required acceptance/consent is current.");
+}
+if (visibleFeatures.includes("Campaign publishing and public pre-booking")) {
+  steps.push("Attempt campaign publication before its verification/contract gates and confirm denial. Complete the gates, publish, and confirm `/p/[publicId]` shows only truthful target/current amount/supporter/deadline/refund/terms data. Pre-book twice with the same action/idempotency path and confirm one durable commitment is created.");
+}
+if (visibleFeatures.includes("Fan funding dashboard, badges, and payment state")) {
+  steps.push("Open `/app/funding` and verify only the signed-in fan’s commitments appear across Active/Successful/Refunded/All. Confirm processor/internal IDs are absent, supporter visibility/badge choices persist, a material campaign change presents the exact comparison, refund is idempotent, and sandbox payment state is clearly labeled as non-production.");
+}
 if (visibleFeatures.includes("Design-system catalogue")) {
   steps.push("Open `/design-system` and confirm the previously accepted Slice 1 catalogue remains visually unchanged and its sidebar navigation stays aligned.");
 }
@@ -103,9 +149,33 @@ const profileOrPrivacyChanged = visibleFeatures.some((item) => [
   "Privacy preferences, export, and deletion requests",
   "Profile notifications",
 ].includes(item));
+const marketplaceBoundaryChanged = visibleFeatures.some((item) => [
+  "Feed, explore, and public discovery",
+  "Creator and depicted-person verification",
+  "Crowd Demand Board",
+  "Project drafts and collaboration invitations",
+  "Contracts, consent, and boundaries",
+  "Campaign publishing and public pre-booking",
+  "Fan funding dashboard, badges, and payment state",
+].includes(item));
 const accountBoundaryChanged = visibleFeatures.some((item) =>
-  item.includes("Workspace") || item.includes("Authentication") || item.includes("Adult") || item.includes("Session") || profileOrPrivacyChanged,
+  item.includes("Workspace") || item.includes("Authentication") || item.includes("Adult") || item.includes("Session") || profileOrPrivacyChanged || marketplaceBoundaryChanged,
 );
+
+const manualSection = ownerTestingDeferred
+  ? `Owner-visible testing is intentionally deferred by the approved continuous Slice 4→10 execution policy. Do **not** perform the steps below yet. They are accumulated for the combined Slice 10 owner handoff.\n\n${steps.length ? steps.map((step, index) => `${index + 1}. ${step}`).join("\n") : "No owner-visible step has accumulated yet."}`
+  : steps.length
+    ? steps.map((step, index) => `${index + 1}. ${step}\n   - **Expected:** The visible behavior is clear and the trusted state remains synchronized without overlap, stale routes, permission merging, privacy leakage, false financial state, or manual refresh.`).join("\n")
+    : "No visible product behavior changed, so no manual browser feature test is required.";
+
+const deferredAreas = [];
+if (slice.number < 5) deferredAreas.push("creator/depicted-person verification");
+if (slice.number < 6) deferredAreas.push("Crowd Demand Board");
+if (slice.number < 7) deferredAreas.push("project drafts and collaboration invitations");
+if (slice.number < 8) deferredAreas.push("contracts, consent and boundaries");
+if (slice.number < 9) deferredAreas.push("campaign publishing and pre-booking");
+if (slice.number < 10) deferredAreas.push("funding dashboard, badges and payment adapter state");
+deferredAreas.push("production uploads", "delivery review", "secure releases", "double-entry ledger/revenue splits/payouts", "copyright operations", "full agency operations", "moderation and later administration");
 
 const report = `${status}
 
@@ -117,6 +187,7 @@ const report = `${status}
 - **Branch:** ${currentBranch()}
 - **Commit:** ${currentCommit()}
 - **Active slice:** ${slice.number} — ${slice.name}
+- **Owner testing policy:** ${testingPolicy}
 - **Local URL:** \`${localUrl}\`
 
 ## Requested change
@@ -130,29 +201,34 @@ ${visibleFeatures.length ? visibleFeatures.map((item) => `- ${item}`).join("\n")
 ## Affected roles
 
 ${accountBoundaryChanged
-  ? "- Anonymous visitor\n- Verified fan\n- Approved creator using the same canonical profile\n- Requested/approved creator or agency account\n- Restricted staff and super-admin contexts"
+  ? "- Anonymous visitor\n- Verified fan\n- Approved creator using the same canonical profile\n- Requested/approved creator or agency account\n- Verified creator/depicted-person roles when introduced\n- Restricted staff and super-admin contexts"
   : "- Anonymous visitor using the current public foundation surfaces"}
 
 ## Exact manual tests
 
-${steps.length ? steps.map((step, index) => `${index + 1}. ${step}\n   - **Expected:** The visible behavior is clear and the trusted state remains synchronized without overlap, stale routes, permission merging, privacy leakage, or manual refresh.`).join("\n") : "No visible product behavior changed, so no manual browser feature test is required."}
+${manualSection}
 
 ## Regression spot-checks
 
-${visibleFeatures.length ? "- URL and visible route remain synchronized.\n- Refresh, Back, and Forward do not bypass authentication, privacy, or active-workspace checks.\n- A requested role grants no permission.\n- Approved roles remain separate until explicitly activated.\n- Private/unlisted/public profile behavior remains distinct.\n- Public pages, media URLs, notifications, and exports expose no internal user UUIDs.\n- No horizontal overflow, covered controls, or uncontrolled error state.\n- Slice 1 design-system presentation and Slice 2 authentication/workspace behavior remain intact." : "- None required from the product owner; applicable automated regressions still run in CI."}
+${visibleFeatures.length ? "- URL and visible route remain synchronized.\n- Refresh, Back, and Forward do not bypass authentication, privacy, verification, state, or active-workspace checks.\n- A requested role grants no permission.\n- Approved roles remain separate until explicitly activated.\n- Private/unlisted/public profile behavior remains distinct.\n- Public projections expose no internal user UUIDs, legal identity evidence, private negotiation data, or payment processor identifiers.\n- Duplicate actions remain idempotent where required.\n- No horizontal overflow, covered controls, uncontrolled error state, fabricated demand/financial state, or manual-refresh dependency.\n- All previously accepted Slice 1–3 behavior remains intact." : "- None required from the product owner; applicable automated regressions still run in CI."}
 
-## Unaffected areas
+## Unaffected / deferred areas
 
-- Feeds, demand boards, verification providers, projects, consent, campaigns, payments, production uploads, secure releases, payouts, copyright operations, agency operations, and later marketplace systems remain for their canonical later slices.
-- Creator/depicted-person identity verification is still Slice 5 and is not implied by the viewer adult-access gate or an approved Creator workspace.
+${deferredAreas.map((item) => `- ${item}`).join("\n")}
+${slice.number < 5 ? "- Creator/depicted-person identity verification is still Slice 5 and is not implied by the viewer adult-access gate or an approved Creator workspace." : "- Adult viewer assurance remains distinct from stricter V2/V3 identity/performer verification."}
 
 ## Setup requirements
 
-${steps.length ? "1. Pull the approved branch.\n2. Put the hosted development Supabase URL and publishable key in `apps/web/.env.local`; never put a service-role/secret key there.\n3. Set `NEXT_PUBLIC_APP_URL=http://127.0.0.1:30002` and keep `AGE_ASSURANCE_MODE=self_attestation` only in the approved development environment.\n4. Apply the listed Slice 2 and Slice 3 migrations to the hosted development Supabase project.\n5. Run `pnpm install --frozen-lockfile`.\n6. Run `pnpm dev`.\n7. Perform the browser steps above using synthetic test accounts." : "None for the product owner."}
+${ownerTestingDeferred
+  ? "None for the product owner at this intermediate checkpoint. Hosted-development migrations and the local browser setup will be reconciled once, immediately before the combined Slice 10 owner handoff."
+  : steps.length
+    ? "1. Pull the approved branch.\n2. Put the hosted development Supabase URL and publishable key in `apps/web/.env.local`; never put a service-role/secret key there.\n3. Set `NEXT_PUBLIC_APP_URL=http://127.0.0.1:30002` and keep development-only provider modes explicit.\n4. Inspect linked migration history, run `supabase db push --linked --dry-run`, and apply only the tracked migrations required through the active slice; never reset the hosted development database.\n5. Run `pnpm install --frozen-lockfile`.\n6. Run `pnpm dev`.\n7. Perform the browser steps above using synthetic test accounts and sandbox provider modes only where explicitly labeled."
+    : "None for the product owner."}
 
 ## Automated evidence
 
-- ${gateStatus === "pass" ? "Applicable full engineering gate passed, including the isolated Supabase database/RLS suite and required desktop/mobile browser workflows." : "One or more required automated checks failed or were blocked. Manual testing must not begin."}
+- ${gateStatus === "pass" ? "Applicable full engineering gate passed, including the isolated Supabase database/RLS suite and required desktop/mobile browser workflows." : "One or more required automated checks failed or were blocked. Owner manual testing must not begin."}
+- ${ownerTestingDeferred ? "This is an intermediate automated checkpoint; owner acceptance is neither requested nor claimed." : "Owner acceptance remains separate from automated evidence."}
 - Changed files considered by the handoff generator: ${files.length}.
 
 ## Known limitations
@@ -160,6 +236,7 @@ ${steps.length ? "1. Pull the approved branch.\n2. Put the hosted development Su
 - No preview deployment is configured.
 - The owner’s PC cannot run the Docker-based local Supabase stack; GitHub Actions is the mandatory database/RLS enforcement environment.
 - Provider-required age assurance remains blocked until a production provider adapter is selected; self-attestation is restricted to the explicit development mode.
+- Synthetic identity/payment adapters, when present, are development/CI workflow tools only and never constitute production provider verification or real financial processing.
 `;
 
 mkdirSync(dirname(output), { recursive: true });

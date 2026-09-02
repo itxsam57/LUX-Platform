@@ -1,101 +1,97 @@
 # LUX Platform — Project Profile
 
-**Audit baseline:** `9a0db2884a04a78a4d92164e965e7a293a9a9e2e`, audited 2026-08-05.  
-**Latest verified implementation:** Build Slice 1 at commit `14c0114a43d32064ce4f77fa0213974a2a858b17`, GitHub Actions run `31027041499`.  
-**Status:** authoritative for the current repository state. Update when architecture, roles, providers, or verification commands change.
+**Accepted `main` baseline:** Slices 0–3 at `21135e5895390294ba503df3d2dfba1a3dc6795e`.  
+**Current cumulative candidate:** Build Slice 10 on Draft PR #6 (`feature/slices-4-10-marketplace-core`).  
+**Latest feature-automation checkpoint:** `be96c14fccc49ecae0987ccb5a908c71c32a3762`, Engineering Gate `33478175270` (#686), fully green.  
+**Closure state:** Slices 4–10 feature automation is green; the Task 5 documentation/build-identity exact-head gate and combined owner browser acceptance are still required. PR #6 remains Draft and unmerged.
 
 ## Product identity
 
-LUX is the working code name for an adult-only, privacy-first, crowd-demanded and crowdfunded creator marketplace. Fans may signal demand and fund opportunities, but creators and performers retain control over participation, collaborators, boundaries, compensation, consent, final release, and distribution.
+LUX is the working code name for an adult-only, privacy-first, crowd-demanded and crowdfunded creator marketplace. Fans may signal demand and fund opportunities, but creators and depicted people retain control over participation, collaborators, boundaries, compensation, consent, final release, and distribution.
 
-The repository implements **Build Slice 1: Design System and Application Shell**. It is not yet a production marketplace and must not be described or tested as though authentication, payments, uploads, consent, moderation, creator workspaces, or other marketplace systems already exist.
-
-Canonical product rules live in `docs/product/00_CANONICAL_PROJECT_LOCK.md`.
+Canonical product rules live in `docs/product/00_CANONICAL_PROJECT_LOCK.md`. The current candidate implements the canonical sequence through **Slice 10 — Fan Funding Dashboard and Badges**. It is not the finished Milestone 1 product; Slices 11–17 remain future work.
 
 ## Current technology
 
-- pnpm 10.15.0 workspace with committed `pnpm-lock.yaml` and frozen-install enforcement.
-- Next.js 15.5.21 App Router.
-- React and React DOM 19.1.1.
-- TypeScript 5.9.2 with strict checking.
-- ESLint 9.34.0 with `eslint-config-next` 15.5.21 and zero-warning policy.
+- pnpm 10.15.0 workspace with committed lockfile and frozen-install enforcement.
+- Next.js 15.5.21 App Router, React 19.1.1, TypeScript 5.9.2 strict.
+- ESLint 9.34.0 with zero-warning policy.
 - Vitest 3.2.4 with V8 coverage.
 - Playwright 1.55.1 with Chromium desktop and Pixel 7 emulation.
-- GitHub Actions on Ubuntu and Node.js 22.
+- Supabase Postgres/RLS/RPC migrations and pgTAP database tests.
+- GitHub Actions on Ubuntu/Node.js 22 with an isolated Supabase stack for database and browser verification.
 
-## Implemented surfaces and shared UI
+## Implemented candidate capabilities through Slice 10
 
-- `/` — public foundation status page identifying Build Slice 1.
-- `/design-system` — complete shared-component catalogue and responsive application shell.
-- `/health` — public GET health contract reporting `buildSlice: 1`.
-- controlled 404 route with recovery link.
-- controlled route-level loading and error boundaries.
-- desktop shell with sidebar and sticky top bar.
-- mobile shell with fixed bottom navigation and protected content spacing.
-- design tokens for colour, typography, spacing, radius, elevation, focus, and reduced motion.
-- shared primitives for buttons, links, fields, selection controls, file selection, badges, status, avatars, cards, tables, pagination, empty/error/loading states, breadcrumbs, stepper, tabs, tooltip, dialog, drawer, menu, and toast.
-- `src/lib/foundation.ts` — active build-slice and required-route contract.
+- Repository/quality foundation, responsive application shell, health and controlled route states.
+- Authentication, password recovery, adult-access boundary, session revocation, role request/approval and active-workspace isolation.
+- Profiles, public/unlisted/private visibility, guarded media, follow/block/mute, privacy export/deletion and notifications.
+- Privacy-safe feed/explore/search discovery with deterministic ranking.
+- Development/CI V2 identity and V3 depicted-person verification workflow with restricted review; production verification fails closed without an approved provider.
+- Crowd Demand Board with idempotent support, suggested-creator semantics, private decline and explicit creator interest.
+- Creator-owned project conversion, versioned project drafts, collaboration invitations, negotiation and agency communication authority boundaries.
+- Immutable exact project terms, personal participant acceptance, depicted-person consent, material-change reopening and contract lock gates.
+- Campaign draft/review/publication, truthful public campaign projection and idempotent pre-booking that is explicitly not a payment.
+- Provider-neutral payment boundary with deterministic sandbox adapter in dev/CI only, durable payment transitions, webhook/idempotency controls, refund intent, material-change workflow, supporter badges/privacy and owner-only funding dashboard/detail.
+- One cumulative desktop/mobile journey proving discovery → demand → creator project → invitation/negotiation → consent/lock → campaign → public pre-book → funding lifecycle.
 
-The file picker and catalogue interactions are presentation fixtures only. They do not upload, persist, authorize, pay, or change production data.
+## Current roles and access boundaries
 
-## Not implemented
-
-Authentication, authorization, age assurance, tenant isolation, database, RLS, storage, uploads, crowdfunding, payments, contracts, consent, review queues, secure streaming, watermarking, moderation, payouts, provider webhooks, background jobs, and all authenticated dashboards are **BLOCKED future scope**, not passing features.
-
-The empty Supabase variables in `.env.example` are placeholders only. No Supabase dependency, migration, schema, bucket, or policy exists.
-
-## Current roles and access
-
-Only an anonymous public visitor exists in code. The finished product plans fan, creator/performer, writer/producer/editor, agency, reviewer/moderator, finance/copyright/support, and super-admin roles, but none is implemented. Cross-role and cross-tenant automation becomes mandatory in the slice that introduces those boundaries.
+The candidate exercises anonymous visitor, adult-assured fan, requested/approved/active creator, depicted performer, agency communication role, restricted reviewer/staff and super-admin contexts. Roles do not silently merge, requested roles grant no permission, performer consent remains personal, and private/public projections are separated by server/RLS/RPC boundaries.
 
 ## Current critical workflows
 
-| ID | Workflow | Risk | Automated layer |
-|---|---|---:|---|
-| FND-WF-001 | Load foundation home page and identify active build slice | Medium | Playwright desktop/mobile |
-| FND-WF-002 | Navigate home → design system → Back/Forward → refresh | High | Playwright desktop/mobile |
-| FND-WF-003 | GET `/health` and validate service/status/build slice/timestamp | Medium | Vitest API contract + Playwright request |
-| FND-WF-004 | Request unknown route and recover home | Medium | Playwright desktop/mobile |
-| UI-WF-001 | Render every required component family without page or console errors | High | Playwright desktop/mobile |
-| UI-WF-002 | Operate tabs by keyboard and close dialog/drawer safely | High | Playwright desktop/mobile |
-| UI-WF-003 | Show truthful toast/menu feedback without hidden durable action | Medium | Playwright desktop/mobile |
-| UI-WF-004 | Use desktop sidebar or mobile bottom navigation without covered controls | High | Playwright desktop/mobile |
-| UI-WF-005 | Prevent horizontal document overflow, including hidden overlay content | High | Playwright desktop/mobile |
-| ENG-WF-001 | Clean frozen dependency install | High | committed lockfile + GitHub Actions |
-| ENG-WF-002 | Run full engineering gate and generate truthful handoff | High | `pnpm verify:full` |
+| Area | Automated protection |
+|---|---|
+| Foundation/navigation | unit + API + desktop/mobile Playwright |
+| Auth/workspace/privacy | policy tests + pgTAP/RLS + desktop/mobile E2E |
+| Discovery/verification/demand | unit + pgTAP + desktop/mobile E2E |
+| Projects/invitations/contracts/consent | unit + pgTAP + desktop/mobile E2E |
+| Campaign/pre-book | policy + pgTAP + desktop/mobile E2E |
+| Funding/payment lifecycle | adapter unit tests + pgTAP + desktop/mobile E2E |
+| Cross-slice owner journey | `marketplace-4-10-journey.spec.ts` desktop/mobile |
+| Engineering gate | `pnpm verify:full` + GitHub Engineering Gate |
 
-## Data classification
+## Latest verified feature checkpoint
 
-- Public source, copy, styles, design tokens, and foundation metadata: public.
-- Environment variable names: internal; values must never be committed or logged.
-- Future identity, age, consent, contracts, private media, messages, payment, and payout data: highly sensitive/restricted and forbidden from CI evidence.
-- Tests use deterministic synthetic, non-personal, non-explicit fixtures.
+Gate #686 on exact branch head `be96c14fccc49ecae0987ccb5a908c71c32a3762` passed:
 
-## Environment and secrets
+- repository integrity and tracked secret scan over 270 files;
+- lint and strict TypeScript;
+- 142 unit tests with 97.57% statements/lines, 85.95% branches and 100% functions;
+- 1 integration/API test;
+- production dependency audit with no known vulnerabilities and runtime compatibility checks;
+- 20 pgTAP files / 509 database and RLS assertions;
+- optimized production build;
+- 79 desktop/mobile browser workflows passed and 1 intentionally skipped, with the Slices 4–10 cumulative journey green on both projects.
 
-Build Slice 1 requires no runtime secrets. Tracked `.env`, provider tokens, private keys, session data, generated screenshots/traces/videos, and private user content are forbidden. Future destructive tests must use isolated non-production providers and stores.
+This checkpoint proves feature automation before Task 5 metadata reconciliation. A new exact-head gate is mandatory after this document and the Slice 10 build identity are committed.
+
+## Data and provider policy
+
+- Public projections are explicit allowlists; private negotiation, verification evidence, internal UUIDs and payment processor references must not leak.
+- Raw card/PAN/CVV data is never stored.
+- Synthetic identity and sandbox payment adapters are deterministic development/CI tools only and never constitute production verification or real revenue.
+- Provider-required production identity/payment modes fail closed until approved adapters are configured.
+
+## Deferred Slices 11–17
+
+Production workspace/uploads, delivery and platform review, secure release/fan library, immutable double-entry ledger/revenue splits/payouts, copyright/stolen-content operations, full agency workspace, moderation/administration and launch hardening remain deferred. The current funding records are not a substitute for Slice 14 accounting or payouts.
 
 ## Verification commands
 
 - `pnpm verify:quick` — repository/secret/lint/type/unit/API checks.
 - `pnpm verify:affected` — safe change-aware verification.
-- `pnpm verify:full` — repository, secret, lint, type, unit, API/integration, dependency audit, runtime compatibility, build, browser tests, and handoff.
+- `pnpm verify:full` — repository, secret, lint, type, unit, API/integration, dependency audit, runtime compatibility, database/RLS, production build, desktop/mobile browser tests and handoff.
 - `pnpm report:handoff` — regenerate the current manual-test handoff.
 
-## Browser matrix
+## Definition of done for the current PR
 
-- Chromium desktop in CI: required for applicable source/config changes.
-- Chromium Pixel 7 emulation in CI: required for applicable source/config changes.
-- Current Slice 1 evidence: 9 desktop and 9 mobile workflows, 18/18 passing.
-- Owner’s local Chrome on Windows: manual only when the generated handoff lists visible tests.
-- Firefox/WebKit: not configured yet to control cost; add only when compatibility risk justifies them.
+Task 5 is complete only when the reconciliation head itself passes the full Engineering Gate and the generated handoff says the combined Slices 4–10 browser pack is ready. The owner must then complete that visible handoff. PR #6 must remain Draft and unmerged until owner acceptance is recorded.
 
-## Definition of done
+## Known limitations
 
-A change is done only when it preserves the canonical product rules, avoids unrelated redesign, passes repository and secret checks, lint, strict types, applicable tests, dependency audit, runtime compatibility, production build, applicable desktop/mobile workflows, and generates a truthful handoff. The owner performs only the visible tests listed in that handoff.
-
-## Known current limitations
-
-- No deployment preview provider is configured; local browser handoffs use `http://127.0.0.1:30002` only when visible testing is required.
-- One moderate production dependency advisory remains disclosed below the high/critical blocking threshold.
-- Product-system tests remain blocked until their corresponding build slices exist.
+- No preview deployment is configured.
+- The owner's local machine cannot provide the Docker-based Supabase enforcement environment; GitHub Actions is the mandatory database/RLS verification environment.
+- Production age/identity/payment providers are not configured; corresponding production actions remain fail-closed.
+- Slices 11–17 are intentionally not implemented by this PR.

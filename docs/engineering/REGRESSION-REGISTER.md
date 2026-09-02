@@ -1,61 +1,97 @@
 # LUX Platform — Regression Register
 
-Stable IDs remain permanent. Do not remove or weaken a protection without explicit approval and replacement evidence.
+Stable IDs are permanent. Do not remove or weaken a protection without explicit approval and replacement evidence.
 
-Status is evaluated on the active candidate. **ACTIVE** means the protection exists and must pass the applicable gate; **PARTIAL** means the implemented slice is protected but a broader later product layer still needs its own regression; **BLOCKED** means the corresponding production system is intentionally absent.
+Status is evaluated on the active cumulative candidate. **ACTIVE** means the protection exists and must keep passing; **PARTIAL** means the implemented portion is protected but a broader later slice remains; **BLOCKED** means the corresponding system is intentionally absent.
 
-| ID | Defect prevented | Expected behavior | Automated protection | Status |
-|---|---|---|---|---|
-| REG-001 | URL changes while visible page stays stale or requires refresh | Route, Back, Forward, and refresh always show the matching screen | Playwright foundation/navigation/history/refresh | ACTIVE |
-| REG-002 | Cross-role or cross-workspace access | Trusted server/API/database boundaries deny unauthorized routes and data | pgTAP auth/workspace RLS + `auth-isolation.spec.ts` | ACTIVE |
-| REG-003 | Button changes text without completing a real workflow | Implemented production controls perform authorized durable actions and report truthful success/failure | Slice 2/3 integration + E2E; later actions require their own tests | ACTIVE/PARTIAL |
-| REG-004 | Submitted evidence missing for reviewer or reviewer result missing for submitter | Both sides reference one durable record and synchronize without refresh | future upload/review integration | BLOCKED |
-| REG-005 | File or form state leaks into another record/account | Implemented profile state and media stay owner-scoped; later records require equivalent guards | profile RPC/RLS + media boundary + E2E | ACTIVE/PARTIAL |
-| REG-006 | Allowed media cannot upload/replace/preview safely | Declared profile image types validate, sanitize, persist, replace and render consistently | media unit tests + pgTAP media boundary + profile E2E | ACTIVE/PARTIAL |
-| REG-007 | Draft text disappears after navigation/refresh | Saved draft restores; unsaved-exit behavior is explicit | future draft-bearing workflow tests | BLOCKED |
-| REG-008 | Notification opens dead/wrong/unauthorized route | Recipient-only notification deep link opens the permitted profile target and blocked actors are suppressed | pgTAP notification rules + `privacy-rights.spec.ts` | ACTIVE |
-| REG-009 | Back action enters another workspace or revives stale permission | Back/Forward/refresh/direct navigation remains inside current authorized workspace | `auth-isolation.spec.ts` desktop/mobile | ACTIVE |
-| REG-010 | White screen, silent crash, or uncontrolled error | Controlled loading/error/404 state; no uncaught page or console errors | route boundaries + Playwright page-error/console/404 checks | ACTIVE |
-| REG-011 | Duplicate click creates duplicate durable effect | Implemented idempotent flows create one durable effect; payment idempotency remains future scope | deletion/follow notification pgTAP + privacy E2E | ACTIVE/PARTIAL |
-| REG-012 | Queue item disappears while permanently pending elsewhere | One valid state transition updates all projections atomically | future queue/state-machine integration | BLOCKED |
-| REG-013 | Internal links use raw anchors and fail framework navigation rules | Internal route navigation uses framework-safe navigation and passes lint/browser tests | ESLint + Playwright | ACTIVE |
-| REG-014 | Unit coverage includes framework/config files and creates misleading failure | Coverage floor applies to unit-testable application/domain logic; UI/routes have separate tests | Vitest config + engineering gate | ACTIVE |
-| REG-015 | CI cache/setup fails because lockfile is missing or install drifts | Lockfile is committed; CI uses frozen install and supported pnpm cache | repository check + frozen GitHub Actions install | ACTIVE |
-| REG-016 | Generated evidence or secrets enter Git | Reports, coverage, build output, traces, screenshots, video, env files and keys remain untracked | `.gitignore`, repository check, secret scan | ACTIVE |
-| REG-017 | Release/payout occurs without consent, legality, copyright, quality and review gates | All required durable approvals precede entitlement or ledger release | future consent/security/ledger tests | BLOCKED |
-| REG-018 | Agency action replaces performer consent | Performer personally accepts project-specific terms and required final-cut approval | future consent/authorization tests | BLOCKED |
-| REG-019 | Vulnerable framework/browser dependencies pass unnoticed | Production audit blocks required advisories and frozen audited versions are committed | dependency audit + frozen install | ACTIVE |
-| REG-020 | Security override resolves but breaks Next.js runtime image tooling | Audited runtime resolutions remain compatible and Sharp performs real image conversion | runtime compatibility check + production build + media tests | ACTIVE |
-| REG-021 | Expensive browser setup runs after cheap prerequisite failure | Browser install/tests are blocked until cheap prerequisite gates pass | master gate ordering + GitHub workflow dependency | ACTIVE |
-| REG-022 | Owner receives vague or unnecessary manual testing | Generated handoff lists exact visible tests only after automated readiness | `report:handoff` + GitHub Job Summary | ACTIVE |
-| REG-023 | Fixed mobile navigation covers a button | Interactive content retains safe bottom clearance and visible controls remain actionable | mobile shell/touch-target Playwright | ACTIVE |
-| REG-024 | Hidden tooltip/overlay widens the mobile document | Absolutely positioned content stays bounded by viewport | desktop/mobile overflow regression | ACTIVE |
-| REG-025 | Invalid responsive width silently creates intrinsic overflow | Responsive containers use valid widths and document never exceeds viewport | build + desktop/mobile overflow workflow | ACTIVE |
-| REG-026 | Tabs look keyboard-accessible while focus and selection diverge | ArrowLeft/Right, Home and End keep focus and selected tab synchronized | desktop/mobile design-system workflow | ACTIVE |
-| REG-027 | Dialog/drawer opens without reliable close path | Labelled overlays close through controls and Escape without trapping route | desktop/mobile overlay workflow | ACTIVE |
-| REG-028 | Handoff describes an old slice or obsolete test | Handoff derives active slice and changed visible surfaces from repository state | handoff generator + Job Summary | ACTIVE |
-| REG-029 | Catalogue control implies a production action that does not exist | Fixtures explicitly state they do not upload, persist, authorize, pay or modify production data | catalogue copy assertions + browser review | ACTIVE |
-| REG-030 | Weak/generic auth behavior leaks whether an account exists | Sign-up/recovery responses remain safe while valid verification/recovery still works | auth policy + desktop/mobile `auth-isolation.spec.ts` | ACTIVE |
-| REG-031 | “Sign out all devices” leaves an older protected session usable | Revocation invalidates prior sessions while allowing a fresh authenticated session | pgTAP precise revocation + desktop/mobile E2E | ACTIVE |
-| REG-032 | Requested Creator/Agency role becomes permission before approval | Requested state grants no protected route/data access | auth/workspace RLS + direct-route E2E | ACTIVE |
-| REG-033 | Approved roles silently merge or activate themselves | Approved roles remain separate until explicit workspace activation; unrelated staff access remains denied | auth/workspace RLS + history/refresh/direct-route E2E | ACTIVE |
-| REG-034 | Public profile response leaks email, auth metadata, age evidence or internal UUID | Public profile is an allowlisted projection only | pgTAP `0003_profiles_privacy_rls` + profile E2E | ACTIVE |
-| REG-035 | Public/unlisted/private profile states collapse into one visibility mode | Public is generally readable, unlisted is direct-link readable but undiscoverable, private is owner-only | pgTAP visibility assertions + desktop/mobile profile E2E | ACTIVE |
-| REG-036 | Profile media stores attacker metadata, exposes account UUID path, or ignores privacy | Decode/auto-orient/constrain/strip/re-encode to WebP; private bucket uses opaque namespace; guarded handle route enforces visibility | media unit tests + pgTAP `0004`/`0006` + profile E2E | ACTIVE |
-| REG-037 | Duplicate handle or unsafe link persists and later renders dangerous/stale state | Handle uniqueness/reserved rules and HTTPS-only links fail safely; valid edits persist after refresh | policy unit tests + `profile-hardening.spec.ts` | ACTIVE |
-| REG-038 | Follow/block edges remain contradictory or block can be bypassed | Blocking removes follow edges both directions, prevents interaction, hides profiles, and unblock permits a fresh lawful follow | pgTAP relationship rules + profile E2E | ACTIVE |
-| REG-039 | Mute/block privacy right becomes unavailable after adult assurance expires | Existing mute/block relationships can still be removed with a current authenticated session | pgTAP age-revocation boundary + `privacy-rights.spec.ts` | ACTIVE |
-| REG-040 | Supporter identity defaults public by accident | Supporter anonymity defaults on, preview matches durable resolver, and preference persists | profile/privacy boundary + E2E | ACTIVE |
-| REG-041 | Account export leaks tokens, auth metadata, age evidence or internal UUID relationships | Export uses explicit owner allowlist, UUID-free social projection and writes a receipt | pgTAP `0005_profile_export_boundary` + `privacy-export.spec.ts` | ACTIVE |
-| REG-042 | Repeated deletion submit creates multiple active deletion requests | Exact confirmation produces at most one active request and cancellation is durable | pgTAP privacy rules + `privacy-rights.spec.ts` | ACTIVE |
-| REG-043 | Notification is readable by another user or survives a block relationship | Only recipient reads/marks it; profile deep link is authorized; blocked actor notification is suppressed | pgTAP + `privacy-rights.spec.ts` | ACTIVE |
-| REG-044 | Adult assurance expires between media staging and durable profile mutation | Final storage/profile mutation revalidates current authorization/assurance and fails closed | pgTAP `0006_media_staging_age_revocation` + profile hardening workflows | ACTIVE |
-| REG-045 | Public avatar replacement changes address or serves stale/partially committed media | Replacement completes before success state and stable guarded media URL resolves the new processed object | media boundary + `profile-hardening.spec.ts` | ACTIVE |
+| ID | Defect prevented / expected behavior | Automated protection | Status |
+|---|---|---|---|
+| REG-001 | URL/history changes never leave stale visible state or require manual refresh | foundation/navigation/history Playwright | ACTIVE |
+| REG-002 | Cross-role/workspace access is denied by trusted server/API/database boundaries | auth/workspace pgTAP + E2E | ACTIVE |
+| REG-003 | Visible controls complete real authorized durable workflows and report truthful state | cumulative integration + E2E | ACTIVE |
+| REG-004 | Verification submitter/reviewer state remains one durable normalized record | Slice 5 pgTAP + verification E2E | ACTIVE/PARTIAL |
+| REG-005 | Record/form/media state never leaks between owners | profile/project/funding RLS/RPC + E2E | ACTIVE |
+| REG-006 | Supported profile media validates, sanitizes, persists, replaces and renders consistently | media unit + pgTAP + E2E | ACTIVE/PARTIAL |
+| REG-007 | Saved drafts survive navigation/refresh and stale revisions cannot overwrite newer state | project/campaign persistence + project E2E | ACTIVE |
+| REG-008 | Notifications remain recipient-only, block-aware and deep-link correctly | notification pgTAP + privacy-rights E2E | ACTIVE |
+| REG-009 | Back/Forward/direct navigation cannot revive another workspace or stale permission | auth-isolation E2E | ACTIVE |
+| REG-010 | White screens/silent crashes are replaced by controlled loading/error/404 states | route boundaries + Playwright runtime checks | ACTIVE |
+| REG-011 | Duplicate clicks/retries do not create duplicate durable effects, including demand/pre-book/payment/refund paths | pgTAP + E2E + payment tests | ACTIVE |
+| REG-012 | Queue transitions update durable subject state rather than disappearing on one side | verification transition RPC + E2E | ACTIVE/PARTIAL |
+| REG-013 | Internal navigation remains framework-safe | ESLint + Playwright | ACTIVE |
+| REG-014 | Coverage measures unit-testable logic while browser/integration tests cover routes/persistence | Vitest config + engineering gate | ACTIVE |
+| REG-015 | Dependency install cannot drift | committed lockfile + frozen CI install | ACTIVE |
+| REG-016 | Generated evidence, private env files or secrets never enter Git | gitignore + repo check + secret scan | ACTIVE |
+| REG-017 | Consent/contract gates precede later release/payout; release/ledger enforcement remains future scope | Slice 8 contracts/consent + future Slices 13–14 | PARTIAL |
+| REG-018 | Agency communication can never replace personal performer consent | Slice 8 pgTAP + contracts-consent E2E | ACTIVE |
+| REG-019 | Vulnerable production dependencies do not pass unnoticed | dependency audit + frozen versions | ACTIVE |
+| REG-020 | Security overrides cannot silently break runtime image tooling | runtime compatibility + build + media tests | ACTIVE |
+| REG-021 | Expensive browser work never runs after a cheap prerequisite failure | master gate ordering + workflow dependency | ACTIVE |
+| REG-022 | Owner receives exact visible tests only after automated readiness; Slices 4–10 are batched | handoff generator + Job Summary + governor | ACTIVE |
+| REG-023 | Fixed mobile navigation never covers actionable controls | mobile shell/touch-target Playwright | ACTIVE |
+| REG-024 | Hidden overlay content never widens the mobile document | desktop/mobile overflow regressions | ACTIVE |
+| REG-025 | Invalid responsive sizing never creates intrinsic horizontal overflow | build + desktop/mobile overflow | ACTIVE |
+| REG-026 | Keyboard tab focus and selected state remain synchronized | design-system Playwright | ACTIVE |
+| REG-027 | Dialog/drawer/menu always has reliable close/Escape behavior | design-system Playwright | ACTIVE |
+| REG-028 | Handoff never reports an obsolete slice/deferred area/testing policy | foundation contract + handoff generator | ACTIVE |
+| REG-029 | Catalogue fixtures never imply nonexistent production actions | catalogue copy + browser assertions | ACTIVE |
+| REG-030 | Auth responses do not leak whether an account exists | auth policy + auth E2E | ACTIVE |
+| REG-031 | Sign-out-all invalidates older protected sessions while permitting a new login | precise revocation pgTAP + E2E | ACTIVE |
+| REG-032 | Requested Creator/Agency role grants no permission before approval | auth/workspace RLS + E2E | ACTIVE |
+| REG-033 | Approved roles do not silently merge or self-activate | workspace RLS + navigation E2E | ACTIVE |
+| REG-034 | Public profile never exposes email/auth/age/internal UUID data | public-profile allowlist pgTAP + E2E | ACTIVE |
+| REG-035 | Public/unlisted/private visibility states remain distinct | visibility pgTAP + profile E2E | ACTIVE |
+| REG-036 | Profile media strips attacker metadata, hides account UUID path and obeys privacy | media processing + pgTAP + E2E | ACTIVE |
+| REG-037 | Duplicate handles/unsafe links fail safely while valid profile edits persist | profile policy + hardening E2E | ACTIVE |
+| REG-038 | Block/follow relationships cannot remain contradictory or be bypassed | relationship pgTAP + profile E2E | ACTIVE |
+| REG-039 | Existing mute/block can still be removed after adult assurance expiry | age-revocation pgTAP + privacy-rights E2E | ACTIVE |
+| REG-040 | Supporter identity defaults private rather than public | privacy resolver + E2E | ACTIVE |
+| REG-041 | Account export excludes tokens/auth/age/internal UUID relationships and writes a receipt | export pgTAP + E2E | ACTIVE |
+| REG-042 | Repeated deletion request creates at most one active request | privacy pgTAP + E2E | ACTIVE |
+| REG-043 | Notification cannot be read by another user or survive a block relationship | pgTAP + privacy-rights E2E | ACTIVE |
+| REG-044 | Adult assurance expiry between staging and mutation fails closed | media-staging age boundary + E2E | ACTIVE |
+| REG-045 | Avatar replacement never changes guarded public address or exposes partial media state | media boundary + hardening E2E | ACTIVE |
+| REG-046 | Private/unlisted/blocked profiles never enter discovery ranking | discovery pgTAP + browser workflows | ACTIVE |
+| REG-047 | For You ranking stays deterministic/explainable/diversity-capped | ranking unit tests | ACTIVE |
+| REG-048 | Discovery projections never grow to expose UUID/email/private fields | projection parser + pgTAP + build/E2E | ACTIVE |
+| REG-049 | Feed/explore/search cannot regress to 404/stale/manual-refresh routes | discovery desktop/mobile E2E | ACTIVE |
+| REG-050 | Users cannot self-promote V2/V3 or perform unauthorized review transitions | verification pgTAP + E2E | ACTIVE |
+| REG-051 | Public verification never leaks legal evidence/provider refs/raw payload/internal UUIDs | verification RLS/RPC + E2E | ACTIVE |
+| REG-052 | Revoked/expired verification never remains current or keeps a stronger badge | verification policy + pgTAP + E2E | ACTIVE |
+| REG-053 | V3 cannot be granted without V2 and performer prerequisites | verification policy + pgTAP | ACTIVE |
+| REG-054 | Synthetic identity cannot be mistaken for production verification | environment/policy + fail-closed adapter boundary | ACTIVE/PARTIAL |
+| REG-055 | Reviewer E2E synchronizes against committed state, not incidental navigation | verification durable-state polling | ACTIVE |
+| REG-056 | Super-admin bootstrap cannot collapse staff/fan workspace isolation | verification reviewer workflow | ACTIVE |
+| REG-057 | Home, health and handoff must advertise one active slice | foundation unit/API/browser + handoff generator | ACTIVE |
+| REG-058 | Retried demand support cannot inflate counts | demand support primary key + pgTAP + E2E | ACTIVE |
+| REG-059 | Suggested creator can never be presented as committed before their own interest action | demand policy + pgTAP + E2E | ACTIVE |
+| REG-060 | Creator decline remains private | private response projection + demand E2E | ACTIVE |
+| REG-061 | Fan/unrelated/stale creator cannot acquire demand conversion control | conversion unit + pgTAP | ACTIVE |
+| REG-062 | Demand conversion precursor cannot fabricate a project before atomic creation | conversion pgTAP | ACTIVE |
+| REG-063 | Later block/decline/expiry must invalidate earlier creator interest at conversion time | conversion unit + pgTAP | ACTIVE |
+| REG-064 | Demand→project conversion must preserve source provenance and creator ownership without granting fan control | Slice 7 project pgTAP + cumulative journey | ACTIVE |
+| REG-065 | Stale project revision must not overwrite a newer durable revision | project policy/pgTAP + projects E2E | ACTIVE |
+| REG-066 | Invitation negotiation state must persist, while invitation acceptance remains explicitly non-legal | invitation policy/pgTAP + E2E | ACTIVE |
+| REG-067 | Exact terms acceptance must bind an immutable version; material changes reopen affected acceptance | contract version/hash tests + pgTAP + E2E | ACTIVE |
+| REG-068 | Depicted-person consent must be personal and cannot be executed by an agency | contract/consent pgTAP + E2E | ACTIVE |
+| REG-069 | Contract lock must fail until every required acceptance/consent is current | contract pgTAP + E2E | ACTIVE |
+| REG-070 | Campaign publication must fail closed until contract/verification/funding gates permit it; public projection stays allowlisted | campaign policy/pgTAP + E2E | ACTIVE |
+| REG-071 | Pre-book must remain an idempotent commitment, not a hidden payment/card authorization | pre-book policy/pgTAP + E2E | ACTIVE |
+| REG-072 | Payment transitions/webhook replay must be legal, verified and idempotent without raw card retention | sandbox adapter tests + funding-payment pgTAP | ACTIVE/PARTIAL |
+| REG-073 | Sandbox payment state must be visibly non-production and production payment mode must fail closed without an approved provider | payment env/adapter + funding E2E | ACTIVE/PARTIAL |
+| REG-074 | Funding dashboard/detail must expose only the signed-in supporter's safe projection and never processor/internal IDs | funding projection pgTAP + funding E2E | ACTIVE |
+| REG-075 | Material campaign change must show exact old/new terms and require explicit supporter acceptance | funding change RPC + E2E | ACTIVE |
+| REG-076 | Refund intent must be explicit and idempotent; duplicate requests cannot create duplicate durable effects | refund RPC + funding E2E | ACTIVE |
+| REG-077 | Cross-slice navigation cannot strand users between locked project→campaign or public campaign→pre-book | cumulative `marketplace-4-10-journey.spec.ts` desktop/mobile | ACTIVE |
 
 ## Evidence baseline
 
-The Slice 3 pre-reconciliation full baseline is GitHub Engineering Gate run `32680016367` (run #306): 39 unit tests, 1 integration/API test, 166 pgTAP/RLS assertions, production build, dependency/runtime checks, and 48 Playwright desktop/mobile workflows all passed. After any candidate-head change, the current head must obtain its own required green gate; this register does not permit inheriting a failed current-head status from an older run.
+- Accepted Slices 0–3 baseline: `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`.
+- Draft PR #6 is the cumulative Slices 4–10 implementation and remains unmerged while owner acceptance is pending.
+- Latest feature checkpoint: branch head `be96c14fccc49ecae0987ccb5a908c71c32a3762`, Engineering Gate `33478175270` (#686): 270-file repository/secret checks, 142 unit tests, 509 database/RLS assertions, production build, 79 passed / 1 skipped desktop-mobile workflows, cumulative Slices 4–10 journey green.
+- Task 5 changes the active build identity from stale Slice 6 metadata to Slice 10 and reconciles closure evidence. That reconciliation head requires its own full exact-head Engineering Gate; #686 does not substitute for it.
+- Owner browser acceptance remains pending. PR #6 must not merge until the combined Slice 10 handoff is completed.
 
 ## Adding regressions
 
-For every confirmed serious defect, add a new permanent ID with the root cause, affected role/workflow, expected behavior, automated test path/name, any final manual spot-check, date and status. A green test obtained by skipping or weakening coverage is not valid regression protection.
+For every confirmed serious defect, add a permanent ID with root cause, affected workflow, expected behavior, automated protection and status. A green result obtained by weakening/skipping genuine coverage is not valid regression protection.

@@ -140,4 +140,4 @@ The following failures are forbidden and must remain covered throughout developm
 
 ## 7. Current position
 
-The active work item is **Build Slice 0 — Repository and quality foundation**. Authentication, feeds, profiles, creator dashboards, funding, or production work must not begin until Slice 0 passes all required local and automated checks.
+The current cumulative candidate is **Build Slice 10 — Fan Funding Dashboard and Badges** on Draft PR #6 (`feature/slices-4-10-marketplace-core`). Slices 0–3 remain the accepted `main` baseline at `21135e5895390294ba503df3d2dfba1a3dc6795e`. The Slices 4–10 feature journey is green at branch head `be96c14fccc49ecae0987ccb5a908c71c32a3762`, Engineering Gate #686; Task 5 build-identity/documentation reconciliation and its own exact-head gate are still pending. Combined owner browser acceptance is also pending, so PR #6 must remain Draft and unmerged. Slices 11–17 must not begin as accepted work until this combined Slices 4–10 handoff is completed by the product owner.

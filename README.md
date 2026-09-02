@@ -1,37 +1,37 @@
 # LUX Platform
 
-LUX is the working code name for an adult-only, crowd-demanded and crowdfunded creator platform.
+LUX is the working code name for an adult-only, privacy-first, crowd-demanded and crowdfunded creator marketplace.
 
-The platform allows audiences to signal demand, vote, pre-book, fund, discover, review, and purchase creator-led productions. It never gives audiences control over a creator or performer. Every creator and depicted person independently chooses whether to participate, which role to accept, which collaborators to work with, which boundaries apply, what compensation is acceptable, and whether the final cut may be released.
+Audiences can discover creators, signal demand, pre-book and support creator-approved campaigns, but they never gain control over a creator or depicted person. Participation, collaborators, boundaries, compensation, exact terms, consent and release decisions remain with the people involved.
 
 ## Canonical source of truth
 
-The documentation under `docs/product`, `docs/engineering`, and `docs/testing` is the canonical product and engineering specification. Production code must not silently contradict it.
+The documentation under `docs/product`, `docs/engineering`, `docs/testing` and the active Superpowers plans is the product and engineering source of truth. Production code must not silently contradict it.
 
-Read these repository-specific files before implementation:
+Start with:
 
+- `docs/product/00_CANONICAL_PROJECT_LOCK.md`
 - `docs/engineering/PROJECT-PROFILE.md`
 - `docs/engineering/PROJECT-TEST-MATRIX.md`
 - `docs/engineering/REGRESSION-REGISTER.md`
+- `docs/engineering/10_SLICES_4_10_CLOSURE.md`
 
 ## Build method
 
-LUX is built as independently testable vertical slices. A slice is not complete until its design and workflow are documented, applicable code/security/persistence behavior is implemented, the full automated engineering gate passes, and the product owner completes only the visible browser tests listed in the generated handoff.
-
-The next slice does not begin while the current slice has unresolved critical defects.
+LUX is built as independently testable vertical slices. Source, persistence, authorization, privacy, build and desktop/mobile workflows are cumulatively reverified before a slice advances. For the owner-approved Slices 4–10 run, visible owner testing is intentionally batched into one combined handoff after Slice 10 automation is green.
 
 ## Current repository layout
 
 ```text
 apps/web                  Next.js web application and shared UI system
+supabase/migrations       Versioned Postgres/RLS/RPC schema changes
+supabase/tests            pgTAP database/RLS regression suite
 docs/product              Canonical product lock
-docs/engineering          Engineering standards, project profile, matrix and register
+docs/engineering          Engineering profile, matrix, regressions and closure records
 docs/testing              Hard-test and acceptance protocols
 scripts/engineering       Repository gate, security, impact and handoff automation
-.github/workflows         GitHub Actions engineering gate
+.github/workflows         GitHub Actions Engineering Gate
 ```
-
-Future `packages/*` and `supabase/migrations` directories are not implemented yet and must not be treated as existing architecture.
 
 ## Engineering commands
 
@@ -43,20 +43,34 @@ pnpm verify:full
 pnpm report:handoff
 ```
 
-`verify:full` runs every applicable required check and exits non-zero on a required failure. The generated handoff is written under `.engineering/reports/` and is intentionally not committed.
+`verify:full` fails closed on required failures and generates the manual-test handoff under `.engineering/reports/`.
 
 ## Current status
 
-**Build Slice 1: Design System and Application Shell.**
+**Build Slice 10 candidate: Fan Funding Dashboard and Badges.**
 
-Implemented and automatically verified:
+Slices 0–3 remain the accepted `main` baseline at `21135e5895390294ba503df3d2dfba1a3dc6795e`. Draft PR #6 cumulatively implements Slices 4–10. The latest feature checkpoint, `be96c14fccc49ecae0987ccb5a908c71c32a3762`, passed Engineering Gate #686 with 142 unit tests, 509 database/RLS assertions and 79 passed / 1 skipped desktop-mobile Playwright workflows, including the full Slices 4–10 marketplace journey.
 
-- public foundation home and health contract;
-- responsive desktop sidebar/top bar and mobile bottom navigation;
-- complete shared-component catalogue;
-- buttons, fields, selection controls, data display, navigation, loading/error/empty states, dialogs, drawers, menus, tooltips, and toasts;
-- controlled route loading, error, and 404 recovery;
-- strict accessibility, touch-target, route-synchronization, and document-overflow checks;
-- 18 Playwright workflows across desktop Chromium and Pixel 7.
+Implemented in the current candidate:
 
-No marketplace production feature should be considered complete yet. Authentication, database/RLS, uploads, payments, consent, creator workspaces, moderation, secure media, and payouts remain future build slices and are explicitly recorded as blocked.
+- authentication, adult-access/session/workspace boundaries;
+- profiles, privacy, guarded media and notifications;
+- feed/explore/search discovery;
+- dev/CI V2/V3 verification with restricted review and production fail-closed provider mode;
+- Crowd Demand Board and creator-owned project conversion;
+- versioned projects and collaboration invitations/negotiation;
+- immutable terms, personal depicted-person consent and contract lock gates;
+- campaign publishing, public campaign projection and idempotent pre-booking;
+- provider-neutral sandbox payment lifecycle for dev/CI;
+- private supporter funding dashboard, badges, material-change acceptance and idempotent refund intent;
+- cumulative desktop/mobile creator-controlled journey across Slices 4–10.
+
+Task 5 is reconciling the active Slice 10 build identity and closure documents. A fresh exact-head Engineering Gate must pass after that reconciliation before the owner handoff is considered ready.
+
+## Not yet complete
+
+This is not the finished Milestone 1 platform. Slices 11–17 remain future work: production workspace/uploads, delivery/platform review, secure release/fan library, double-entry ledger/revenue splits/payouts, copyright operations, full agency workspace and administration/launch hardening.
+
+Synthetic identity and sandbox payment adapters are development/CI tools only. They are not production verification, production payment processing or real revenue. Production provider-required modes remain fail-closed until approved adapters are configured.
+
+PR #6 remains Draft and must not merge until the combined Slices 4–10 owner browser handoff is completed and accepted.
