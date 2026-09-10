@@ -9,8 +9,23 @@ const args = new Map(process.argv.slice(2).map((arg) => {
 
 const gateStatus = args.get("status") || process.env.GATE_STATUS || "fail";
 const output = args.get("output") || ".engineering/reports/manual-test-handoff.md";
+const gateReportPath = args.get("gate-report") || ".engineering/reports/full-gate.json";
 const files = changedFiles(args.get("base"));
 const localUrl = "http://127.0.0.1:30002";
+
+function gateResults() {
+  if (!existsSync(gateReportPath)) return [];
+  try {
+    const report = JSON.parse(readFileSync(gateReportPath, "utf8"));
+    return Array.isArray(report?.results) ? report.results : [];
+  } catch {
+    return [];
+  }
+}
+
+function gateResultStatus(name) {
+  return gateResults().find((item) => item?.name === name)?.status ?? "NOT RECORDED";
+}
 
 function activeSlice() {
   try {
@@ -23,7 +38,8 @@ function activeSlice() {
   }
 }
 
-function ownerTestingPolicy() {
+function ownerTestingPolicy(sliceNumber) {
+  if (sliceNumber >= 10) return "PER_SLICE";
   const path = ".engineering/CONTINUATION.json";
   if (!existsSync(path)) return "PER_SLICE";
   try {
@@ -37,7 +53,7 @@ function ownerTestingPolicy() {
 }
 
 const slice = activeSlice();
-const testingPolicy = ownerTestingPolicy();
+const testingPolicy = ownerTestingPolicy(slice.number);
 const ownerTestingDeferred = testingPolicy === "BATCH_AFTER_SLICE_10" && slice.number >= 4 && slice.number < 10;
 
 const featureRules = [
@@ -64,6 +80,14 @@ const featureRules = [
   [/^apps\/web\/src\/(components\/contracts\/|lib\/contracts\/|app\/studio\/projects\/[^/]+\/terms\/)/, "Contracts, consent, and boundaries"],
   [/^apps\/web\/src\/(components\/campaigns\/|lib\/campaigns\/|app\/p\/|app\/studio\/projects\/[^/]+\/campaign\/)/, "Campaign publishing and public pre-booking"],
   [/^apps\/web\/src\/(components\/funding\/|lib\/(funding|payments)\/|app\/app\/funding\/)/, "Fan funding dashboard, badges, and payment state"],
+  [/^apps\/web\/src\/(components\/production\/|lib\/production\/|app\/studio\/projects\/[^/]+\/production\/|app\/production-assets\/)/, "Production workspace and private production assets"],
+  [/^apps\/web\/src\/(lib\/review\/|app\/workspace\/staff\/delivery-review\/|app\/final-cut\/)/, "Delivery and platform review"],
+  [/^apps\/web\/src\/(lib\/releases\/|app\/releases\/|app\/playback\/|app\/release-assets\/)/, "Secure release and entitled playback"],
+  [/^apps\/web\/src\/(lib\/finance\/|app\/app\/earnings\/|app\/workspace\/staff\/finance\/)/, "Ledger, revenue splits, and payouts"],
+  [/^apps\/web\/src\/(lib\/copyright\/|app\/app\/copyright\/|app\/workspace\/staff\/copyright\/)/, "Copyright and stolen-content operations"],
+  [/^apps\/web\/src\/(lib\/agency\/|app\/app\/representation\/|app\/workspace\/agency\/|app\/workspace\/staff\/agency-verification\/)/, "Agency workspace and representation controls"],
+  [/^apps\/web\/src\/(lib\/admin\/|app\/workspace\/staff\/operations\/)/, "Administration and launch hardening"],
+  [/^apps\/web\/src\/app\/(privacy|terms|help)\//, "Public legal and help pages"],
   [/^supabase\/(config\.toml|migrations\/|tests\/)/, "Database/RLS marketplace boundary"],
 ];
 const visibleFeatures = [...new Set(files.flatMap((file) =>
@@ -130,6 +154,30 @@ if (visibleFeatures.includes("Campaign publishing and public pre-booking")) {
 if (visibleFeatures.includes("Fan funding dashboard, badges, and payment state")) {
   steps.push("Open `/app/funding` and verify only the signed-in fan’s commitments appear across Active/Successful/Refunded/All. Confirm processor/internal IDs are absent, supporter visibility/badge choices persist, a material campaign change presents the exact comparison, refund is idempotent, and sandbox payment state is clearly labeled as non-production.");
 }
+if (visibleFeatures.includes("Production workspace and private production assets")) {
+  steps.push("Open a funded project’s production workspace. Confirm only authorized project roles can change tasks or upload assets, fans see only approved supporter updates, private assets use time-limited access, and refresh or duplicate actions do not create duplicate state.");
+}
+if (visibleFeatures.includes("Delivery and platform review")) {
+  steps.push("Submit a final delivery, open the staff delivery-review queue, and verify the reviewer sees the same project, people, contracts, files, and evidence reflected to the creator. Exercise request-changes and approval once each and confirm history remains durable after refresh.");
+}
+if (visibleFeatures.includes("Secure release and entitled playback")) {
+  steps.push("Publish an approved release and test an entitled fan, a non-entitled account, an expired playback link, and a refunded entitlement. Confirm playback never exposes a permanent object URL and release metadata matches the approved delivery version.");
+}
+if (visibleFeatures.includes("Ledger, revenue splits, and payouts")) {
+  steps.push("Open creator earnings and staff finance views for the same synthetic transaction. Confirm journal totals balance, participant views agree, duplicate payout actions are idempotent, unavailable balances cannot be paid, and reconciliation differences create an operations case.");
+}
+if (visibleFeatures.includes("Copyright and stolen-content operations")) {
+  steps.push("Create a rights record and leak case, then exercise evidence review, false-positive, counter-notice, and takedown tracking. Confirm evidence is scoped to authorized staff/owner views and removed links remain historical without becoming public.");
+}
+if (visibleFeatures.includes("Agency workspace and representation controls")) {
+  steps.push("Request and accept representation from the performer account, then verify agency permissions match the accepted scope. Confirm the agency cannot provide performer consent or final-cut approval and revocation removes agency authority without erasing audit history.");
+}
+if (visibleFeatures.includes("Administration and launch hardening")) {
+  steps.push("Open staff operations with each staff role and verify unauthorized queues remain denied. Exercise a critical action with its required confirmation/reason, confirm audit history is immutable, and review incident/legal-hold state without cross-tenant leakage.");
+}
+if (visibleFeatures.includes("Public legal and help pages")) {
+  steps.push("Open `/privacy`, `/terms`, and `/help` directly on desktop and mobile, then refresh and use Back/Forward. Confirm each page remains readable, routable, and free of authenticated or private data.");
+}
 if (visibleFeatures.includes("Design-system catalogue")) {
   steps.push("Open `/design-system` and confirm the previously accepted Slice 1 catalogue remains visually unchanged and its sidebar navigation stays aligned.");
 }
@@ -175,7 +223,14 @@ if (slice.number < 7) deferredAreas.push("project drafts and collaboration invit
 if (slice.number < 8) deferredAreas.push("contracts, consent and boundaries");
 if (slice.number < 9) deferredAreas.push("campaign publishing and pre-booking");
 if (slice.number < 10) deferredAreas.push("funding dashboard, badges and payment adapter state");
-deferredAreas.push("production uploads", "delivery review", "secure releases", "double-entry ledger/revenue splits/payouts", "copyright operations", "full agency operations", "moderation and later administration");
+if (slice.number < 11) deferredAreas.push("production uploads");
+if (slice.number < 12) deferredAreas.push("delivery review");
+if (slice.number < 13) deferredAreas.push("secure releases");
+if (slice.number < 14) deferredAreas.push("double-entry ledger/revenue splits/payouts");
+if (slice.number < 15) deferredAreas.push("copyright operations");
+if (slice.number < 16) deferredAreas.push("full agency operations");
+if (slice.number < 17) deferredAreas.push("administration and launch hardening");
+if (slice.number >= 17) deferredAreas.push("Milestone 2 capabilities remain outside this Milestone 1 candidate");
 
 const report = `${status}
 
@@ -227,14 +282,16 @@ ${ownerTestingDeferred
 
 ## Automated evidence
 
-- ${gateStatus === "pass" ? "Applicable full engineering gate passed, including the isolated Supabase database/RLS suite and required desktop/mobile browser workflows." : "One or more required automated checks failed or were blocked. Owner manual testing must not begin."}
+- Full engineering gate result: ${gateStatus === "pass" ? "PASS" : "NOT READY"}.
+- Supabase database and RLS tests: ${gateResultStatus("Supabase database and RLS tests")}.
+- Desktop/mobile browser workflows: ${gateResultStatus("Desktop/mobile browser workflows")}.
 - ${ownerTestingDeferred ? "This is an intermediate automated checkpoint; owner acceptance is neither requested nor claimed." : "Owner acceptance remains separate from automated evidence."}
 - Changed files considered by the handoff generator: ${files.length}.
 
 ## Known limitations
 
 - No preview deployment is configured.
-- The owner’s PC cannot run the Docker-based local Supabase stack; GitHub Actions is the mandatory database/RLS enforcement environment.
+- Database/RLS acceptance requires a runnable Supabase test environment; local unavailability is reported explicitly rather than treated as proof.
 - Provider-required age assurance remains blocked until a production provider adapter is selected; self-attestation is restricted to the explicit development mode.
 - Synthetic identity/payment adapters, when present, are development/CI workflow tools only and never constitute production provider verification or real financial processing.
 `;

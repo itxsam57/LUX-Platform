@@ -9,7 +9,9 @@ const requiredFiles = [
   "docs/engineering/PROJECT-PROFILE.md",
   "docs/engineering/PROJECT-TEST-MATRIX.md",
   "docs/engineering/REGRESSION-REGISTER.md",
+  "docs/engineering/RELEASE-CHECKLIST.md",
   "docs/engineering/02_SLICE_2_AUTH_SECURITY_SPEC.md",
+  "scripts/engineering/backup-recovery.mjs",
   "supabase/config.toml",
   "supabase/migrations/20260806000100_slice_2_auth_workspace.sql",
   "supabase/tests/0001_auth_workspace_rls.test.sql",
@@ -55,10 +57,12 @@ if (existsSync("package.json")) {
     "verify:affected",
     "verify:full",
     "test:unit",
+    "test:engineering",
     "test:integration",
     "test:database",
     "test:e2e",
     "report:handoff",
+    "backup:recovery",
   ]) {
     if (!rootPackage.scripts?.[script]) failures.push(`Missing master command: ${script}`);
   }

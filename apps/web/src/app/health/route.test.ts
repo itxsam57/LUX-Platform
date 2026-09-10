@@ -13,7 +13,7 @@ describe("GET /health", () => {
     await expect(response.json()).resolves.toEqual({
       service: "lux-web",
       status: "ok",
-      buildSlice: 10,
+      buildSlice: 17,
       timestamp: "2026-09-01T00:00:00.000Z",
     });
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge, Card } from "@/components/ui/primitives";
 import { ProfileSocialActions } from "@/components/profile/profile-social-actions";
 import type { ProfileLink, ProfileVisibility } from "@/lib/profile/policy";
+import type { PublicProfileRelease } from "@/lib/releases/policy";
 
 export type PublicProfileView = {
   handle: string;
@@ -25,11 +26,13 @@ export function PublicProfile({
   signedIn,
   isOwner,
   verificationLevel,
+  releases,
 }: {
   profile: PublicProfileView;
   signedIn: boolean;
   isOwner: boolean;
   verificationLevel: "v2" | "v3" | null;
+  releases: PublicProfileRelease[];
 }) {
   return (
     <main className="public-profile-shell">
@@ -117,6 +120,26 @@ export function PublicProfile({
           )}
         </Card>
       </div>
+
+      <Card className="public-profile-card">
+        <span className="eyebrow">Released work</span>
+        <h2>Approved releases</h2>
+        {releases.length ? (
+          <div className="studio-stack">
+            {releases.map((release) => (
+              <article key={release.publicId}>
+                <h3>{release.title}</h3>
+                <p className="muted-copy">{release.synopsis}</p>
+                <div className="studio-meta">
+                  <span>Approved delivery v{release.deliveryVersion}</span>
+                  <span>SHA-256 {release.deliverySha256.slice(0, 12)}…</span>
+                </div>
+                <Link className="workspace-inline-link" href={`/releases/${release.publicId}`}>View release</Link>
+              </article>
+            ))}
+          </div>
+        ) : <p className="muted-copy">No approved releases are visible for this profile.</p>}
+      </Card>
     </main>
   );
 }

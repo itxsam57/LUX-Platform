@@ -13,6 +13,7 @@ const prerequisiteSteps = [
   ["Lint", "pnpm lint"],
   ["Type check", "pnpm typecheck"],
   ["Unit tests and coverage", "pnpm test:unit"],
+  ["Engineering harness tests", "pnpm test:engineering"],
   ["Integration/API tests", "pnpm test:integration"],
   ["Production dependency audit", "pnpm security:dependencies"],
   ["Overridden runtime dependency compatibility", "pnpm runtime:dependencies"],

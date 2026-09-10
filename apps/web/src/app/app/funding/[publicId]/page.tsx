@@ -5,8 +5,10 @@ import { notFound } from "next/navigation";
 import { UrlActionFeedback } from "@/components/feedback/url-action-feedback";
 import { FundingDetail, parseFundingDetail } from "@/components/funding/funding-detail";
 import { PrebookForm } from "@/components/funding/prebook-form";
+import { SupporterProductionUpdates } from "@/components/funding/supporter-production-updates";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { requireAdultViewer } from "@/lib/auth/context";
+import { parseSupporterProductionUpdates } from "@/lib/production/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { acceptChangedTermsAction, createPrebookAction, requestFundingRefundAction, saveSupporterBadgeAction } from "./actions";
 
@@ -66,6 +68,8 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
   const { data, error } = await supabase.rpc("get_funding_commitment", { requested_commitment_public_id: publicId });
   const funding = parseFundingDetail(data);
   if (error || !funding) notFound();
+  const { data: productionUpdates } = await supabase.rpc("list_supporter_production_updates", { requested_campaign_public_id: funding.campaignPublicId });
+  const updates = parseSupporterProductionUpdates(productionUpdates);
 
   return (
     <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
@@ -106,6 +110,7 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
           acceptIdempotencyKey={`accept-change:${randomUUID()}`}
           refundIdempotencyKey={`refund:${randomUUID()}`}
         />
+        <SupporterProductionUpdates updates={updates} />
       </main>
     </WorkspaceShell>
   );

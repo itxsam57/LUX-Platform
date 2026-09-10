@@ -30,6 +30,7 @@ export function WorkspaceShell({
           <Link href="/app/feed">Feed</Link>
           <Link href="/app/explore">Explore</Link>
           <Link href="/app/demand">Demand</Link>
+          <Link href="/app/earnings">Earnings</Link>
           <Link href="/workspace">Workspaces</Link>
           <Link href={activeRoute}>Current context</Link>
           <Link href="/settings/profile">Profile</Link>

@@ -2,7 +2,7 @@
 
 Stable IDs are permanent. Do not remove or weaken a protection without explicit approval and replacement evidence.
 
-Status is evaluated on the active cumulative candidate. **ACTIVE** means the protection exists and must keep passing; **PARTIAL** means the implemented portion is protected but a broader later slice remains; **BLOCKED** means the corresponding system is intentionally absent.
+Status is evaluated on the active cumulative Milestone 1 candidate. **ACTIVE** means the repository protection exists and must keep passing; **PARTIAL** means repository protection exists but production-provider or external-runtime acceptance is still outstanding; **BLOCKED** means the corresponding required system is absent.
 
 | ID | Defect prevented / expected behavior | Automated protection | Status |
 |---|---|---|---|
@@ -22,12 +22,12 @@ Status is evaluated on the active cumulative candidate. **ACTIVE** means the pro
 | REG-014 | Coverage measures unit-testable logic while browser/integration tests cover routes/persistence | Vitest config + engineering gate | ACTIVE |
 | REG-015 | Dependency install cannot drift | committed lockfile + frozen CI install | ACTIVE |
 | REG-016 | Generated evidence, private env files or secrets never enter Git | gitignore + repo check + secret scan | ACTIVE |
-| REG-017 | Consent/contract gates precede later release/payout; release/ledger enforcement remains future scope | Slice 8 contracts/consent + future Slices 13–14 | PARTIAL |
+| REG-017 | Consent/contract gates remain enforced through release and payout eligibility | Slices 8, 13 and 14 policy + pgTAP/browser protection | ACTIVE |
 | REG-018 | Agency communication can never replace personal performer consent | Slice 8 pgTAP + contracts-consent E2E | ACTIVE |
 | REG-019 | Vulnerable production dependencies do not pass unnoticed | dependency audit + frozen versions | ACTIVE |
 | REG-020 | Security overrides cannot silently break runtime image tooling | runtime compatibility + build + media tests | ACTIVE |
 | REG-021 | Expensive browser work never runs after a cheap prerequisite failure | master gate ordering + workflow dependency | ACTIVE |
-| REG-022 | Owner receives exact visible tests only after automated readiness; Slices 4–10 are batched | handoff generator + Job Summary + governor | ACTIVE |
+| REG-022 | Owner receives exact visible tests only after automated readiness; Milestone 1 owner acceptance stays separate from automation | handoff generator + governor ledger | ACTIVE |
 | REG-023 | Fixed mobile navigation never covers actionable controls | mobile shell/touch-target Playwright | ACTIVE |
 | REG-024 | Hidden overlay content never widens the mobile document | desktop/mobile overflow regressions | ACTIVE |
 | REG-025 | Invalid responsive sizing never creates intrinsic horizontal overflow | build + desktop/mobile overflow | ACTIVE |
@@ -83,14 +83,20 @@ Status is evaluated on the active cumulative candidate. **ACTIVE** means the pro
 | REG-075 | Material campaign change must show exact old/new terms and require explicit supporter acceptance | funding change RPC + E2E | ACTIVE |
 | REG-076 | Refund intent must be explicit and idempotent; duplicate requests cannot create duplicate durable effects | refund RPC + funding E2E | ACTIVE |
 | REG-077 | Cross-slice navigation cannot strand users between locked project→campaign or public campaign→pre-book | cumulative `marketplace-4-10-journey.spec.ts` desktop/mobile | ACTIVE |
+| REG-078 | Fans cannot read private production assets or unapproved production updates | production policy + Slice 11 pgTAP + production routes | ACTIVE |
+| REG-079 | Final-file replacement invalidates stale final-cut/review approval and review decisions remain durable/audited | review policy + Slice 12 pgTAP | ACTIVE |
+| REG-080 | Non-entitled/refunded/expired viewers cannot obtain durable playback access or permanent object URLs | release policy + Slice 13 pgTAP | ACTIVE |
+| REG-081 | Journals balance, unavailable funds cannot be paid, and payout/reconciliation retries remain idempotent | finance policy + earnings/payout E2E + Slice 14 pgTAP | ACTIVE/PARTIAL |
+| REG-082 | Copyright evidence stays scoped while false-positive/counter-notice/history paths remain available | copyright policy + Slice 15 pgTAP | ACTIVE |
+| REG-083 | Agency authority requires performer-accepted scope and can never substitute for performer consent/final-cut approval | agency policy + Slice 16 pgTAP | ACTIVE |
+| REG-084 | Staff queues remain permission-scoped, critical actions require reason/confirmation, audit history is immutable, and release requires recovery proof | admin policy + launch-hardening E2E + backup-recovery harness + Slice 17 pgTAP | ACTIVE/PARTIAL |
 
 ## Evidence baseline
 
-- Accepted Slices 0–3 baseline: `main` at `21135e5895390294ba503df3d2dfba1a3dc6795e`.
-- Draft PR #6 is the cumulative Slices 4–10 implementation and remains unmerged while owner acceptance is pending.
-- Latest feature checkpoint: branch head `be96c14fccc49ecae0987ccb5a908c71c32a3762`, Engineering Gate `33478175270` (#686): 270-file repository/secret checks, 142 unit tests, 509 database/RLS assertions, production build, 79 passed / 1 skipped desktop-mobile workflows, cumulative Slices 4–10 journey green.
-- Task 5 changes the active build identity from stale Slice 6 metadata to Slice 10 and reconciles closure evidence. That reconciliation head requires its own full exact-head Engineering Gate; #686 does not substitute for it.
-- Owner browser acceptance remains pending. PR #6 must not merge until the combined Slice 10 handoff is completed.
+- Canonical disposable-lab committed baseline: `518716402c09def0f2428ea4bd50398a9020132b`.
+- The active local Milestone 1 candidate adds repository-buildable Slices 11–17, Next.js 15.5.24 / Sharp 0.35.4 dependency hardening, Slice 17 foundation/handoff identity, migrations `20260910000100`…`20260910000700`, and pgTAP `0019`…`0025`.
+- Latest focused reconciliation evidence: foundation unit 44/44, handoff regression 2/2, and foundation desktop/mobile Playwright 10/10. The canonical full gate must be rerun after final reconciliation; its generated report is the source of truth for unavailable database/browser stages.
+- Live Supabase/RLS, authenticated DB-backed browser acceptance, real staging backup restore, approved production providers, and product-owner Milestone 1 acceptance remain external/owner gates and must never be inferred from local unit or synthetic-adapter success.
 
 ## Adding regressions
 
