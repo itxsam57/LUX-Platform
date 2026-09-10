@@ -45,11 +45,6 @@ select ok(
   'performer personally accepts representation'
 );
 select ok(
-  position('scope_communications' in lower(pg_get_functiondef('private.can_manage_project_communication(uuid,uuid)'::regprocedure)))>0
-  and position('active_agency_representation' in lower(pg_get_functiondef('private.can_manage_project_communication(uuid,uuid)'::regprocedure)))>0,
-  'project communication authority requires active accepted communication scope'
-);
-select ok(
   position('scope_project_admin' in lower(pg_get_functiondef('public.set_project_agency_authority(text,text,boolean)'::regprocedure)))>0
   and position('active_agency_representation' in lower(pg_get_functiondef('public.set_project_agency_authority(text,text,boolean)'::regprocedure)))>0,
   'creator cannot grant project authority beyond accepted representation scope'
@@ -73,11 +68,6 @@ select ok(
   position('performer_user_id=auth.uid()' in replace(lower(pg_get_functiondef('public.list_my_agency_representations()'::regprocedure)),' ',''))>0
   and position('agency_representation_events' in lower(pg_get_functiondef('public.list_my_agency_representations()'::regprocedure)))>0,
   'performer projection includes representation activity without exposing another performer tenant'
-);
-select ok(
-  position('scope_opportunities' in lower(pg_get_functiondef('public.create_agency_opportunity(text,text,text)'::regprocedure)))>0
-  and position('scope_negotiations' in lower(pg_get_functiondef('public.advance_agency_negotiation(text,text,text)'::regprocedure)))>0,
-  'agency opportunity and negotiation powers follow accepted scope'
 );
 select ok(
   position('agency_restricted' in lower(pg_get_functiondef('public.list_agency_earnings_statements()'::regprocedure)))>0,

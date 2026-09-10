@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select no_plan();
 
 select has_table('public','project_invitations','Slice 7 stores collaboration invitations');
 select has_table('public','project_invitation_proposals','Slice 7 stores immutable invitation proposal versions');
@@ -69,27 +69,32 @@ select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0
 select lives_ok(format($q$select public.send_project_invitation(%L,'s7_recipient','editor',jsonb_build_object('note','Agency managed proposal'))$q$,(select payload->>'publicId' from s7_project)),'authorized agency can send an attributed invitation');
 select is((select count(*)::integer from public.project_invitations where agency_actor_user_id='10000000-0000-0000-0000-0000000000a3'),1,'agency-managed invitation is visibly attributable in durable state');
 
-select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a2','role','authenticated')::text,true);
-select lives_ok(format($q$select public.respond_project_invitation(%L,'declined')$q$,(select payload->>'publicId' from s7_invite)),'recipient can quietly decline');
-select is((select state::text from public.project_invitations where public_id=(select payload->>'publicId' from s7_invite)),'declined','quiet decline persists privately');
-select is(public.get_invitation_private((select payload->>'publicId' from s7_invite))->>'state','declined','recipient can read their private decline state');
-
-select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a1','role','authenticated')::text,true);
-create temp table s7_accept(payload jsonb);
-insert into s7_accept select public.send_project_invitation((select payload->>'publicId' from s7_project),'s7_recipient','performer',jsonb_build_object('note','Acceptance fixture'));
-select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a2','role','authenticated')::text,true);
-select lives_ok(format($q$select public.respond_project_invitation(%L,'interested'); select public.respond_project_invitation(%L,'accepted')$q$,(select payload->>'publicId' from s7_accept),(select payload->>'publicId' from s7_accept)),'recipient may move through interest into acceptance for future contracting');
-select is((select state::text from public.projects where public_id=(select payload->>'publicId' from s7_project)),'draft','invitation acceptance never creates contract lock or legal consent');
-
-select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a1','role','authenticated')::text,true);
-select lives_ok(format($q$select public.update_project_draft(%L,1,jsonb_build_object(
- 'title','Invitation project revision 2','publicSynopsis','A revised public-safe synopsis that makes prior invitation acceptance stale.',
- 'privateBrief','A revised private brief with changed project details requiring the recipient to reconsider.',
- 'category','concept','format','video','boundaries',jsonb_build_array('closed-set','no-surprises'),'compensationModel','fixed',
- 'distributionScope','Platform release only','rightsDeclarations',jsonb_build_array('original-concept')))$q$,(select payload->>'publicId' from s7_project)),'project owner can create a new project revision');
-select is((select state::text from public.project_invitations where public_id=(select payload->>'publicId' from s7_accept)),'considering','accepted invitation is reopened when its bound project revision becomes stale');
-select ok((select invalidated_at is not null from public.project_invitations where public_id=(select payload->>'publicId' from s7_accept)),'stale acceptance records invalidation time');
-select is((select accepted_proposal_version from public.project_invitations where public_id=(select payload->>'publicId' from s7_accept)),null,'stale acceptance marker is cleared');
-
+-- S16: exercise capability changes and isolate representation by performer.
+select is((private.active_agency_representation('10000000-0000-0000-0000-0000000000a3','10000000-0000-0000-0000-0000000000a2','project_admin')).id,null::uuid,
+ 'one performer acceptance cannot authorize another performer');
+select throws_ok(format($q$select public.create_agency_opportunity(%L,'A new opportunity','A scoped opportunity summary')$q$,(select payload->>'publicId' from s7_representation)),
+ '42501','agency_opportunity_denied','communication scope does not grant opportunities');
+update public.agency_representation_agreements set scope_opportunities=true where public_id=(select payload->>'publicId' from s7_representation);
+create temp table s16_opportunity(payload jsonb);
+select lives_ok(format($q$insert into s16_opportunity select public.create_agency_opportunity(%L,'A new opportunity','A scoped opportunity summary')$q$,(select payload->>'publicId' from s7_representation)),
+ 'accepted opportunity scope allows opportunity creation');
+select throws_ok(format($q$select public.advance_agency_negotiation(%L,'proposed','Proposed engagement')$q$,(select payload->>'publicId' from s16_opportunity)),
+ '42501','agency_negotiation_denied','opportunity scope does not grant negotiations');
+update public.agency_representation_agreements set scope_negotiations=true where public_id=(select payload->>'publicId' from s7_representation);
+select lives_ok(format($q$select public.advance_agency_negotiation(%L,'proposed','Proposed engagement')$q$,(select payload->>'publicId' from s16_opportunity)),
+ 'accepted negotiation scope allows negotiation');
+update public.agency_representation_agreements set scope_communications=false where public_id=(select payload->>'publicId' from s7_representation);
+select throws_ok(format($q$select public.send_project_invitation(%L,'s7_recipient','performer','{}'::jsonb)$q$,(select payload->>'publicId' from s7_project)),
+ '42501','project_communication_not_allowed','project administration without communication scope cannot invite');
+update public.agency_representation_agreements set scope_communications=true,scope_project_admin=false where public_id=(select payload->>'publicId' from s7_representation);
+select throws_ok(format($q$select public.send_project_invitation(%L,'s7_recipient','performer','{}'::jsonb)$q$,(select payload->>'publicId' from s7_project)),
+ '42501','project_communication_not_allowed','communication without project administration cannot invite');
+update public.agency_representation_agreements set scope_project_admin=true,status='revocation_pending',revocation_effective_at=now()-interval '1 second' where public_id=(select payload->>'publicId' from s7_representation);
+select throws_ok(format($q$select public.send_project_invitation(%L,'s7_recipient','performer','{}'::jsonb)$q$,(select payload->>'publicId' from s7_project)),
+ '42501','project_communication_not_allowed','expired revocation notice removes communication authority');
+select throws_ok(format($q$select public.create_agency_opportunity(%L,'A new opportunity','A scoped opportunity summary')$q$,(select payload->>'publicId' from s7_representation)),
+ '42501','agency_opportunity_denied','expired revocation notice removes opportunity authority');
+select throws_ok(format($q$select public.advance_agency_negotiation(%L,'accepted','Accepted engagement')$q$,(select payload->>'publicId' from s16_opportunity)),
+ '42501','agency_negotiation_denied','expired revocation notice removes negotiation authority');
 select * from finish();
 rollback;

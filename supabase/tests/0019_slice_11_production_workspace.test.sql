@@ -118,6 +118,19 @@ select throws_ok(format($q$select public.set_production_status(%L,'at_risk',now(
 select lives_ok(format($q$select public.set_production_status(%L,'delayed',now()+interval '7 days','Editing delivery slipped by one week')$q$,(select payload->>'publicId' from s11_project)),'owner can record a delayed status with reason and revised estimate');
 select is((select status::text from public.production_workspaces where project_id=(select id from public.projects where public_id=(select payload->>'publicId' from s11_project))),'delayed','valid delayed status persists');
 
+-- The length bound applies to the entire suffix, including nested directories.
+select lives_ok(format($q$select public.register_production_asset(%L,'media',%L,repeat('a',64))$q$,
+ (select payload->>'publicId' from s11_project),(select payload->>'publicId' from s11_project)||'/a/123456'),
+ 'nested eight-character asset suffix is valid');
+select lives_ok(format($q$select public.register_production_asset(%L,'media',%L,repeat('a',64))$q$,
+ (select payload->>'publicId' from s11_project),(select payload->>'publicId' from s11_project)||'/private/'||repeat('a',412)),
+ 'nested 420-character asset suffix is valid');
+select throws_ok(format($q$select public.register_production_asset(%L,'media',%L,repeat('a',64))$q$,
+ (select payload->>'publicId' from s11_project),(select payload->>'publicId' from s11_project)||'/1234567'),
+ '22023','invalid_production_asset','seven-character asset suffix is rejected');
+select throws_ok(format($q$select public.register_production_asset(%L,'media',%L,repeat('a',64))$q$,
+ (select payload->>'publicId' from s11_project),(select payload->>'publicId' from s11_project)||'/longdirname/'||repeat('a',409)),
+ '22023','invalid_production_asset','nested 421-character asset suffix is rejected');
 create temp table s11_asset(payload jsonb);
 insert into s11_asset select public.register_production_asset(
  (select payload->>'publicId' from s11_project),
@@ -213,6 +226,25 @@ select ok((select count(*) from public.audit_events where event_type='project_co
 select ok((select count(*) from public.audit_events where event_type='production_asset_access_issued' and actor_user_id='11000000-0000-0000-0000-0000000000a2')>=1,'asset access issuance is audited');
 select ok((select count(*) from public.audit_events where event_type='production_asset_accessed' and actor_user_id='11000000-0000-0000-0000-0000000000a2')>=1,'asset access resolution is audited');
 select ok((select count(*) from public.audit_events where event_type='production_update_state_changed' and actor_user_id='11000000-0000-0000-0000-0000000000a1')>=2,'production update approval and publication are audited');
+
+-- Exercise storage policies as the real client role, without private table grants.
+select set_config('test.production_path',(select payload->>'publicId' from s11_project)||'/private/storage.mp4',true);
+select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a1","role":"authenticated"}',true);
+set local role authenticated;
+select ok(not has_table_privilege(current_user,'public.projects','SELECT'),'storage authorization does not expose project rows');
+select lives_ok($q$insert into storage.objects(bucket_id,name) values('production-assets',current_setting('test.production_path'))$q$,'owner can upload production objects as authenticated');
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),1,'owner can read production object');
+select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a3","role":"authenticated"}',true);
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),1,'accepted collaborator can read production object');
+select throws_ok($q$insert into storage.objects(bucket_id,name) values('production-assets',current_setting('test.production_path')||'.other')$q$,'42501',null,'collaborator cannot upload owner production objects');
+select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a2","role":"authenticated"}',true);
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),0,'revoked collaborator cannot read production object');
+select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a4","role":"authenticated"}',true);
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),0,'outsider cannot read production object');
+select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a1","role":"authenticated"}',true);
+select lives_ok($q$delete from storage.objects where bucket_id='production-assets'$q$,'owner can delete own production object');
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),0,'owner deletion persists');
+reset role;
 
 select * from finish();
 rollback;

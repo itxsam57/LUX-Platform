@@ -51,11 +51,49 @@ select ok(
   position('write_audit' in lower(pg_get_functiondef('public.get_copyright_case_evidence(text,text)'::regprocedure)))>0,
   'staff evidence access is audit logged'
 );
-select ok(
-  position('copyright' in lower(pg_get_functiondef('public.get_copyright_case_evidence(text,text)'::regprocedure)))>0
-  and position('super_admin' in lower(pg_get_functiondef('public.get_copyright_case_evidence(text,text)'::regprocedure)))>0,
-  'staff evidence access is limited to copyright operations roles'
-);
+-- Verify the delegated authorization through the RPC, not source spelling.
+insert into auth.users(id,email) values('15000000-0000-0000-0000-000000000001','copyright-roles@lux.test');
+insert into public.workspace_memberships(user_id,role,status,reviewed_at,reviewed_by)
+select '15000000-0000-0000-0000-000000000001',role,'approved',now(),'15000000-0000-0000-0000-000000000001'
+from unnest(enum_range(null::public.app_role)) role
+on conflict(user_id,role) do nothing;
+select set_config('request.jwt.claims','{"sub":"15000000-0000-0000-0000-000000000001","role":"authenticated"}',true);
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='fan') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','fan evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='creator') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','creator evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='agency') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','agency evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='reviewer') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','reviewer evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='moderator') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','moderator evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='finance') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','finance evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='copyright') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'P0001','copyright_case_not_found','copyright evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='support') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'42501','copyright_staff_required','support evidence RPC enforces copyright role boundary');
+reset role;
+update public.active_workspaces set membership_id=(select id from public.workspace_memberships where user_id='15000000-0000-0000-0000-000000000001' and role='super_admin') where user_id='15000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok($q$select public.get_copyright_case_evidence('missing-case','Investigating reported infringement')$q$,'P0001','copyright_case_not_found','super_admin evidence RPC enforces copyright role boundary');
+reset role;
 select ok(
   position('closed_false_positive' in lower(pg_get_functiondef('public.advance_copyright_case(text,text,text,text)'::regprocedure)))>0
   and position('counter_notice' in lower(pg_get_functiondef('public.advance_copyright_case(text,text,text,text)'::regprocedure)))>0,
