@@ -47,7 +47,9 @@ export default async function FeedPage({ searchParams }: { searchParams: FeedSea
           <ErrorState title="Feed unavailable" description="LUX could not load a privacy-safe feed. No fallback data was shown." />
         ) : profiles.length ? (
           <section className="discovery-grid" aria-label={mode === "following" ? "Following feed" : "For You feed"}>
-            {profiles.map((profile) => <DiscoveryCard key={profile.publicKey} profile={profile} />)}
+            {profiles.map((profile) => (
+              <DiscoveryCard key={profile.publicKey} profile={profile} returnTo={`/app/feed?mode=${mode}`} />
+            ))}
           </section>
         ) : (
           <EmptyState

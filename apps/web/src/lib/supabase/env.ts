@@ -83,7 +83,7 @@ function getAgeAssuranceEnvironment(): VerificationProviderEnvironment {
   return resolveEnvironment(process.env.AGE_ASSURANCE_ENVIRONMENT);
 }
 
-function hasBridgeConfiguration(prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE") {
+function hasBridgeConfiguration(prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE" | "STORAGE" | "STREAMING" | "MODERATION" | "MEDIA_PROTECTION") {
   return Boolean(
     process.env[`${prefix}_PROVIDER`]?.trim()
     && process.env[`${prefix}_PROVIDER_BASE_URL`]?.trim()
@@ -100,7 +100,7 @@ function hasProviderServerRuntime() {
 }
 
 function hasValidBridgeConfiguration(
-  prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE",
+  prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE" | "STORAGE" | "STREAMING" | "MODERATION" | "MEDIA_PROTECTION",
   environment: "development" | "test" | "production",
 ) {
   if (!hasBridgeConfiguration(prefix) || !hasProviderServerRuntime()) return false;
@@ -113,7 +113,7 @@ function hasValidBridgeConfiguration(
 }
 
 function getBridgeConfig(
-  prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE",
+  prefix: "PAYMENT" | "PAYOUT" | "IDENTITY_VERIFICATION" | "AGE_ASSURANCE" | "STORAGE" | "STREAMING" | "MODERATION" | "MEDIA_PROTECTION",
   environment: "development" | "test" | "production",
 ): ProviderBridgeConfig {
   const providerKey = process.env[`${prefix}_PROVIDER`]?.trim() || "";
@@ -230,4 +230,34 @@ export function isSupabaseConfigured(): boolean {
   } catch {
     return false;
   }
+}
+
+
+export function getStorageProviderBridgeConfig() {
+  const environment = resolveEnvironment(process.env.STORAGE_ENVIRONMENT);
+  return hasValidBridgeConfiguration("STORAGE", environment)
+    ? getBridgeConfig("STORAGE", environment)
+    : null;
+}
+
+export function getStreamingProviderBridgeConfig() {
+  const environment = resolveEnvironment(process.env.STREAMING_ENVIRONMENT);
+  return hasValidBridgeConfiguration("STREAMING", environment)
+    ? getBridgeConfig("STREAMING", environment)
+    : null;
+}
+
+
+export function getModerationProviderBridgeConfig() {
+  const environment = resolveEnvironment(process.env.MODERATION_ENVIRONMENT);
+  return hasValidBridgeConfiguration("MODERATION", environment)
+    ? getBridgeConfig("MODERATION", environment)
+    : null;
+}
+
+export function getMediaProtectionProviderBridgeConfig() {
+  const environment = resolveEnvironment(process.env.MEDIA_PROTECTION_ENVIRONMENT);
+  return hasValidBridgeConfiguration("MEDIA_PROTECTION", environment)
+    ? getBridgeConfig("MEDIA_PROTECTION", environment)
+    : null;
 }

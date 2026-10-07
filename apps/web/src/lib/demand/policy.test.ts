@@ -41,6 +41,7 @@ describe("demand policy", () => {
       category: "creator_idea",
       format: "short_film",
       suggestedCreatorHandle: "stage_name",
+      scriptOutline: null,
       budget: {
         minMinor: 25_000,
         maxMinor: 75_000,
@@ -91,9 +92,30 @@ describe("demand policy", () => {
       category: "concept",
       format: "video",
       suggestedCreatorHandle: null,
+      scriptOutline: null,
       budget: null,
       safetyLabels: [],
       expiresAt: null,
     });
   });
+
+  it("normalizes an optional script outline as part of the demand contract", async () => {
+    await expect(normalizeDraft({
+      title: "A creator-led outline",
+      brief: "A sufficiently detailed adult creator request with clear voluntary participation boundaries.",
+      category: "concept",
+      format: "video",
+      scriptOutline: "Opening setup, creator-controlled sequence, and a closing beat with no implied performer commitment.",
+    })).resolves.toMatchObject({
+      scriptOutline: "Opening setup, creator-controlled sequence, and a closing beat with no implied performer commitment.",
+    });
+    await expect(normalizeDraft({
+      title: "A creator-led outline",
+      brief: "A sufficiently detailed adult creator request with clear voluntary participation boundaries.",
+      category: "concept",
+      format: "video",
+      scriptOutline: "too short",
+    })).rejects.toThrow("invalid_demand_script_outline");
+  });
+
 });

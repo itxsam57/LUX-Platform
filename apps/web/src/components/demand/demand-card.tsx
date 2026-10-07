@@ -10,6 +10,10 @@ export type DemandView = {
   state: "open" | "creator_interested" | "converted" | "expired" | "closed";
   author: { handle: string; displayName: string };
   suggestedCreator: { handle: string; displayName: string; relationship: "suggested" | "interested" } | null;
+  scriptOutline: string | null;
+  budget: { minMinor: number; maxMinor: number; currency: string } | null;
+  safetyLabels: string[];
+  expiresAt: string | null;
   supportCount: number;
   viewerSupported: boolean;
   publicSupporters: Array<{ handle: string; displayName: string }>;
@@ -26,6 +30,16 @@ function person(value: unknown): { handle: string; displayName: string } | null 
   const row = record(value);
   if (typeof row.handle !== "string" || typeof row.displayName !== "string") return null;
   return { handle: row.handle, displayName: row.displayName };
+}
+
+
+function budget(value: unknown): DemandView["budget"] {
+  const row = record(value);
+  return typeof row.minMinor === "number" && Number.isSafeInteger(row.minMinor) && row.minMinor >= 0
+    && typeof row.maxMinor === "number" && Number.isSafeInteger(row.maxMinor) && row.maxMinor >= row.minMinor
+    && typeof row.currency === "string" && /^[A-Z]{3}$/.test(row.currency)
+    ? { minMinor: row.minMinor, maxMinor: row.maxMinor, currency: row.currency }
+    : null;
 }
 
 export function parseDemand(value: unknown): DemandView | null {
@@ -64,6 +78,10 @@ export function parseDemand(value: unknown): DemandView | null {
     state: row.state as DemandView["state"],
     author,
     suggestedCreator,
+    scriptOutline: typeof row.scriptOutline === "string" ? row.scriptOutline : null,
+    budget: budget(row.budget),
+    safetyLabels: Array.isArray(row.safetyLabels) ? row.safetyLabels.filter((value): value is string => typeof value === "string").slice(0,8) : [],
+    expiresAt: typeof row.expiresAt === "string" && !Number.isNaN(Date.parse(row.expiresAt)) ? row.expiresAt : null,
     supportCount: typeof row.supportCount === "number" ? row.supportCount : 0,
     viewerSupported: row.viewerSupported === true,
     publicSupporters,
@@ -98,6 +116,15 @@ export function DemandCard({ demand, detail = false }: { demand: DemandView; det
           @{demand.suggestedCreator.handle} · {demand.suggestedCreator.relationship === "interested" ? "creator interested" : "suggested creator — request only, no commitment"}
         </p>
       ) : null}
+
+      {detail && demand.scriptOutline ? <div><strong>Outline</strong><p>{demand.scriptOutline}</p></div> : null}
+      {detail && demand.budget ? (
+        <p><strong>Budget:</strong> {demand.budget.minMinor}–{demand.budget.maxMinor} {demand.budget.currency}</p>
+      ) : null}
+      {detail && demand.safetyLabels.length ? (
+        <p><strong>Safety labels:</strong> {demand.safetyLabels.join(", ")}</p>
+      ) : null}
+      {detail && demand.expiresAt ? <p><strong>Expires:</strong> {new Date(demand.expiresAt).toLocaleString()}</p> : null}
 
       {detail ? (
         <div className="demand-card__support">

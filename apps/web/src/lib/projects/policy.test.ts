@@ -29,6 +29,10 @@ describe("project draft policy", () => {
       compensationModel: "fixed",
       distributionScope: "Platform release only",
       rightsDeclarations: ["original-concept"],
+      scriptVersion: "draft-1",
+      budget: null,
+      productionSchedule: "To be scheduled",
+      readinessItems: [],
     });
   });
 
@@ -89,4 +93,28 @@ describe("project draft policy", () => {
     expect(canConvertDemandToProjectDraft({ ...eligible, relationshipBlocked: true })).toBe(false);
     expect(canConvertDemandToProjectDraft({ ...eligible, effectiveState: "open" })).toBe(false);
   });
+
+  it("normalizes script, budget, schedule, and readiness into each revision", () => {
+    expect(normalizeProjectDraft({
+      title: "Production-ready concept",
+      publicSynopsis: "A public-safe synopsis long enough to explain the project clearly.",
+      privateBrief: "A private production brief with enough detail for the team to coordinate safely.",
+      category: "concept",
+      format: "video",
+      boundaries: ["closed-set"],
+      compensationModel: "fixed",
+      distributionScope: "Platform release only",
+      rightsDeclarations: ["original-concept"],
+      scriptVersion: "script-v3",
+      budget: { minor: 250000, currency: "usd" },
+      productionSchedule: "Principal production during the agreed November window.",
+      readinessItems: ["Location confirmed", "Rights cleared"],
+    })).toMatchObject({
+      scriptVersion: "script-v3",
+      budget: { minor: 250000, currency: "USD" },
+      productionSchedule: "Principal production during the agreed November window.",
+      readinessItems: ["Location confirmed", "Rights cleared"],
+    });
+  });
+
 });

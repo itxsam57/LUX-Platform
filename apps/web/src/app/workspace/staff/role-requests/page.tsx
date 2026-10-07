@@ -29,7 +29,7 @@ export default async function RoleRequestsPage({
     .from("workspace_memberships")
     .select("id, user_id, role, status, requested_at")
     .eq("status", "requested")
-    .in("role", ["creator", "agency"])
+    .in("role", ["creator", "performer", "agency"])
     .order("requested_at", { ascending: true });
 
   const requests = queryError ? [] : data ?? [];
@@ -40,7 +40,7 @@ export default async function RoleRequestsPage({
         <div>
           <span className="eyebrow">Super-admin only</span>
           <h1>Workspace role requests</h1>
-          <p>Approve or reject an exact creator or agency membership using its requester and membership IDs.</p>
+          <p>Approve or reject an exact creator, performer, or agency membership using its requester and membership IDs.</p>
         </div>
         <Status label={`${requests.length} pending`} tone={requests.length ? "warning" : "success"} />
       </header>
@@ -49,7 +49,7 @@ export default async function RoleRequestsPage({
       {error || queryError ? <div className="auth-message auth-message--error" role="alert">The request queue could not be completed safely.</div> : null}
 
       {requests.length ? (
-        <Table caption="Pending creator and agency workspace requests">
+        <Table caption="Pending creator, performer, and agency workspace requests">
           <thead>
             <tr>
               <th scope="col">Requester</th>
@@ -97,7 +97,7 @@ export default async function RoleRequestsPage({
         <div className="ui-state-card">
           <span className="ui-state-card__icon" aria-hidden="true">✓</span>
           <h2>No pending requests</h2>
-          <p>The queue contains only creator and agency memberships in the requested state.</p>
+          <p>The queue contains only creator, performer, and agency memberships in the requested state.</p>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { PublicProfile, type PublicProfileView } from "@/components/profile/publ
 import { getOptionalViewer } from "@/lib/auth/context";
 import type { ProfileLink, ProfileVisibility } from "@/lib/profile/policy";
 import { parsePublicProfileReleases } from "@/lib/releases/policy";
+import { parseCreatorCommerce } from "@/lib/creator/commerce";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -72,12 +73,18 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     );
   }
 
-  const [{ data: verificationBadge }, { data: releasedWorks, error: releasedWorksError }] = await Promise.all([
+  const [
+    { data: verificationBadge },
+    { data: releasedWorks, error: releasedWorksError },
+    { data: commerceData, error: commerceError },
+  ] = await Promise.all([
     supabase.rpc("get_public_verification_badge", { profile_handle: profile.handle }),
     supabase.rpc("list_public_profile_releases", { profile_handle: profile.handle }),
+    supabase.rpc("get_public_creator_commerce", { profile_handle: profile.handle }),
   ]);
   const verificationLevel = parseVerificationLevel(verificationBadge);
   const releases = releasedWorksError ? [] : parsePublicProfileReleases(releasedWorks);
+  const commerce = commerceError ? null : parseCreatorCommerce(commerceData);
 
   let viewer = null;
   try {
@@ -103,6 +110,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       isOwner={isOwner}
       verificationLevel={verificationLevel}
       releases={releases}
+      commerce={commerce}
     />
   );
 }

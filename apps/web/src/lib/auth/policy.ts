@@ -1,6 +1,7 @@
 export const APP_ROLES = [
   "fan",
   "creator",
+  "performer",
   "agency",
   "reviewer",
   "moderator",
@@ -51,7 +52,7 @@ export type AuthActionState = {
 export const INITIAL_AUTH_STATE: AuthActionState = { status: "idle", message: "" };
 export const VIEWER_POLICY_VERSION = "viewer-policy-v1";
 
-const SELF_REQUESTABLE_ROLES = new Set<AppRole>(["creator", "agency"]);
+const SELF_REQUESTABLE_ROLES = new Set<AppRole>(["creator", "performer", "agency"]);
 const STAFF_ROLES = new Set<AppRole>([
   "reviewer",
   "moderator",
@@ -64,6 +65,7 @@ const STAFF_ROLES = new Set<AppRole>([
 const ROLE_ROUTES: Record<AppRole, string> = {
   fan: "/workspace/fan",
   creator: "/workspace/creator",
+  performer: "/workspace/performer",
   agency: "/workspace/agency",
   reviewer: "/workspace/staff",
   moderator: "/workspace/staff",

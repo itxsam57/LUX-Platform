@@ -34,6 +34,12 @@ function projectInput(formData: FormData) {
     compensationModel: text(formData, "compensation_model"),
     distributionScope: text(formData, "distribution_scope"),
     rightsDeclarations: list(text(formData, "rights_declarations")),
+    scriptVersion: text(formData, "script_version"),
+    budget: text(formData, "budget_minor") || text(formData, "budget_currency")
+      ? { minor: Number(text(formData, "budget_minor")), currency: text(formData, "budget_currency") }
+      : null,
+    productionSchedule: text(formData, "production_schedule"),
+    readinessItems: list(text(formData, "readiness_items")),
   });
 }
 

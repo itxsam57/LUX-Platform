@@ -31,6 +31,11 @@ export function WorkspaceShell({
           <Link href="/app/explore">Explore</Link>
           <Link href="/app/demand">Demand</Link>
           <Link href="/app/earnings">Earnings</Link>
+          <Link href="/messages">Messages</Link>
+          <Link href="/app/saved">Saved</Link>
+          <Link href="/app/discovery-preferences">Discovery preferences</Link>
+          <Link href="/app/orders">Orders</Link>
+          <Link href="/app/wallet">Wallet</Link>
           <Link href="/workspace">Workspaces</Link>
           <Link href={activeRoute}>Current context</Link>
           <Link href="/settings/profile">Profile</Link>

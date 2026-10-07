@@ -21,6 +21,14 @@ export default async function CreatorWorkspacePage() {
     >
       <div className="workspace-request-panel">
         <div>
+          <span className="eyebrow">Availability</span>
+          <h2>Availability and offers</h2>
+          <p>Publish coarse availability or optional creator offers. These listings never create a project contract or performer consent.</p>
+        </div>
+        <LinkButton href="/app/offers">Manage availability</LinkButton>
+      </div>
+      <div className="workspace-request-panel">
+        <div>
           <span className="eyebrow">Representation</span>
           <h2>Agency representation</h2>
           <p>Personally accept, decline, or revoke agency representation and review every agreed scope and activity event.</p>

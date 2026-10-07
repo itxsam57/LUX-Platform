@@ -42,6 +42,14 @@ export async function publishTermsAction(formData: FormData): Promise<Navigation
         depicted: depicted?.toLowerCase() === "true",
       };
     });
+  const revenueSplits = text(formData, "revenue_splits")
+    .split("\\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [handle, basisPoints] = line.split("|").map((value) => value.trim());
+      return { handle: handle?.toLowerCase(), basisPoints: Number(basisPoints) };
+    });
   const terms = {
     participants,
     role: text(formData, "role").toLowerCase(),
@@ -52,6 +60,12 @@ export async function publishTermsAction(formData: FormData): Promise<Navigation
     rightsScope: text(formData, "rights_scope"),
     schedule: text(formData, "schedule"),
     cancellation: text(formData, "cancellation"),
+    scriptHash: text(formData, "script_hash").toLowerCase(),
+    territory: text(formData, "territory"),
+    duration: text(formData, "duration"),
+    withdrawal: text(formData, "withdrawal"),
+    disputeResolution: text(formData, "dispute_resolution"),
+    revenueSplits,
     finalCutApprovalRequired: text(formData, "final_cut") === "true",
   };
 

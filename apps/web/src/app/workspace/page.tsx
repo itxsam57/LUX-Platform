@@ -11,6 +11,7 @@ import { routeForRole, type AppRole } from "@/lib/auth/policy";
 const ROLE_COPY: Record<AppRole, { label: string; description: string }> = {
   fan: { label: "Fan", description: "Support, vote, fund, purchase, and manage a private library in later slices." },
   creator: { label: "Creator", description: "Creator participation remains voluntary and requires separate approval." },
+  performer: { label: "Performer", description: "Depicted-performer work requires personal V3 verification, consent, and independently controlled boundaries." },
   agency: { label: "Agency", description: "Agency access never replaces the personal consent of a performer." },
   reviewer: { label: "Reviewer", description: "Restricted staff review context." },
   moderator: { label: "Moderator", description: "Restricted trust and safety context." },
@@ -107,6 +108,14 @@ export default async function WorkspaceIndexPage({
               variant="secondary"
             />
           ) : null}
+          {!existingRoles.has("performer") ? (
+            <WorkspaceMutationForm
+              action={requestWorkspaceRoleAction}
+              fields={[{ name: "role", value: "performer" }]}
+              label="Request performer access"
+              variant="secondary"
+            />
+          ) : null}
           {!existingRoles.has("agency") ? (
             <WorkspaceMutationForm
               action={requestWorkspaceRoleAction}
@@ -115,7 +124,7 @@ export default async function WorkspaceIndexPage({
               variant="secondary"
             />
           ) : null}
-          {existingRoles.has("creator") && existingRoles.has("agency") ? (
+          {existingRoles.has("creator") && existingRoles.has("performer") && existingRoles.has("agency") ? (
             <span className="muted-copy">All self-requestable roles already have a membership record.</span>
           ) : null}
         </div>

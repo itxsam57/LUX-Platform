@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NavigationActionForm } from "@/components/forms/navigation-action-form";
+import { setSavedItemAction } from "@/app/app/saved/actions";
 import { Card } from "@/components/ui/primitives";
 import { getOptionalViewer } from "@/lib/auth/context";
 import { parseReleaseDetail } from "@/lib/releases/policy";
@@ -26,6 +27,17 @@ export default async function ReleasePage({ params, searchParams }: { params: Pr
       <Card className="public-profile-card"><span className="eyebrow">Rating</span><h2>Review this release</h2>{release.playbackEligible ? <NavigationActionForm action={submitReleaseReviewAction} className="studio-form studio-form--compact"><input type="hidden" name="release_public_id" value={release.publicId}/><label>Rating<select name="rating" defaultValue={release.myRating ?? 5}>{[5,4,3,2,1].map((rating)=><option key={rating} value={rating}>{rating}/5</option>)}</select></label><label>Review<textarea name="body" minLength={3} maxLength={2000} defaultValue={release.myReview ?? ""}/></label><button className="studio-button" type="submit">Save review</button></NavigationActionForm> : <p className="muted-copy">An active funded entitlement is required to rate or review this release.</p>}</Card>
       <Card className="public-profile-card"><span className="eyebrow">Copyright support</span><h2>Report a copied release</h2>{signedIn ? <NavigationActionForm action={reportReleaseStolenCopyAction} className="studio-form studio-form--compact"><input type="hidden" name="release_public_id" value={release.publicId}/><label>Copy URL<input name="url" type="url" required maxLength={2048}/></label><label>What did you find?<textarea name="note" required minLength={3} maxLength={2000}/></label><button className="studio-button" type="submit">Report copied release</button></NavigationActionForm> : <p className="muted-copy">Sign in to submit a private copied-release report.</p>}</Card>
     </div>
-    <Link className="workspace-inline-link" href={`/u/${encodeURIComponent(release.creatorHandle)}`}>Back to creator profile</Link>
+    <div className="workspace-inline-form">
+      <Link className="workspace-inline-link" href={`/u/${encodeURIComponent(release.creatorHandle)}`}>Back to creator profile</Link>
+      {signedIn ? (
+        <form action={setSavedItemAction}>
+          <input type="hidden" name="item_type" value="release" />
+          <input type="hidden" name="item_public_id" value={release.publicId} />
+          <input type="hidden" name="saved" value="true" />
+          <input type="hidden" name="return_to" value={`/releases/${release.publicId}`} />
+          <button className="studio-button" type="submit">Save release</button>
+        </form>
+      ) : null}
+    </div>
   </main>;
 }
