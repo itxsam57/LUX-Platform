@@ -10,7 +10,14 @@ import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { parseSupporterProductionUpdates } from "@/lib/production/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { acceptChangedTermsAction, createPrebookAction, requestFundingRefundAction, saveSupporterBadgeAction } from "./actions";
+import { getPaymentProviderRuntime } from "@/lib/supabase/env";
+import {
+  acceptChangedTermsAction,
+  createPrebookAction,
+  requestFundingRefundAction,
+  saveSupporterBadgeAction,
+  startFundingCheckoutAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +91,7 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
   if (error || !funding) notFound();
   const { data: productionUpdates } = await supabase.rpc("list_supporter_production_updates", { requested_campaign_public_id: funding.campaignPublicId });
   const updates = parseSupporterProductionUpdates(productionUpdates);
+  const paymentRuntime = getPaymentProviderRuntime();
 
   return (
     <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
@@ -125,6 +133,21 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
           acceptIdempotencyKey={`accept-change:${randomUUID()}`}
           refundIdempotencyKey={`refund:${randomUUID()}`}
         />
+        {funding.paymentState === "pending" ? (
+          <section className="studio-card">
+            <h2>Complete payment</h2>
+            {paymentRuntime.mode === "provider" ? (
+              <form action={startFundingCheckoutAction} className="studio-form">
+                <input type="hidden" name="commitment_public_id" value={funding.publicId} />
+                <input type="hidden" name="idempotency_key" value={`checkout:${randomUUID()}`} />
+                <p className="muted-copy">Payment opens on the approved provider-hosted checkout. LUX never receives raw card numbers or security codes.</p>
+                <button className="studio-button studio-button--primary" type="submit">Continue to secure checkout</button>
+              </form>
+            ) : (
+              <p className="muted-copy">Production checkout is unavailable until an approved payment provider is connected.</p>
+            )}
+          </section>
+        ) : null}
         <SupporterProductionUpdates updates={updates} />
       </main>
     </WorkspaceShell>

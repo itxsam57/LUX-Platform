@@ -5,8 +5,10 @@ import { Button, Input, Select, Status, Table, Textarea } from "@/components/ui/
 import { requireWorkspace } from "@/lib/auth/context";
 import { parseFinancePayoutQueue } from "@/lib/finance/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getPayoutProviderRuntime } from "@/lib/supabase/env";
 import {
   createMonthlyPayoutBatchAction,
+  dispatchFinancePayoutAction,
   placeEarningsHoldAction,
   promoteProjectEarningsAction,
   releaseEarningsHoldAction,
@@ -44,6 +46,7 @@ export default async function FinanceOperationsPage() {
   const { data, error } = await supabase.rpc("list_finance_payout_queue");
   const queue = parseFinancePayoutQueue(data);
   const loadError = Boolean(error || !queue);
+  const payoutRuntime = getPayoutProviderRuntime();
   const payoutRows = queue?.payouts ?? [];
   const holdRows = queue?.holds ?? [];
   const reconciliationRows = queue?.reconciliationCases ?? [];
@@ -75,7 +78,11 @@ export default async function FinanceOperationsPage() {
       <Button type="submit" variant="secondary">Create batch</Button>
     </NavigationActionForm></section>
 
-    <section className="workspace-stack" aria-labelledby="payout-queue-heading"><div className="workspace-page-header"><div><span className="eyebrow">Payouts</span><h2 id="payout-queue-heading">Open payout queue</h2></div></div>{payoutRows.length ? <Table caption="Requested, processing, and failed payouts"><thead><tr><th scope="col">Participant</th><th scope="col">Project</th><th scope="col">Amount</th><th scope="col">State</th><th scope="col">Attempts</th><th scope="col">Created</th><th scope="col">Action</th></tr></thead><tbody>{payoutRows.map((row) => <tr key={row.publicId}><td>@{row.participantHandle}</td><td>{row.projectPublicId}</td><td>{formatMinor(row.amountMinor, row.currency)}</td><td>{row.state}</td><td>{row.attemptCount}</td><td>{formatTime(row.createdAt)}</td><td>{row.state === "failed" ? <NavigationActionForm action={retryFinancePayoutAction}><input type="hidden" name="payout_public_id" value={row.publicId}/><input type="hidden" name="idempotency_key" value={`finance.retry:${randomUUID()}`}/><Button type="submit" size="small" variant="secondary">Retry</Button></NavigationActionForm> : row.batchPublicId ?? "Awaiting batch"}</td></tr>)}</tbody></Table> : !loadError ? <div className="ui-state-card"><h3>No open payouts</h3><p>Requested, processing, or failed payouts will appear here.</p></div> : null}</section>
+    <section className="workspace-stack" aria-labelledby="payout-queue-heading"><div className="workspace-page-header"><div><span className="eyebrow">Payouts</span><h2 id="payout-queue-heading">Open payout queue</h2></div></div>{payoutRows.length ? <Table caption="Requested, processing, and failed payouts"><thead><tr><th scope="col">Participant</th><th scope="col">Project</th><th scope="col">Amount</th><th scope="col">State</th><th scope="col">Attempts</th><th scope="col">Created</th><th scope="col">Action</th></tr></thead><tbody>{payoutRows.map((row) => <tr key={row.publicId}><td>@{row.participantHandle}</td><td>{row.projectPublicId}</td><td>{formatMinor(row.amountMinor, row.currency)}</td><td>{row.state}</td><td>{row.attemptCount}</td><td>{formatTime(row.createdAt)}</td><td>{row.state === "failed"
+  ? <NavigationActionForm action={retryFinancePayoutAction}><input type="hidden" name="payout_public_id" value={row.publicId}/><input type="hidden" name="idempotency_key" value={`finance.retry:${randomUUID()}`}/><Button type="submit" size="small" variant="secondary">Retry</Button></NavigationActionForm>
+  : row.state === "processing" && payoutRuntime.mode === "provider"
+    ? <NavigationActionForm action={dispatchFinancePayoutAction}><input type="hidden" name="payout_public_id" value={row.publicId}/><Button type="submit" size="small">Dispatch</Button></NavigationActionForm>
+    : row.batchPublicId ?? (payoutRuntime.mode === "provider" ? "Awaiting batch" : "Provider not connected")}</td></tr>)}</tbody></Table> : !loadError ? <div className="ui-state-card"><h3>No open payouts</h3><p>Requested, processing, or failed payouts will appear here.</p></div> : null}</section>
 
     <section className="workspace-stack" aria-labelledby="holds-heading"><div className="workspace-page-header"><div><span className="eyebrow">Holds</span><h2 id="holds-heading">Open earnings holds</h2></div></div>{holdRows.length ? <Table caption="Open reserve, dispute, chargeback, campaign, and verification holds"><thead><tr><th scope="col">Participant</th><th scope="col">Project</th><th scope="col">Kind</th><th scope="col">Amount</th><th scope="col">Reason</th><th scope="col">Action</th></tr></thead><tbody>{holdRows.map((row) => <tr key={row.publicId}><td>@{row.participantHandle}</td><td>{row.projectPublicId}</td><td>{row.kind}</td><td>{formatMinor(row.amountMinor, row.currency)}</td><td>{row.reason}</td><td><NavigationActionForm action={releaseEarningsHoldAction}><input type="hidden" name="hold_public_id" value={row.publicId}/><input type="hidden" name="idempotency_key" value={`hold.release:${randomUUID()}`}/><Button type="submit" size="small" variant="secondary">Release</Button></NavigationActionForm></td></tr>)}</tbody></Table> : !loadError ? <div className="ui-state-card"><h3>No open holds</h3><p>Active finance holds will appear here with their audited reason.</p></div> : null}</section>
 

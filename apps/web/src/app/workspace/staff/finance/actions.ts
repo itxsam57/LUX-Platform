@@ -14,6 +14,8 @@ import {
   parsePayoutCurrency,
 } from "@/lib/finance/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceSupabaseClient } from "@/lib/supabase/admin";
+import { getConfiguredPayoutGateway } from "@/lib/payouts/runtime";
 
 const FINANCE_PATH = "/workspace/staff/finance";
 
@@ -118,6 +120,78 @@ export async function createMonthlyPayoutBatchAction(formData: FormData): Promis
   revalidatePath(FINANCE_PATH);
   revalidatePath("/app/earnings");
   return actionResult("success", "Monthly payout batch created.", "notice=batch");
+}
+
+
+export async function dispatchFinancePayoutAction(formData: FormData): Promise<NavigationActionResult> {
+  const payoutPublicId = parseFinanceResourceId("payout", text(formData, "payout_public_id"));
+  if (!payoutPublicId) return actionResult("error", "The payout dispatch request is invalid.", "error=dispatch-invalid");
+
+  const staffClient = await financeClient();
+  if (!staffClient) return denied();
+
+  const gateway = getConfiguredPayoutGateway();
+  if (!gateway) return actionResult("error", "The production payout provider is not configured.", "error=dispatch-provider");
+
+  const service = createServiceSupabaseClient();
+  const { data: contextData, error: contextError } = await service.rpc("get_payout_dispatch_context", {
+    requested_payout_public_id: payoutPublicId,
+  });
+  const context = contextData && typeof contextData === "object" && !Array.isArray(contextData)
+    ? contextData as Record<string, unknown>
+    : null;
+  const providerKey = typeof context?.providerKey === "string" ? context.providerKey : null;
+  const recipientReference = typeof context?.recipientReference === "string" ? context.recipientReference : null;
+  const amountMinor = typeof context?.amountMinor === "number" && Number.isSafeInteger(context.amountMinor) && context.amountMinor > 0
+    ? context.amountMinor
+    : null;
+  const currency = typeof context?.currency === "string" && /^[A-Z]{3}$/.test(context.currency) ? context.currency : null;
+  if (contextError || !providerKey || !recipientReference || !amountMinor || !currency || providerKey !== gateway.providerKey) {
+    return actionResult("error", "The payout has no verified destination for the configured provider.", "error=dispatch-destination");
+  }
+
+  const idempotencyKey = `payout.dispatch:${payoutPublicId}`;
+  const { data: preparedData, error: prepareError } = await service.rpc("prepare_payout_dispatch", {
+    requested_payout_public_id: payoutPublicId,
+    requested_provider_key: gateway.providerKey,
+    requested_idempotency_key: idempotencyKey,
+  });
+  const prepared = preparedData && typeof preparedData === "object" && !Array.isArray(preparedData)
+    ? preparedData as Record<string, unknown>
+    : null;
+  if (prepareError || !prepared) {
+    return actionResult("error", "The payout dispatch could not be reserved safely.", "error=dispatch-prepare");
+  }
+  if (prepared.state === "dispatched") {
+    return actionResult("success", "Payout was already dispatched.", "notice=dispatch");
+  }
+
+  let dispatch;
+  try {
+    dispatch = await gateway.dispatch({
+      payoutPublicId,
+      recipientReference,
+      amountMinor,
+      currency,
+      idempotencyKey,
+    });
+  } catch {
+    return actionResult("error", "The payout provider did not accept the dispatch.", "error=dispatch-provider");
+  }
+
+  const { error: completeError } = await service.rpc("complete_payout_dispatch", {
+    requested_payout_public_id: payoutPublicId,
+    requested_provider_key: dispatch.providerKey,
+    requested_provider_payout_ref: dispatch.providerPayoutRef,
+    requested_idempotency_key: idempotencyKey,
+  });
+  if (completeError) {
+    return actionResult("error", "The provider accepted the payout but LUX could not finalize the dispatch receipt. Reconcile before retrying.", "error=dispatch-reconcile");
+  }
+
+  revalidatePath(FINANCE_PATH);
+  revalidatePath("/app/earnings");
+  return actionResult("success", "Payout dispatched to the provider.", "notice=dispatch");
 }
 
 export async function retryFinancePayoutAction(formData: FormData): Promise<NavigationActionResult> {

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { navigationActionResult, type NavigationActionResult } from "@/lib/actions/navigation";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getPublicAppUrl, getPaymentProviderRuntime } from "@/lib/supabase/env";
+import { getConfiguredPaymentGateway } from "@/lib/payments/runtime";
 
 const campaignPattern = /^cmp[0-9a-f]{24}$/;
 const fundingPattern = /^fnd[0-9a-f]{24}$/;
@@ -56,6 +58,59 @@ export async function createPrebookAction(formData: FormData): Promise<void> {
   revalidatePath(fundingPath(campaignPublicId));
   revalidatePath("/app/funding");
   redirect(fundingPath(campaignPublicId, "notice=confirmed"));
+}
+
+
+export async function startFundingCheckoutAction(formData: FormData): Promise<void> {
+  const commitmentPublicId = text(formData, "commitment_public_id");
+  const idempotencyKey = text(formData, "idempotency_key");
+  if (!fundingPattern.test(commitmentPublicId) || idempotencyKey.length < 8 || idempotencyKey.length > 128) {
+    redirect("/app/funding?error=checkout");
+  }
+
+  await requireAdultViewer(fundingPath(commitmentPublicId));
+  const runtime = getPaymentProviderRuntime();
+  const gateway = getConfiguredPaymentGateway();
+  if (runtime.mode !== "provider" || !gateway) {
+    redirect(fundingPath(commitmentPublicId, "error=checkout-provider"));
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("get_funding_commitment", {
+    requested_commitment_public_id: commitmentPublicId,
+  });
+  const row = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+  const amountMinor = typeof row?.amountMinor === "number" && Number.isSafeInteger(row.amountMinor) && row.amountMinor > 0 ? row.amountMinor : null;
+  const currency = typeof row?.currency === "string" && /^[A-Z]{3}$/.test(row.currency) ? row.currency : null;
+  const paymentState = typeof row?.paymentState === "string" ? row.paymentState : null;
+  if (error || !amountMinor || !currency || paymentState !== "pending") {
+    redirect(fundingPath(commitmentPublicId, "error=checkout-state"));
+  }
+
+  let session;
+  try {
+    session = await gateway.createCheckoutSession({
+      commitmentPublicId,
+      amountMinor,
+      currency,
+      successUrl: `${getPublicAppUrl()}${fundingPath(commitmentPublicId, "notice=checkout-return")}`,
+      cancelUrl: `${getPublicAppUrl()}${fundingPath(commitmentPublicId, "error=checkout-cancelled")}`,
+      idempotencyKey,
+    });
+  } catch {
+    redirect(fundingPath(commitmentPublicId, "error=checkout-provider"));
+  }
+
+  const { error: recordError } = await supabase.rpc("record_payment_checkout_session", {
+    requested_commitment_public_id: commitmentPublicId,
+    requested_provider_key: session.providerKey,
+    requested_checkout_reference: session.checkoutReference,
+    requested_expires_at: session.expiresAt,
+    requested_idempotency_key: idempotencyKey,
+  });
+  if (recordError) redirect(fundingPath(commitmentPublicId, "error=checkout-record"));
+
+  redirect(session.checkoutUrl);
 }
 
 export async function saveSupporterBadgeAction(formData: FormData): Promise<NavigationActionResult> {

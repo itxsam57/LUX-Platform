@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { navigationActionResult, type NavigationActionResult } from "@/lib/actions/navigation";
 import { requireAdultViewer } from "@/lib/auth/context";
 import {
@@ -10,6 +11,8 @@ import {
   parsePayoutCurrency,
 } from "@/lib/finance/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getConfiguredPayoutGateway } from "@/lib/payouts/runtime";
+import { getPublicAppUrl } from "@/lib/supabase/env";
 
 const EARNINGS_PATH = "/app/earnings";
 
@@ -24,6 +27,37 @@ function result(
   suffix: string,
 ): NavigationActionResult {
   return navigationActionResult(status, message, `${EARNINGS_PATH}?${suffix}`);
+}
+
+
+export async function startPayoutOnboardingAction(formData: FormData): Promise<void> {
+  const viewer = await requireAdultViewer(EARNINGS_PATH);
+  const idempotencyKey = parseFinanceIdempotencyKey(text(formData, "idempotency_key"));
+  if (!idempotencyKey) redirect(`${EARNINGS_PATH}?error=payout-onboarding-invalid`);
+
+  const gateway = getConfiguredPayoutGateway();
+  if (!gateway) redirect(`${EARNINGS_PATH}?error=payout-provider`);
+
+  let session;
+  try {
+    session = await gateway.createRecipientOnboarding({
+      subjectId: viewer.user.id,
+      returnUrl: `${getPublicAppUrl()}${EARNINGS_PATH}?notice=payout-onboarding-return`,
+      idempotencyKey,
+    });
+  } catch {
+    redirect(`${EARNINGS_PATH}?error=payout-provider`);
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("start_payout_recipient_onboarding", {
+    requested_provider_key: session.providerKey,
+    requested_recipient_reference: session.recipientReference,
+    requested_onboarding_expires_at: session.expiresAt,
+  });
+  if (error) redirect(`${EARNINGS_PATH}?error=payout-onboarding`);
+
+  redirect(session.onboardingUrl);
 }
 
 export async function requestPayoutAction(formData: FormData): Promise<NavigationActionResult> {

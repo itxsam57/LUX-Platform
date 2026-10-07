@@ -4,9 +4,19 @@ import { Button, Input, Status, Table } from "@/components/ui/primitives";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { parseEarnings, parseMyPayouts } from "@/lib/finance/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requestPayoutAction, retryPayoutAction } from "./actions";
+import { getPayoutProviderRuntime } from "@/lib/supabase/env";
+import { requestPayoutAction, retryPayoutAction, startPayoutOnboardingAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+
+function payoutRecipientStatus(value: unknown) {
+  const row = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  if (!row || typeof row.configured !== "boolean" || typeof row.ownershipVerified !== "boolean") return null;
+  const state = row.state === null || row.state === "pending" || row.state === "verified" || row.state === "restricted" ? row.state : null;
+  const providerKey = row.providerKey === null || typeof row.providerKey === "string" ? row.providerKey as string | null : null;
+  return { configured: row.configured, ownershipVerified: row.ownershipVerified, state, providerKey };
+}
 
 function formatMinor(amountMinor: number, currency: string) {
   const formatter = new Intl.NumberFormat("en", { style: "currency", currency });
@@ -30,13 +40,20 @@ function monthStart() {
 export default async function EarningsPage() {
   await requireAdultViewer("/app/earnings");
   const supabase = await createServerSupabaseClient();
-  const [{ data: earningsData, error: earningsError }, { data: payoutData, error: payoutError }] = await Promise.all([
+  const [
+    { data: earningsData, error: earningsError },
+    { data: payoutData, error: payoutError },
+    { data: recipientData, error: recipientError },
+  ] = await Promise.all([
     supabase.rpc("get_my_earnings"),
     supabase.rpc("list_my_payouts"),
+    supabase.rpc("get_my_payout_recipient_status"),
   ]);
   const earnings = parseEarnings(earningsData);
   const payouts = parseMyPayouts(payoutData);
-  const loadError = Boolean(earningsError || payoutError);
+  const recipient = payoutRecipientStatus(recipientData);
+  const payoutRuntime = getPayoutProviderRuntime();
+  const loadError = Boolean(earningsError || payoutError || recipientError || !recipient);
 
   return <div className="workspace-stack">
     <header className="workspace-page-header">
@@ -49,6 +66,25 @@ export default async function EarningsPage() {
     </header>
 
     {loadError ? <div className="auth-message auth-message--error" role="alert">Earnings could not be loaded safely.</div> : null}
+
+    <section className="workspace-request-panel" aria-labelledby="payout-account-heading">
+      <div>
+        <span className="eyebrow">Payout destination</span>
+        <h2 id="payout-account-heading">Payout account</h2>
+        <p>LUX stores only the provider recipient reference and verified ownership state. Bank-account and KYC evidence stay with the payout provider.</p>
+      </div>
+      {recipient?.ownershipVerified ? (
+        <Status label="Ownership verified" tone="success"/>
+      ) : payoutRuntime.mode === "provider" ? (
+        <form action={startPayoutOnboardingAction} className="workspace-form-grid">
+          <input type="hidden" name="idempotency_key" value={`payout.onboarding:${randomUUID()}`}/>
+          <Status label={recipient?.state === "pending" ? "Onboarding pending" : recipient?.state === "restricted" ? "Provider restricted" : "Not connected"} tone="warning"/>
+          <Button type="submit" variant="secondary">{recipient?.configured ? "Reconnect payout account" : "Connect payout account"}</Button>
+        </form>
+      ) : (
+        <Status label="Payout provider not connected" tone="danger"/>
+      )}
+    </section>
 
     {earnings.length ? <Table caption="Participant balances by project and currency">
       <thead><tr><th scope="col">Project</th><th scope="col">Restricted</th><th scope="col">Available</th><th scope="col">Held</th><th scope="col">Pending payout</th><th scope="col">Paid</th><th scope="col">Payout</th></tr></thead>
