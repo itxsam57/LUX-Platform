@@ -18,7 +18,13 @@ import {
 } from "@/lib/admin/policy";
 import { requireWorkspace } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { performCriticalAdminAction, resolveAdminCaseAction, updateOperationalRateLimitAction } from "./actions";
+import {
+  performCriticalAdminAction,
+  resolveAdminCaseAction,
+  reviewAppealAction,
+  reviewConsumerDisputeAction,
+  updateOperationalRateLimitAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +42,8 @@ const QUEUE_LABELS: Record<AdminQueueKey, string> = {
   finance: "Finance",
   payouts: "Payouts",
   support: "Support",
+  disputes: "Disputes",
+  appeals: "Appeals",
   configuration: "Configuration",
   audit: "Audit",
   incidents: "Incidents",
@@ -92,7 +100,9 @@ export default async function StaffOperationsPage({
     ? supabase.rpc("list_audit_explorer", { limit_count: 100 })
     : queue === "incidents"
       ? supabase.rpc("list_operational_incidents")
-      : supabase.rpc("list_admin_queue", { queue_key: queue });
+      : queue === "disputes" || queue === "appeals"
+        ? supabase.rpc("list_trust_staff_queue", { queue_key: queue })
+        : supabase.rpc("list_admin_queue", { queue_key: queue });
   const overviewPromise = viewer.context.activeRole === "super_admin"
     ? supabase.rpc("get_admin_overview")
     : Promise.resolve({ data: null, error: null });
@@ -159,7 +169,15 @@ export default async function StaffOperationsPage({
         <Table caption="Abuse holds"><thead><tr><th scope="col">Hold</th><th scope="col">Target</th><th scope="col">State</th><th scope="col">Reason</th></tr></thead><tbody>{incidents.abuseHolds.map((row) => <tr key={row.publicId}><td>{row.publicId}</td><td>{row.targetPublicId}</td><td>{row.state}</td><td>{row.reason}</td></tr>)}</tbody></Table>
       </> : null}
 
-      {queue !== "audit" && queue !== "incidents" ? (queueRows.length ? <Table caption={`${QUEUE_LABELS[queue]} operational queue`}><thead><tr><th scope="col">Item</th><th scope="col">Details</th><th scope="col">Action</th></tr></thead><tbody>{queueRows.map((row, index) => <tr key={rowIdentity(row, index)}><td>{String(row.publicId ?? row.handle ?? row.key ?? row.kind)}</td><td>{rowSummary(row)}</td><td>{(queue === "moderation" || queue === "support") && row.state !== "resolved" && typeof row.publicId === "string" ? <NavigationActionForm action={resolveAdminCaseAction} className="workspace-form-grid"><input type="hidden" name="queue" value={queue}/><input type="hidden" name="case_public_id" value={row.publicId}/><Textarea id={`resolve-${row.publicId}`} name="reason" label="Resolution reason" minLength={8} maxLength={1000} required/><Input id={`confirm-${row.publicId}`} name="confirmation" label="Type CONFIRM" pattern="CONFIRM" required/><Button type="submit" size="small" variant="secondary">Resolve</Button></NavigationActionForm> : "View only"}</td></tr>)}</tbody></Table> : <div className="ui-state-card"><h3>No queue items</h3><p>This authorized queue is currently empty.</p></div>) : null}
+      {queue !== "audit" && queue !== "incidents" ? (queueRows.length ? <Table caption={`${QUEUE_LABELS[queue]} operational queue`}><thead><tr><th scope="col">Item</th><th scope="col">Details</th><th scope="col">Action</th></tr></thead><tbody>{queueRows.map((row, index) => <tr key={rowIdentity(row, index)}><td>{String(row.publicId ?? row.handle ?? row.key ?? row.kind)}</td><td>{rowSummary(row)}</td><td>
+          {(queue === "moderation" || queue === "support") && row.state !== "resolved" && typeof row.publicId === "string"
+            ? <NavigationActionForm action={resolveAdminCaseAction} className="workspace-form-grid"><input type="hidden" name="queue" value={queue}/><input type="hidden" name="case_public_id" value={row.publicId}/><Textarea id={`resolve-${row.publicId}`} name="reason" label="Resolution reason" minLength={8} maxLength={1000} required/><Input id={`confirm-${row.publicId}`} name="confirmation" label="Type CONFIRM" pattern="CONFIRM" required/><Button type="submit" size="small" variant="secondary">Resolve</Button></NavigationActionForm>
+            : queue === "disputes" && (row.state === "open" || row.state === "in_review") && typeof row.publicId === "string"
+              ? <NavigationActionForm action={reviewConsumerDisputeAction} className="workspace-form-grid"><input type="hidden" name="case_public_id" value={row.publicId}/><Select id={`dispute-decision-${row.publicId}`} name="decision" label="Decision" required><option value="start_review">Start review</option><option value="resolve">Resolve</option><option value="reject">Reject</option></Select><Textarea id={`dispute-reason-${row.publicId}`} name="reason" label="Consumer-visible decision/review note" minLength={8} maxLength={2000} required/><Button type="submit" size="small" variant="secondary">Record dispute review</Button></NavigationActionForm>
+              : queue === "appeals" && (row.state === "open" || row.state === "in_review") && typeof row.publicId === "string"
+                ? <NavigationActionForm action={reviewAppealAction} className="workspace-form-grid"><input type="hidden" name="case_public_id" value={row.publicId}/><Select id={`appeal-decision-${row.publicId}`} name="decision" label="Decision" required><option value="start_review">Start review</option><option value="uphold">Uphold prior decision</option><option value="overturn">Overturn and reopen source</option><option value="close">Close appeal</option></Select><Textarea id={`appeal-reason-${row.publicId}`} name="reason" label="Consumer-visible appeal note" minLength={8} maxLength={2000} required/><Button type="submit" size="small" variant="secondary">Record appeal review</Button></NavigationActionForm>
+                : "View only"}
+        </td></tr>)}</tbody></Table> : <div className="ui-state-card"><h3>No queue items</h3><p>This authorized queue is currently empty.</p></div>) : null}
     </section>
 
     {staffCanAccessAdminQueue(viewer.context.activeRole, "incidents") ? <section className="workspace-request-panel" aria-labelledby="critical-heading"><div><span className="eyebrow">Confirmed critical action</span><h2 id="critical-heading">Incident and legal-hold controls</h2><p>Every mutation requires an explicit target, a meaningful reason, and the exact confirmation word.</p></div><NavigationActionForm action={performCriticalAdminAction} className="workspace-form-grid"><Select id="critical-action" name="action" label="Action" required><option value="open_incident">Open incident</option><option value="resolve_incident">Resolve incident</option><option value="place_legal_hold">Place legal hold</option><option value="release_legal_hold">Release legal hold</option></Select><Input id="critical-target" name="target_public_id" label="Scope, target, incident, or hold public ID" minLength={8} maxLength={120} required/><Textarea id="critical-reason" name="reason" label="Reason" minLength={8} maxLength={1000} required/><Input id="critical-confirm" name="confirmation" label="Type CONFIRM" pattern="CONFIRM" required/><Button type="submit" variant="danger">Record critical action</Button></NavigationActionForm></section> : null}

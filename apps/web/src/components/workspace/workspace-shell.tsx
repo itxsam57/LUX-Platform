@@ -37,6 +37,7 @@ export function WorkspaceShell({
           <Link href="/settings/verification">Verification</Link>
           <Link href="/settings/privacy">Privacy</Link>
           <Link href="/notifications">Notifications</Link>
+          <Link href="/app/support">Support</Link>
           <Link href="/settings/security">Security</Link>
         </nav>
         <div className="workspace-header__account">

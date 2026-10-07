@@ -27,6 +27,8 @@ describe("Slice 17 admin policy", () => {
       "finance",
       "payouts",
       "support",
+      "disputes",
+      "appeals",
       "configuration",
       "audit",
       "incidents",
@@ -41,11 +43,14 @@ describe("Slice 17 admin policy", () => {
 
     expect(staffCanAccessAdminQueue("finance", "finance")).toBe(true);
     expect(staffCanAccessAdminQueue("finance", "payouts")).toBe(true);
+    expect(staffCanAccessAdminQueue("finance", "disputes")).toBe(true);
     expect(staffCanAccessAdminQueue("finance", "copyright")).toBe(false);
 
     expect(staffCanAccessAdminQueue("copyright", "copyright")).toBe(true);
     expect(staffCanAccessAdminQueue("support", "users")).toBe(true);
     expect(staffCanAccessAdminQueue("support", "support")).toBe(true);
+    expect(staffCanAccessAdminQueue("support", "disputes")).toBe(true);
+    expect(staffCanAccessAdminQueue("support", "appeals")).toBe(true);
     expect(staffCanAccessAdminQueue("support", "configuration")).toBe(false);
 
     for (const queue of ADMIN_QUEUE_KEYS) {
@@ -87,11 +92,13 @@ describe("Slice 17 admin policy", () => {
   });
 
   it("accepts only bounded safe operational projections", () => {
-    expect(parseAdminOverview({ users: 12, pendingRoles: 2, verification: 1, projects: 4, campaigns: 3, moderation: 0, review: 2, copyright: 1, finance: 0, payouts: 2, support: 1, incidents: 0, legalHolds: 1, abuseHolds: 0 })?.users).toBe(12);
+    expect(parseAdminOverview({ users: 12, pendingRoles: 2, verification: 1, projects: 4, campaigns: 3, moderation: 0, review: 2, copyright: 1, finance: 0, payouts: 2, support: 1, disputes: 2, appeals: 1, incidents: 0, legalHolds: 1, abuseHolds: 0 })?.users).toBe(12);
     expect(parseAdminOverview({ users: -1 })).toBeNull();
 
     expect(parseAdminQueueRows([{ kind: "project", publicId: "prj12345678", state: "draft", title: "Safe title", category: "film", updatedAt: "2026-09-10T00:00:00.000Z" }])).toHaveLength(1);
     expect(parseAdminQueueRows([{ kind: "support", publicId: "sup12345678", requesterHandle: "fan", subject: "Account recovery", state: "open", createdAt: "2026-09-10T00:00:00.000Z", updatedAt: "2026-09-10T00:00:00.000Z" }])).toHaveLength(1);
+    expect(parseAdminQueueRows([{ kind: "dispute", publicId: "dsp12345678", requesterHandle: "fan", subjectType: "funding_commitment", subjectPublicId: "fnd12345678", category: "refund", summary: "Refund status", state: "open", createdAt: "2026-10-07T00:00:00.000Z", updatedAt: "2026-10-07T00:00:00.000Z" }])).toHaveLength(1);
+    expect(parseAdminQueueRows([{ kind: "appeal", publicId: "apl12345678", requesterHandle: "fan", sourceType: "consumer_dispute", sourcePublicId: "dsp12345678", state: "open", createdAt: "2026-10-07T00:00:00.000Z", updatedAt: "2026-10-07T00:00:00.000Z" }])).toHaveLength(1);
     expect(parseAdminQueueRows([{ kind: "configuration", key: "launch.release_mode", revision: 1, updatedAt: "2026-09-10T00:00:00.000Z" }])).toHaveLength(1);
     expect(parseAdminQueueRows([{ kind: "project", privateBrief: "must never parse" }])).toEqual([]);
 

@@ -21,6 +21,19 @@ function deadlineValue(value: unknown) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : "";
 }
 
+function tierLines(value: unknown) {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const row = item as Record<string, unknown>;
+      if (typeof row.key !== "string" || typeof row.title !== "string" || typeof row.amountMinor !== "number" || typeof row.accessPromise !== "string") return null;
+      return `${row.key} | ${row.title} | ${row.amountMinor} | ${row.accessPromise}`;
+    })
+    .filter((item): item is string => item !== null)
+    .join("\n");
+}
+
 export function CampaignEditor({
   projectPublicId,
   campaignPublicId,
@@ -68,6 +81,11 @@ export function CampaignEditor({
             Optional supporter choices
             <textarea name="optional_choices" rows={3} defaultValue={strings(terms?.optionalChoices).join("\n")} />
             <small>One creator-approved optional choice per line. These are not guarantees.</small>
+          </label>
+          <label>
+            Funding tiers
+            <textarea name="tiers" rows={5} required defaultValue={tierLines(terms?.tiers)} placeholder="supporter | Supporter | 2500 | Access to the approved release" />
+            <small>One tier per line: key | title | amount in minor units | access promise. Tier keys must be unique lowercase identifiers.</small>
           </label>
           <label>
             Refund rules

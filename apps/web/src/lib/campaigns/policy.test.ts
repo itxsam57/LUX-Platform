@@ -24,6 +24,7 @@ const terms: CampaignTermsInput = {
   expectedDeliveryWindow: "January–March 2027",
   guarantees: ["One completed platform release"],
   optionalChoices: ["Supporters may vote on one creator-approved poster option"],
+  tiers: [{ key: "supporter", title: "Supporter", amountMinor: 2500, accessPromise: "Access to the approved platform release" }],
   refundRules: "If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.",
   materialChangeRules: "Material campaign changes require a new version and fresh supporter action where applicable.",
 };
@@ -68,6 +69,18 @@ describe("campaign term validation", () => {
     expect(() => normalizeCampaignTerms({ ...terms, currency: "usd" }, now)).toThrow("invalid_campaign_currency");
   });
 
+
+
+  it("requires at least one valid unique campaign tier", () => {
+    expect(() => normalizeCampaignTerms({ ...terms, tiers: [] }, now)).toThrow("invalid_campaign_tiers");
+    expect(() => normalizeCampaignTerms({ ...terms, tiers: [
+      { key: "supporter", title: "Supporter", amountMinor: 2500, accessPromise: "Release access" },
+      { key: "SUPPORTER", title: "Duplicate", amountMinor: 5000, accessPromise: "Release access" },
+    ] }, now)).toThrow("invalid_campaign_tiers");
+    expect(() => normalizeCampaignTerms({ ...terms, tiers: [
+      { key: "vip", title: "VIP", amountMinor: 0, accessPromise: "Release access" },
+    ] }, now)).toThrow("invalid_campaign_tiers");
+  });
   it("requires explicit guarantees, delivery, refund, and material-change rules", () => {
     expect(() => normalizeCampaignTerms({ ...terms, guarantees: [] }, now)).toThrow("incomplete_campaign_terms");
     expect(() => normalizeCampaignTerms({ ...terms, expectedDeliveryWindow: "" }, now)).toThrow("incomplete_campaign_terms");

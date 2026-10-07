@@ -25,6 +25,15 @@ export default async function FanWorkspacePage() {
     >
       <Card className="workspace-boundary-card">
         <div className="workspace-boundary-card__title">
+          <Badge tone="info">Consumer protection</Badge>
+          <h2>Support, disputes, and appeals</h2>
+        </div>
+        <p>Open account support, report content, dispute one of your funding or release records, or appeal an eligible final case decision.</p>
+        <Link className="workspace-inline-link" href="/app/support">Open case center</Link>
+      </Card>
+
+      <Card className="workspace-boundary-card">
+        <div className="workspace-boundary-card__title">
           <Badge tone="accent">Fan library</Badge>
           <h2>Your released titles</h2>
         </div>

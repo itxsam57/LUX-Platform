@@ -12,6 +12,8 @@ export const ADMIN_QUEUE_KEYS = [
   "finance",
   "payouts",
   "support",
+  "disputes",
+  "appeals",
   "configuration",
   "audit",
   "incidents",
@@ -22,9 +24,9 @@ export type AdminQueueKey = (typeof ADMIN_QUEUE_KEYS)[number];
 const STAFF_QUEUE_ACCESS: Record<Extract<AppRole, "reviewer" | "moderator" | "finance" | "copyright" | "support" | "super_admin">, ReadonlySet<AdminQueueKey>> = {
   reviewer: new Set(["verification", "review"]),
   moderator: new Set(["moderation"]),
-  finance: new Set(["finance", "payouts"]),
+  finance: new Set(["finance", "payouts", "disputes"]),
   copyright: new Set(["copyright"]),
-  support: new Set(["users", "support"]),
+  support: new Set(["users", "support", "disputes", "appeals"]),
   super_admin: new Set(ADMIN_QUEUE_KEYS),
 };
 
@@ -57,6 +59,8 @@ const ADMIN_OVERVIEW_KEYS = [
   "finance",
   "payouts",
   "support",
+  "disputes",
+  "appeals",
   "incidents",
   "legalHolds",
   "abuseHolds",
@@ -104,6 +108,8 @@ const ADMIN_QUEUE_ROW_KEYS = new Set([
   "routeKey",
   "targetRole",
   "actorHandle",
+  "sourceType",
+  "sourcePublicId",
 ]);
 
 const ADMIN_QUEUE_KINDS = new Set([
@@ -118,6 +124,8 @@ const ADMIN_QUEUE_KINDS = new Set([
   "finance",
   "payout",
   "support",
+  "dispute",
+  "appeal",
   "configuration",
   "audit",
 ]);

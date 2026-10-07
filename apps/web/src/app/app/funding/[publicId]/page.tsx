@@ -18,6 +18,19 @@ function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
+function campaignTiers(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const row = record(entry);
+    if (!row) return [];
+    const key = typeof row.key === "string" && /^[a-z0-9][a-z0-9_-]{1,47}$/.test(row.key) ? row.key : null;
+    const title = typeof row.title === "string" && row.title.trim().length >= 2 ? row.title.trim() : null;
+    const amountMinor = typeof row.amountMinor === "number" && Number.isSafeInteger(row.amountMinor) && row.amountMinor > 0 ? row.amountMinor : null;
+    const accessPromise = typeof row.accessPromise === "string" && row.accessPromise.trim().length >= 3 ? row.accessPromise.trim() : null;
+    return key && title && amountMinor && accessPromise ? [{ key, title, amountMinor, accessPromise }] : [];
+  });
+}
+
 async function CampaignPrebook({ publicId }: { publicId: string }) {
   const viewer = await requireAdultViewer(`/app/funding/${publicId}`);
   const supabase = await createServerSupabaseClient();
@@ -25,6 +38,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
   const campaign = record(data);
   if (error || !campaign) notFound();
   const idempotencyKey = `prebook:${randomUUID()}`;
+  const tiers = campaignTiers(campaign.tiers);
 
   return (
     <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
@@ -41,7 +55,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
         <Suspense fallback={null}>
           <UrlActionFeedback
             notices={{ confirmed: "Pre-book confirmed. This is not a payment or card authorization." }}
-            genericError="The pre-book could not be confirmed safely. Review the amount and current campaign eligibility."
+            genericError="The pre-book could not be confirmed safely. Review the selected tier or amount and current campaign eligibility."
           />
         </Suspense>
 
@@ -55,7 +69,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
         </section>
 
         <section className="studio-card">
-          <PrebookForm campaignPublicId={publicId} idempotencyKey={idempotencyKey} action={createPrebookAction} />
+          <PrebookForm campaignPublicId={publicId} idempotencyKey={idempotencyKey} tiers={tiers} action={createPrebookAction} />
         </section>
       </main>
     </WorkspaceShell>
@@ -83,6 +97,7 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
           <div className="studio-actions">
             <Link className="studio-button" href="/app/funding">Funding dashboard</Link>
             <Link className="studio-button" href={`/p/${funding.campaignPublicId}`}>Campaign</Link>
+            <Link className="studio-button" href={`/app/support?type=funding_commitment&subject=${funding.publicId}`}>Dispute / support</Link>
           </div>
         </header>
 

@@ -10,6 +10,7 @@ import {
   type AdminQueueKey,
 } from "@/lib/admin/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { parseCasePublicId, parseReviewReason } from "@/lib/trust/policy";
 
 const OPERATIONS_PATH = "/workspace/staff/operations";
 
@@ -86,6 +87,47 @@ export async function resolveAdminCaseAction(formData: FormData): Promise<Naviga
 
   revalidatePath(OPERATIONS_PATH);
   return result("success", "Case resolved.", `queue=${queue}&notice=resolved`);
+}
+
+
+export async function reviewConsumerDisputeAction(formData: FormData): Promise<NavigationActionResult> {
+  const publicId = parseCasePublicId("dispute", text(formData, "case_public_id"));
+  const decision = text(formData, "decision").trim().toLowerCase();
+  const reason = parseReviewReason(text(formData, "reason"));
+  if (!publicId || !["start_review", "resolve", "reject"].includes(decision) || !reason) {
+    return result("error", "The dispute review request is invalid.", "queue=disputes&error=review-invalid");
+  }
+  const supabase = await operationsClient("disputes");
+  if (!supabase) return result("error", "This staff role cannot review disputes.", "queue=disputes&error=denied");
+  const { error } = await supabase.rpc("review_consumer_dispute", {
+    requested_public_id: publicId,
+    decision_value: decision,
+    reason_value: reason,
+  });
+  if (error) return result("error", "The dispute could not be reviewed from its current state.", "queue=disputes&error=review");
+  revalidatePath(OPERATIONS_PATH);
+  revalidatePath("/app/support");
+  return result("success", "Dispute review recorded.", "queue=disputes&notice=reviewed");
+}
+
+export async function reviewAppealAction(formData: FormData): Promise<NavigationActionResult> {
+  const publicId = parseCasePublicId("appeal", text(formData, "case_public_id"));
+  const decision = text(formData, "decision").trim().toLowerCase();
+  const reason = parseReviewReason(text(formData, "reason"));
+  if (!publicId || !["start_review", "uphold", "overturn", "close"].includes(decision) || !reason) {
+    return result("error", "The appeal review request is invalid.", "queue=appeals&error=review-invalid");
+  }
+  const supabase = await operationsClient("appeals");
+  if (!supabase) return result("error", "This staff role cannot review appeals.", "queue=appeals&error=denied");
+  const { error } = await supabase.rpc("review_appeal", {
+    requested_public_id: publicId,
+    decision_value: decision,
+    reason_value: reason,
+  });
+  if (error) return result("error", "The appeal could not be reviewed from its current state.", "queue=appeals&error=review");
+  revalidatePath(OPERATIONS_PATH);
+  revalidatePath("/app/support");
+  return result("success", "Appeal review recorded.", "queue=appeals&notice=reviewed");
 }
 
 export async function updateOperationalRateLimitAction(formData: FormData): Promise<NavigationActionResult> {

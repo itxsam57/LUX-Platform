@@ -35,6 +35,7 @@ export const FOUNDATION_SLICE = {
     "/app/funding",
     "/app/earnings",
     "/app/copyright",
+    "/app/support",
     "/studio/projects",
     "/studio/projects/new",
     "/studio/invitations",

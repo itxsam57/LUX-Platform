@@ -30,20 +30,26 @@ export async function createPrebookAction(formData: FormData): Promise<void> {
   if (!campaignPattern.test(campaignPublicId)) redirect("/app/funding");
   await requireAdultViewer(fundingPath(campaignPublicId));
 
+  const tierKey = text(formData, "tier_key");
   const amountMinor = Number(text(formData, "amount_minor"));
   const idempotencyKey = text(formData, "idempotency_key");
-  if (!Number.isSafeInteger(amountMinor) || amountMinor < 1) {
+  if (!tierKey && (!Number.isSafeInteger(amountMinor) || amountMinor < 1)) {
     redirect(fundingPath(campaignPublicId, "error=amount"));
+  }
+  if (tierKey && !/^[a-z0-9][a-z0-9_-]{1,47}$/.test(tierKey)) {
+    redirect(fundingPath(campaignPublicId, "error=tier"));
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.rpc("create_prebook", {
+  const common = {
     requested_campaign_public_id: campaignPublicId,
-    requested_amount_minor: amountMinor,
     requested_supporter_visibility: text(formData, "supporter_visibility"),
     requested_badge_choice: text(formData, "badge_choice") || null,
     requested_idempotency_key: idempotencyKey,
-  });
+  };
+  const { error } = tierKey
+    ? await supabase.rpc("create_prebook_for_tier", { ...common, requested_tier_key: tierKey })
+    : await supabase.rpc("create_prebook", { ...common, requested_amount_minor: amountMinor });
   if (error) redirect(fundingPath(campaignPublicId, "error=prebook"));
 
   revalidatePath(`/p/${campaignPublicId}`);

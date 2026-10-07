@@ -19,6 +19,7 @@ export default function HelpPage() {
       </PublicInfoSection>
       <PublicInfoSection title="Copyright or safety concern">
         <p>Signed-in users can use the copyright and support workflows available to their role. Staff escalation queues preserve audit history and restrict evidence to authorized reviewers.</p>
+        <p><Link href="/app/support">Open the support, report, dispute, and appeal center</Link></p>
       </PublicInfoSection>
       <PublicInfoSection title="Start here">
         <div className="component-row">
