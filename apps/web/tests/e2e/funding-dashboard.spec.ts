@@ -136,14 +136,14 @@ test("fan funding dashboard preserves private, truthful payment and change state
     const fixture = await fundedFixture(ownerClient, supporterClient, owner.id);
     await login(page, supporterEmail, "/app/funding");
     await expect(page.getByRole("heading", { name: "Funding dashboard" })).toBeVisible();
-    for (const tab of ["Active", "Successful", "Refunded", "All"]) await expect(page.getByRole("link", { name: tab })).toBeVisible();
+    for (const tab of ["Active", "Successful", "Refunded", "All"]) await expect(page.getByRole("link", { name: tab, exact: true })).toBeVisible();
     await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await expect(page.locator(".funding-state").filter({ hasText: /^authorized$/ })).toBeVisible();
     await expect(page.getByText(/sandbox.*not production/i)).toBeVisible();
     await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
     await page.getByRole("link", { name: "Successful" }).click(); await expect(page.getByText("No successful funding yet")).toBeVisible();
     await page.getByRole("link", { name: "Refunded" }).click(); await expect(page.getByText("No refunded funding yet")).toBeVisible();
-    await page.getByRole("link", { name: "All" }).click(); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
+    await page.locator('a[href="/app/funding"]').filter({ hasText: /^All$/ }).first().click(); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await page.getByRole("link", { name: "View funding" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${fixture.commitmentPublicId}$`));
     await expect(page.getByRole("heading", { name: "Slice 10 funding lifecycle project" })).toBeVisible();

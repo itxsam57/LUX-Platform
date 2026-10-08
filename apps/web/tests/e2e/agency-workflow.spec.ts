@@ -131,13 +131,13 @@ test("agency representation is performer-controlled from invitation through revo
     const agreementId = String(invitation.publicId);
 
     await login(page, performerEmail, "/app/representation");
-    const performerAgreement = page.locator("section").filter({ hasText: "Masterplan Agency Test" }).filter({ hasText: agreementId });
+    const performerAgreement = page.locator("article").filter({ hasText: "Masterplan Agency Test" }).filter({ hasText: agreementId });
     await expect(performerAgreement).toContainText("proposed");
     await expect(page.getByText(/Agency access never grants consent or final-cut authority/i)).toBeVisible();
     await performerAgreement.getByRole("button", { name: "Accept these exact terms" }).click();
     await expect(page).toHaveURL(/notice=accept/);
     await page.reload();
-    await expect(page.locator("section").filter({ hasText: agreementId })).toContainText("accepted");
+    await expect(page.locator("article").filter({ hasText: agreementId })).toContainText("accepted");
 
     await login(agencyPage, agencyEmail, "/workspace/agency");
     await expect(agencyPage.getByRole("heading", { name: "Masterplan Agency Test" })).toBeVisible();
@@ -152,12 +152,12 @@ test("agency representation is performer-controlled from invitation through revo
     await expect(agencyPage.getByText("Creator-controlled performance opportunity")).toBeVisible();
 
     await page.reload();
-    const acceptedAgreement = page.locator("section").filter({ hasText: agreementId });
+    const acceptedAgreement = page.locator("article").filter({ hasText: agreementId });
     await acceptedAgreement.getByLabel("Revocation reason").fill("Performer chooses to end agency representation.");
     await acceptedAgreement.getByRole("button", { name: /revoke/i }).click();
     await expect(page).toHaveURL(/notice=revoked/);
     await page.reload();
-    await expect(page.locator("section").filter({ hasText: agreementId })).toContainText("revoked");
+    await expect(page.locator("article").filter({ hasText: agreementId })).toContainText("revoked");
 
     await agencyPage.reload();
     await expect(agencyPage.getByRole("row").filter({ hasText: agreementId })).toContainText("revoked");
