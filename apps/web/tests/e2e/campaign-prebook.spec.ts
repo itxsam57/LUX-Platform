@@ -198,6 +198,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await page.getByLabel("Optional supporter choices").fill("Creator-approved poster vote");
     await page.getByLabel("Refund rules").fill("If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.");
     await page.getByLabel("Material change rules").fill("Material campaign changes require a new version and fresh supporter action where applicable.");
+    await page.getByLabel("Funding tiers").fill("supporter | Supporter | 5000 | Access to the approved release");
     await page.getByRole("button", { name: "Save campaign draft" }).click();
     await expect(page.getByRole("status")).toContainText("Campaign draft saved");
     await expect(page).toHaveURL(/campaign\?campaign=cmp[0-9a-f]{24}&version=1/);

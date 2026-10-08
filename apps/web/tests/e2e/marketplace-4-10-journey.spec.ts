@@ -223,7 +223,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
 
     // Slice 4: a fan can discover the public creator without private identifiers.
     await login(page, fanEmail, "/app/explore");
-    await expect(page.getByRole("heading", { name: "Discover public creators" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discover creators and projects" })).toBeVisible();
     const creatorCard = page.getByRole("article").filter({ hasText: `@${creatorHandle}` });
     await expect(creatorCard).toHaveCount(1);
     await expect(creatorCard.getByText("Creator", { exact: true })).toBeVisible();
@@ -344,6 +344,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await creatorPage.getByLabel("Optional supporter choices").fill("Creator-approved poster vote");
     await creatorPage.getByLabel("Refund rules").fill("If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.");
     await creatorPage.getByLabel("Material change rules").fill("Material campaign changes require a new version and fresh supporter action where applicable.");
+    await creatorPage.getByLabel("Funding tiers").fill("supporter | Supporter | 5000 | Access to the approved release");
     await creatorPage.getByRole("button", { name: "Save campaign draft" }).click();
     await expect(creatorPage.getByRole("status")).toContainText("Campaign draft saved");
     const campaignPublicId = new URL(creatorPage.url()).searchParams.get("campaign");
