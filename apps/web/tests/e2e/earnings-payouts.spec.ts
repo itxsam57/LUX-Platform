@@ -443,9 +443,58 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await expect(page.getByRole("button", { name: "Watch securely" })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("heading", { name: "Ready to watch" })).toBeVisible();
+    await page.getByLabel("Copy URL").fill("https://copies.example/slice-14-premiere");
+    await page.getByLabel("What did you find?").fill("A copied release appears to reproduce the approved final delivery.");
+    await page.getByRole("button", { name: "Report copied release" }).click();
+    await expect(page).toHaveURL(/notice=report/);
     await page.goto("/workspace/fan");
     await expect(page.getByRole("heading", { name: "Your released titles" })).toBeVisible();
     await expect(page.getByText("Slice 14 Premiere")).toBeVisible();
+    await signOut(page);
+
+    await login(page, ownerEmail, "/app/copyright");
+    const rightsCard = page.locator("article.workspace-request-panel").filter({ hasText: "Slice 14 Premiere" });
+    await expect(rightsCard).toHaveCount(1);
+    await rightsCard.getByLabel("Rights basis").selectOption("owner");
+    await rightsCard.getByLabel("Evidence reference").fill("evidence:slice-14-owner-contract");
+    await rightsCard.getByLabel(/Manual perceptual fingerprint/).fill("phash:8f0a1134de89bc22");
+    await rightsCard.getByRole("button", { name: "Register rights" }).click();
+    await expect(page).toHaveURL(/notice=registered/);
+    await expect(page.getByText("Registered", { exact: true })).toBeVisible();
+    await signOut(page);
+
+    await login(page, staffEmail, "/workspace/staff/copyright");
+    const intakeRow = page.getByRole("row").filter({ hasText: "https://copies.example/slice-14-premiere" });
+    await expect(intakeRow).toHaveCount(1);
+    await intakeRow.getByLabel("Opening reason").fill("Reported copy requires audited source matching and rights review.");
+    await intakeRow.getByRole("button", { name: "Open case" }).click();
+    await expect(page).toHaveURL(/notice=opened/);
+    let copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: "Slice 14 Premiere" }).filter({ hasText: "https://copies.example/slice-14-premiere" });
+    await expect(copyrightCase).toHaveCount(1);
+    const caseText = await copyrightCase.innerText();
+    const copyrightCaseId = caseText.match(/cpy[0-9a-f]{24}/)?.[0];
+    if (!copyrightCaseId) throw new Error("Copyright case public ID unavailable");
+
+    await copyrightCase.getByLabel("Case action").selectOption("begin_matching");
+    await copyrightCase.getByLabel("Audited reason").fill("Begin fingerprint comparison against the registered release.");
+    await copyrightCase.getByRole("button", { name: "Apply transition" }).click();
+    await expect(page).toHaveURL(/notice=updated/);
+    copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: copyrightCaseId });
+    await copyrightCase.getByLabel("Source match").selectOption("no_match");
+    await copyrightCase.getByLabel("Match reason").fill("No supported source-session fingerprint matched the reported copy.");
+    await copyrightCase.getByRole("button", { name: "Record match" }).click();
+    await expect(page).toHaveURL(/notice=match/);
+
+    copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: copyrightCaseId });
+    await copyrightCase.getByLabel("Case action").selectOption("mark_false_positive");
+    await copyrightCase.getByLabel("Audited reason").fill("Close as false positive after the audited source comparison found no supported match.");
+    await copyrightCase.getByRole("button", { name: "Apply transition" }).click();
+    await expect(page).toHaveURL(/notice=updated/);
+    await signOut(page);
+
+    await login(page, ownerEmail, "/app/copyright");
+    const creatorCaseRow = page.getByRole("row").filter({ hasText: "https://copies.example/slice-14-premiere" });
+    await expect(creatorCaseRow).toContainText("false positive");
     await signOut(page);
 
     const { data: promotion, error: promotionError } = await reviewer.rpc("promote_project_earnings", {

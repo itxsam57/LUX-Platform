@@ -69,6 +69,13 @@ where membership.user_id=active.user_id and membership.status='approved'
   and active.user_id in ('13000000-0000-0000-0000-0000000000a1','13000000-0000-0000-0000-0000000000a2','13000000-0000-0000-0000-0000000000a5')
   and membership.role=case active.user_id when '13000000-0000-0000-0000-0000000000a5' then 'reviewer'::public.app_role else 'creator'::public.app_role end;
 
+insert into public.performer_records(user_id,active,liveness_expires_at,payout_ownership_verified,payout_ownership_checked_at)
+values ('13000000-0000-0000-0000-0000000000a2',true,now()+interval '1 year',true,now())
+on conflict(user_id) do update set active=true,liveness_expires_at=excluded.liveness_expires_at,payout_ownership_verified=true,payout_ownership_checked_at=now(),updated_at=now();
+insert into public.consent_education_acknowledgements(user_id,policy_version)
+values ('13000000-0000-0000-0000-0000000000a2',private.current_consent_education_version())
+on conflict(user_id,policy_version) do nothing;
+
 insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values
 ('13000000-0000-0000-0000-0000000000a1','v2','verified',now(),now()+interval '1 year'),
 ('13000000-0000-0000-0000-0000000000a2','v2','verified',now(),now()+interval '1 year'),
@@ -153,6 +160,7 @@ select public.set_final_delivery_processing((select payload->>'publicId' from s1
 select public.set_delivery_review_check((select payload->>'publicId' from s13_delivery),'legality','pass','Contract and legality evidence match');
 select public.set_delivery_review_check((select payload->>'publicId' from s13_delivery),'consent','pass','Consent evidence matches the locked terms');
 select public.set_delivery_review_check((select payload->>'publicId' from s13_delivery),'copyright','pass','Rights evidence matches the submitted media');
+select public.set_delivery_review_check((select payload->>'publicId' from s13_delivery),'safety','pass','Safety review passes for the exact final delivery');
 select public.set_delivery_review_check((select payload->>'publicId' from s13_delivery),'quality','pass','Release media passes technical quality review');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','13000000-0000-0000-0000-0000000000a2','role','authenticated')::text,true);

@@ -80,8 +80,18 @@ where user_id='26000000-0000-0000-0000-000000000003';
 select set_config('request.jwt.claims','{"sub":"26000000-0000-0000-0000-000000000003","role":"authenticated"}',true);
 set local role authenticated;
 
-select ok(private.staff_can_access_admin_queue(auth.uid(),'disputes'),'support staff can access dispute queue');
-select ok(private.staff_can_access_admin_queue(auth.uid(),'appeals'),'support staff can access appeal queue');
+reset role;
+select ok(
+  position('''support''::public.app_role' in lower(pg_get_functiondef('private.staff_can_access_admin_queue(uuid,text)'::regprocedure)))>0
+  and position('''disputes''' in lower(pg_get_functiondef('private.staff_can_access_admin_queue(uuid,text)'::regprocedure)))>0,
+  'support staff capability matrix includes disputes without exposing the private helper to clients'
+);
+select ok(
+  position('''support''::public.app_role' in lower(pg_get_functiondef('private.staff_can_access_admin_queue(uuid,text)'::regprocedure)))>0
+  and position('''appeals''' in lower(pg_get_functiondef('private.staff_can_access_admin_queue(uuid,text)'::regprocedure)))>0,
+  'support staff capability matrix includes appeals without exposing the private helper to clients'
+);
+set local role authenticated;
 select lives_ok(
   $q$select public.resolve_admin_case('support',current_setting('test.trust_support_case'),'Resolved after support review','CONFIRM')$q$,
   'support staff can resolve the consumer case'

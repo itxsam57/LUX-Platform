@@ -242,8 +242,13 @@ select is((select count(*)::integer from storage.objects where bucket_id='produc
 select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a4","role":"authenticated"}',true);
 select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),0,'outsider cannot read production object');
 select set_config('request.jwt.claims','{"sub":"11000000-0000-0000-0000-0000000000a1","role":"authenticated"}',true);
-select lives_ok($q$delete from storage.objects where bucket_id='production-assets'$q$,'owner can delete own production object');
-select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),0,'owner deletion persists');
+select throws_ok(
+  $q$delete from storage.objects where bucket_id='production-assets'$q$,
+  '42501',
+  null,
+  'direct SQL storage deletion is forbidden even for the owner; deletion must use the Storage API'
+);
+select is((select count(*)::integer from storage.objects where bucket_id='production-assets'),1,'failed direct deletion leaves the production object intact');
 reset role;
 
 select * from finish();

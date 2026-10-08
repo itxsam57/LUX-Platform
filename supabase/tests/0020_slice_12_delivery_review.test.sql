@@ -66,6 +66,13 @@ where membership.user_id=active.user_id and membership.status='approved'
     '12000000-0000-0000-0000-0000000000a3','12000000-0000-0000-0000-0000000000a4')
   and membership.role=case active.user_id when '12000000-0000-0000-0000-0000000000a3' then 'reviewer'::public.app_role else 'creator'::public.app_role end;
 
+insert into public.performer_records(user_id,active,liveness_expires_at,payout_ownership_verified,payout_ownership_checked_at)
+values ('12000000-0000-0000-0000-0000000000a2',true,now()+interval '1 year',true,now())
+on conflict(user_id) do update set active=true,liveness_expires_at=excluded.liveness_expires_at,payout_ownership_verified=true,payout_ownership_checked_at=now(),updated_at=now();
+insert into public.consent_education_acknowledgements(user_id,policy_version)
+values ('12000000-0000-0000-0000-0000000000a2',private.current_consent_education_version())
+on conflict(user_id,policy_version) do nothing;
+
 insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values
 ('12000000-0000-0000-0000-0000000000a1','v2','verified',now(),now()+interval '1 year'),
 ('12000000-0000-0000-0000-0000000000a2','v2','verified',now(),now()+interval '1 year'),
@@ -127,6 +134,7 @@ select public.set_final_delivery_processing((select payload->>'publicId' from s1
 select public.set_delivery_review_check((select payload->>'publicId' from s12_delivery_one),'legality','pass','Contract and legality evidence match');
 select public.set_delivery_review_check((select payload->>'publicId' from s12_delivery_one),'consent','pass','Consent evidence matches the locked contract');
 select public.set_delivery_review_check((select payload->>'publicId' from s12_delivery_one),'copyright','pass','Rights declaration and evidence pass review');
+select public.set_delivery_review_check((select payload->>'publicId' from s12_delivery_one),'safety','pass','Safety review passes for the exact final delivery');
 select public.set_delivery_review_check((select payload->>'publicId' from s12_delivery_one),'quality','pass','Final media passes technical quality review');
 select throws_ok(format($q$select public.decide_delivery_review(%L,'approve','Checklist complete before performer approval')$q$,(select payload->>'publicId' from s12_delivery_one)),'42501','delivery_review_blocked','review still cannot approve before exact-version final-cut approval');
 select throws_ok(format($q$select public.decide_delivery_review(%L,'hold','x')$q$,(select payload->>'publicId' from s12_delivery_one)),'22023','invalid_delivery_review_reason','review decisions require bounded reasons');

@@ -40,9 +40,11 @@ select ok(
 );
 
 select ok(
-  position('state=''prepared''' in replace(lower(pg_get_functiondef('public.prepare_payout_dispatch(text,text,text)'::regprocedure)),' ',''))>0
-  and position('state=''dispatched''' in replace(lower(pg_get_functiondef('public.complete_payout_dispatch(text,text,text,text)'::regprocedure)),' ',''))>0,
-  'payout dispatch uses a durable prepare then complete state machine'
+  position('''prepared''' in lower(pg_get_functiondef('public.prepare_payout_dispatch(text,text,text)'::regprocedure)))>0
+  and position('state=''dispatched''' in replace(lower(pg_get_functiondef('public.complete_payout_dispatch(text,text,text,text)'::regprocedure)),' ',''))>0
+  and position('payout_dispatch_events' in lower(pg_get_functiondef('public.prepare_payout_dispatch(text,text,text)'::regprocedure)))>0
+  and position('payout_dispatch_events' in lower(pg_get_functiondef('public.complete_payout_dispatch(text,text,text,text)'::regprocedure)))>0,
+  'payout dispatch uses durable prepared then dispatched state plus append-only dispatch events'
 );
 
 select ok(

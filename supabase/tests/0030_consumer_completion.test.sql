@@ -30,9 +30,15 @@ select ok(
   position('private.users_blocked' in lower(pg_get_functiondef('public.send_message(text,text,text)'::regprocedure)))>0,
   'messaging rechecks blocking before every send'
 );
+select has_trigger(
+  'public','payment_transactions','payment_consumer_order_wallet_sync',
+  'payment transaction changes drive consumer order and wallet synchronization'
+);
 select ok(
-  position('payment_transactions' in lower(pg_get_functiondef('private.sync_consumer_order_wallet()'::regprocedure)))>0,
-  'orders and wallet are derived from payment transaction state'
+  position('consumer_orders' in lower(pg_get_functiondef('private.sync_consumer_order_wallet()'::regprocedure)))>0
+  and position('wallet_entries' in lower(pg_get_functiondef('private.sync_consumer_order_wallet()'::regprocedure)))>0
+  and position('new.funding_commitment_id' in lower(pg_get_functiondef('private.sync_consumer_order_wallet()'::regprocedure)))>0,
+  'orders and wallet are derived from the payment transaction trigger row'
 );
 
 select * from finish();
