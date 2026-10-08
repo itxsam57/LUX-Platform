@@ -1,6 +1,6 @@
--- Remove PL/pgSQL ambiguity in the operational rate-limit bucket upsert.
--- Keep the original function signature/parameter names stable because PostgreSQL does not
--- permit CREATE OR REPLACE FUNCTION to rename an existing input parameter.
+-- Remove PL/pgSQL ambiguity between the stable rate-limit parameter name and bucket columns.
+-- Keep the existing function signature because PostgreSQL does not permit input-parameter
+-- renaming through CREATE OR REPLACE when dependent functions already call it.
 
 create or replace function private.consume_operational_rate_limit(
   limit_key text,
@@ -11,6 +11,7 @@ language plpgsql
 security definer
 set search_path=pg_catalog,public,private,extensions
 as $$
+declare requested_limit_key text:=limit_key;
 declare allowed_requests integer;
 declare configured_window integer;
 declare configured_enabled boolean;
@@ -25,7 +26,7 @@ begin
   select config.max_requests,config.window_seconds,config.enabled
   into allowed_requests,configured_window,configured_enabled
   from public.operational_rate_limits config
-  where config.key=limit_key;
+  where config.key=requested_limit_key;
 
   if not found or not configured_enabled then
     return;
@@ -39,7 +40,7 @@ begin
   insert into public.operational_rate_limit_buckets(
     limit_key,subject_hash,window_started_at,request_count,updated_at
   ) values (
-    limit_key,normalized_subject_hash,bucket_window,1,now()
+    requested_limit_key,normalized_subject_hash,bucket_window,1,now()
   )
   on conflict on constraint operational_rate_limit_buckets_pkey do update
   set window_started_at=excluded.window_started_at,
