@@ -298,3 +298,46 @@ test("suggested creator can decline privately and only their interest becomes pu
     await removeUser(creator.id);
   }
 });
+
+
+test("demand discussion persists, respects crowd-input boundaries, and author moderation hides without deleting history", async ({ page, browser }, testInfo) => {
+  const authorEmail = testEmail("demand-discussion-author", testInfo);
+  const commenterEmail = testEmail("demand-discussion-commenter", testInfo);
+  const author = await createConfirmedUser(authorEmail);
+  const commenter = await createConfirmedUser(commenterEmail);
+  const commenterContext = await openSecondaryContext(browser, testInfo);
+  const commenterPage = await commenterContext.newPage();
+
+  try {
+    await loginAssureAndNavigate(page, authorEmail, "/app/demand");
+    const { pathname, publicId } = await createDemandThroughUi(page);
+
+    await loginAssureAndNavigate(commenterPage, commenterEmail, pathname);
+    await commenterPage.getByLabel("Entry type").selectOption("suggestion");
+    await commenterPage.getByLabel("Message").fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
+    await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
+    await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();
+
+    await commenterPage.reload();
+    await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
+
+    await page.goto(pathname);
+    const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
+    await expect(suggestion).toContainText("Suggestion");
+    await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
+    await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
+
+    const { data: history, error: historyError } = await admin
+      .from("demand_discussion_entries")
+      .select("hidden_by_author")
+      .eq("demand_id", (await admin.from("demands").select("id").eq("public_id", publicId).single()).data?.id ?? "")
+      .single();
+    if (historyError) throw historyError;
+    expect(history?.hidden_by_author).toBe(true);
+  } finally {
+    await commenterContext.close();
+    await removeUser(author.id);
+    await removeUser(commenter.id);
+  }
+});

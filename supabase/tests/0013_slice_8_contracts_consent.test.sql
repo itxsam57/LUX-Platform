@@ -39,6 +39,10 @@ select throws_ok(format($q$select public.record_depicted_consent(%L,%L,'step-up-
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000b2','role','authenticated')::text,true);
 select throws_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'42501','terms_acceptance_not_allowed','depicted participant cannot accept terms with V2 only');
+insert into public.performer_records(user_id,active,liveness_expires_at,payout_ownership_verified,payout_ownership_checked_at)
+values ('10000000-0000-0000-0000-0000000000b2',true,now()+interval '1 year',true,now());
+insert into public.consent_education_acknowledgements(user_id,policy_version)
+values ('10000000-0000-0000-0000-0000000000b2',private.current_consent_education_version());
 insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values ('10000000-0000-0000-0000-0000000000b2','v3','verified',now(),now()+interval '1 year');
 select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'current V3 performer accepts exact terms');
 select lives_ok(format($q$select public.accept_project_terms(%L,%L,'step-up-confirmed')$q$,(select payload->>'publicId' from s8_project),(select payload->>'hash' from s8_terms)),'duplicate exact acceptance is idempotent');

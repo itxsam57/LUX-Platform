@@ -174,5 +174,24 @@ test("fan funding dashboard preserves private, truthful payment and change state
     if (captureError) throw captureError;
     await page.goto("/app/funding?status=successful"); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await expect(page.locator(".funding-state").filter({ hasText: /^captured$/ })).toBeVisible(); await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
+
+    await page.goto("/app/orders");
+    await expect(page.getByRole("heading", { name: "Orders" })).toBeVisible();
+    const orderRow = page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" });
+    await expect(orderRow).toContainText("captured");
+    await expect(orderRow).toContainText("$50.00");
+    await page.reload();
+    await expect(page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" })).toHaveCount(1);
+    await expectNoSensitiveFundingIds(page);
+
+    await page.goto("/app/wallet");
+    await expect(page.getByRole("heading", { name: "Wallet records" })).toBeVisible();
+    const walletRows = page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" });
+    await expect(walletRows).toHaveCount(2);
+    await expect(walletRows.filter({ hasText: "authorization" })).toHaveCount(1);
+    await expect(walletRows.filter({ hasText: "purchase" })).toHaveCount(1);
+    await page.reload();
+    await expect(page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" })).toHaveCount(2);
+    await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
   } finally { await admin.auth.admin.deleteUser(owner.id); await admin.auth.admin.deleteUser(supporter.id); }
 });

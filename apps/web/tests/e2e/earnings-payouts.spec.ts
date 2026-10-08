@@ -376,6 +376,21 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     });
     if (deliveryError || !delivery?.publicId) throw deliveryError ?? new Error("Slice 14 delivery unavailable");
     const deliveryPublicId = String(delivery.publicId);
+
+    await login(page, ownerEmail, `/studio/projects/${fixture.projectPublicId}/production`);
+    await expect(page.getByRole("heading", { name: "Slice 14 journal payout project" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Private assets" })).toBeVisible();
+    await expect(page.getByText(finalAssetPublicId)).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Slice 14 journal payout project" })).toBeVisible();
+    await signOut(page);
+
+    await login(page, staffEmail, `/workspace/staff/delivery-review/${fixture.projectPublicId}`);
+    await expect(page.getByRole("heading", { name: "Required checklist" })).toBeVisible();
+    await expect(page.getByText("Safety")).toBeVisible();
+    await expect(page.getByText(/Approval remains blocked/)).toBeVisible();
+    await signOut(page);
+
     const { error: processingError } = await reviewer.rpc("set_final_delivery_processing", {
       requested_delivery_public_id: deliveryPublicId,
       requested_state: "ready",
@@ -386,6 +401,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       ["legality", "Contract and legality evidence match"],
       ["consent", "Consent evidence matches the locked terms"],
       ["copyright", "Rights evidence matches the submitted media"],
+      ["safety", "Release content passes the platform safety review"],
       ["quality", "Release media passes technical quality review"],
     ] as const) {
       const { error } = await reviewer.rpc("set_delivery_review_check", {
@@ -419,6 +435,18 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_idempotency_key: idempotency("s14-release"),
     });
     if (releaseError || !release?.publicId) throw releaseError ?? new Error("Slice 14 release unavailable");
+    const releasePublicId = String(release.publicId);
+
+    await login(page, supporterEmail, `/releases/${releasePublicId}`);
+    await expect(page.getByRole("heading", { name: "Slice 14 Premiere" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ready to watch" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Watch securely" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Ready to watch" })).toBeVisible();
+    await page.goto("/workspace/fan");
+    await expect(page.getByRole("heading", { name: "Your released titles" })).toBeVisible();
+    await expect(page.getByText("Slice 14 Premiere")).toBeVisible();
+    await signOut(page);
 
     const { data: promotion, error: promotionError } = await reviewer.rpc("promote_project_earnings", {
       requested_project_public_id: fixture.projectPublicId,
