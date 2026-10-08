@@ -42,6 +42,19 @@ const failures = [];
 for (const file of requiredFiles) if (!existsSync(file)) failures.push(`Missing required file: ${file}`);
 
 const tracked = gitTrackedFiles();
+
+const migrationVersions = new Map();
+for (const file of tracked.filter((name) => name.startsWith("supabase/migrations/"))) {
+  const match = file.match(/^supabase\/migrations\/(\d{14})_/);
+  if (!match) continue;
+  const existing = migrationVersions.get(match[1]);
+  if (existing) {
+    failures.push(`Duplicate Supabase migration version ${match[1]}: ${existing} and ${file}`);
+  } else {
+    migrationVersions.set(match[1], file);
+  }
+}
+
 for (const file of tracked) {
   if (file === ".env.example") continue;
   for (const rule of forbiddenTrackedPatterns) {
