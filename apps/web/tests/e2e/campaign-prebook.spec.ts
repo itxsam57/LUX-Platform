@@ -237,7 +237,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await expect(page.getByRole("heading", { name: "Confirm your pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirm pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: /pay|authorize/i })).toHaveCount(0);
-    await page.getByLabel("Pre-book amount (minor units)").fill("5000");
+    await page.getByLabel("Funding tier").selectOption("supporter");
     await page.getByLabel("Supporter visibility").selectOption("default");
     await page.getByLabel("Supporter badge choice").fill("founding-supporter");
 
