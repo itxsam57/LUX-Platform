@@ -107,7 +107,7 @@ test("staff operations expose only the active role capability matrix and deny di
         const queueLinks = page.locator(".funding-tabs a");
         await expect(queueLinks).toHaveCount(EXPECTED[role].length);
         for (const label of EXPECTED[role]) {
-          await expect(queueLinks.getByRole("link", { name: label, exact: true })).toBeVisible();
+          await expect(queueLinks.filter({ hasText: new RegExp(`^${label}$`) })).toHaveCount(1);
         }
 
         const visibleLabels = await queueLinks.allTextContents();

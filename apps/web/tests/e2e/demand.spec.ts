@@ -316,6 +316,8 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await commenterPage.getByLabel("Entry type").selectOption("suggestion");
     await commenterPage.locator('textarea[name="body"]').fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
     await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
+    await expect(commenterPage).toHaveURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion$`));
+    await expect(commenterPage.getByRole("status")).toContainText("Demand discussion updated");
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
     await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();
 
@@ -326,6 +328,7 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
     await expect(suggestion).toContainText("Suggestion");
     await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
+    await expect(page).toHaveURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion-hidden$`));
     await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
 
     const { data: demandRow, error: demandLookupError } = await admin

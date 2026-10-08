@@ -90,7 +90,7 @@ async function login(page: Page, address: string, target: string) {
 }
 
 function profileCard(page: Page, handle: string) {
-  return page.getByRole("article").filter({ hasText: `@${handle}` });
+  return page.locator("article").filter({ has: page.locator(`a[href="/u/${handle}"]`) });
 }
 
 for (const route of protectedDiscoveryRoutes) {

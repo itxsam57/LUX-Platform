@@ -43,7 +43,7 @@ export async function publishTermsAction(formData: FormData): Promise<Navigation
       };
     });
   const revenueSplits = text(formData, "revenue_splits")
-    .split("\\n")
+    .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
