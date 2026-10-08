@@ -314,7 +314,7 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
 
     await loginAssureAndNavigate(commenterPage, commenterEmail, pathname);
     await commenterPage.getByLabel("Entry type").selectOption("suggestion");
-    await commenterPage.getByLabel("Message").fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    await commenterPage.locator('textarea[name="body"]').fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
     await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
     await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();

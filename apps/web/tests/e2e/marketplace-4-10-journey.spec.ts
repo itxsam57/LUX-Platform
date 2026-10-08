@@ -341,7 +341,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await page.goto(`/p/${campaignPublicId}`);
     await page.getByRole("link", { name: "Pre-book" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${campaignPublicId}$`));
-    await page.getByLabel("Funding tier").selectOption("supporter");
+    await page.locator('select[name="tier_key"]').selectOption("supporter");
     await page.getByLabel("Supporter visibility").selectOption("default");
     await page.getByLabel("Supporter badge choice").fill("founding-supporter");
     await page.locator("form[data-prebook-form]").evaluate((node) => {
