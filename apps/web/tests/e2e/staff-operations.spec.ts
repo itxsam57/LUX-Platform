@@ -43,31 +43,37 @@ async function createUser(address: string) {
   return data.user;
 }
 
-async function seedStaffRole(userId: string, role: StaffRole) {
+async function seedStaffRole(userId: string, role: StaffRole, address: string) {
+  let membershipId: string | null = null;
   if (role === "super_admin") {
     const { error } = await admin.rpc("bootstrap_super_admin", { target_user_id: userId });
     if (error) throw error;
-    return;
+  } else {
+    const { data, error } = await admin.rpc("provision_staff_role", {
+      target_user_id: userId,
+      requested_role: role,
+    });
+    if (error || typeof data !== "string") throw error ?? new Error("Staff provisioning unavailable");
+    membershipId = data;
   }
 
-  const { data: membership, error: membershipError } = await admin
-    .from("workspace_memberships")
-    .insert({
-      user_id: userId,
-      role,
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: userId,
-    })
-    .select("id")
-    .single();
-  if (membershipError || !membership?.id) throw membershipError ?? new Error("Staff membership unavailable");
+  const client = createClient(supabaseUrl!, publishableKey!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: signInError } = await client.auth.signInWithPassword({ email: address, password: PASSWORD });
+  if (signInError) throw signInError;
+  const { error: ageError } = await client.rpc("confirm_adult_attestation", {
+    jurisdiction_code: "PK",
+    policy_version: "staff-operations-e2e",
+  });
+  if (ageError) throw ageError;
 
-  const { error: activeError } = await admin
-    .from("active_workspaces")
-    .update({ membership_id: membership.id, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (activeError) throw activeError;
+  if (membershipId) {
+    const { error: activateError } = await client.rpc("activate_workspace", {
+      target_membership_id: membershipId,
+    });
+    if (activateError) throw activateError;
+  }
 }
 
 async function login(page: Page, address: string, target: string) {
@@ -90,7 +96,7 @@ test("staff operations expose only the active role capability matrix and deny di
       const address = email(role, testInfo);
       const user = await createUser(address);
       createdIds.push(user.id);
-      await seedStaffRole(user.id, role);
+      await seedStaffRole(user.id, role, address);
 
       const context = await browser.newContext(testInfo.project.use);
       const page = await context.newPage();

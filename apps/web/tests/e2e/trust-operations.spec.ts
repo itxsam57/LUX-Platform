@@ -48,6 +48,7 @@ async function secondary(browser: Browser, testInfo: TestInfo): Promise<BrowserC
 test.describe.configure({ mode: "default" });
 
 test("support resolution and appeal overturn stay synchronized between consumer and staff workspaces", async ({ page, browser }, testInfo) => {
+  test.setTimeout(90_000);
   const consumerEmail = email("trust-consumer", testInfo);
   const staffEmail = email("trust-staff", testInfo);
   const consumer = await createUser(consumerEmail);

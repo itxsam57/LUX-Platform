@@ -328,10 +328,16 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
     await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
 
+    const { data: demandRow, error: demandLookupError } = await admin
+      .from("demands")
+      .select("id")
+      .eq("public_id", publicId)
+      .single();
+    if (demandLookupError || !demandRow?.id) throw demandLookupError ?? new Error("Demand discussion fixture missing");
     const { data: history, error: historyError } = await admin
       .from("demand_discussion_entries")
       .select("hidden_by_author")
-      .eq("demand_id", (await admin.from("demands").select("id").eq("public_id", publicId).single()).data?.id ?? "")
+      .eq("demand_id", demandRow.id)
       .single();
     if (historyError) throw historyError;
     expect(history?.hidden_by_author).toBe(true);

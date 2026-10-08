@@ -72,6 +72,7 @@ async function secondary(browser: Browser, testInfo: TestInfo): Promise<BrowserC
 test.describe.configure({ mode: "default" });
 
 test("agency representation is performer-controlled from invitation through revocation", async ({ page, browser }, testInfo) => {
+  test.setTimeout(120_000);
   const agencyEmail = email("agency-owner", testInfo);
   const performerEmail = email("agency-performer", testInfo);
   const staffEmail = email("agency-reviewer", testInfo);

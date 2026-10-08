@@ -203,7 +203,7 @@
   z-index: 35;
   min-height: 76px;
   display: grid;
-  grid-template-columns: minmax(190px, auto) minmax(260px, 1fr) minmax(220px, auto);
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
   align-items: center;
   gap: 24px;
   padding: 12px clamp(18px, 4vw, 48px);
@@ -211,10 +211,14 @@
 }
 
 .workspace-header__nav {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
 }
 
 .workspace-header__nav a {
@@ -234,6 +238,7 @@
 }
 
 .workspace-header__account {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -257,6 +262,7 @@
 }
 
 .workspace-main {
+  min-width: 0;
   width: min(var(--content-max), calc(100% - 40px));
   margin: 0 auto;
   padding: clamp(34px, 6vw, 74px) 0 90px;

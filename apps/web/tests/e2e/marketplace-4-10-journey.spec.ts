@@ -205,9 +205,11 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     // Slice 4: a fan can discover the eligible verified public creator without private identifiers.
     await login(page, fanEmail, "/app/explore");
     await expect(page.getByRole("heading", { name: "Discover creators and projects" })).toBeVisible();
-    const creatorCard = page.getByRole("article").filter({ hasText: `@${creatorHandle}` });
+    const creatorCard = page.getByRole("article").filter({
+      has: page.locator(`a[href="/u/${creatorHandle}"]`),
+    });
     await expect(creatorCard).toHaveCount(1);
-    await expect(creatorCard.getByText("Creator", { exact: true })).toBeVisible();
+    await expect(creatorCard.getByText("profile", { exact: true })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(creator.id);
 
     // Slice 6: the fan requests an idea; only the named creator can opt in.

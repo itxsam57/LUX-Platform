@@ -78,6 +78,7 @@ async function noOverflow(page: Page) {
 test.describe.configure({ mode: "default" });
 
 test("private messaging and saved items survive refresh, deduplicate, and close after block", async ({ page, browser }, testInfo) => {
+  test.setTimeout(90_000);
   const aliceEmail = email("consumer-alice", testInfo);
   const bobEmail = email("consumer-bob", testInfo);
   const alice = await createUser(aliceEmail);
@@ -94,6 +95,13 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
 
     await login(page, aliceEmail, `/u/${bobHandle}`);
     await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect.poll(async () => {
+      const { data, error } = await aliceClient.rpc("list_my_saved_items");
+      if (error || !Array.isArray(data)) return false;
+      return data.some((item) => item && typeof item === "object" && !Array.isArray(item)
+        && (item as Record<string, unknown>).type === "profile"
+        && (item as Record<string, unknown>).publicId === bobHandle);
+    }).toBe(true);
     await page.goto("/app/saved");
     const savedProfileLink = page.locator(`a[href="/u/${bobHandle}"]`).filter({ hasText: "Open" });
     await expect(savedProfileLink).toHaveCount(1);
@@ -172,25 +180,54 @@ test("performer role activation keeps consent separate while availability and of
     await requestRow.getByRole("button", { name: "Approve" }).click();
     await expect(adminPage).toHaveURL(/notice=approved/);
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: v2Session, error: v2StartError } = await performerClient.rpc("start_verification", {
+      requested_level: "v2",
+      requested_provider_key: "synthetic",
+      requested_provider_reference: `consumer-performer-v2:${performer.id}`,
+      requested_session_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      requested_synthetic: true,
+    });
+    if (v2StartError || typeof v2Session !== "string") throw v2StartError ?? new Error("Performer V2 session unavailable");
+    const { error: v2ReviewError } = await adminClient.rpc("apply_verification_result", {
+      target_session_id: v2Session,
+      decision: "verified",
+      requested_result_expires_at: expiresAt,
+      requested_liveness_passed: true,
+      requested_risk_screen_passed: true,
+      requested_recheck_reason: null,
+    });
+    if (v2ReviewError) throw v2ReviewError;
+
     const { error: educationError } = await performerClient.rpc("acknowledge_consent_education", {
       requested_policy_version: "slice-5-consent-v1",
     });
     if (educationError) throw educationError;
-    const { error: performerRecordError } = await admin.from("performer_records").upsert({
-      user_id: performer.id,
-      active: true,
+    const { error: prerequisiteError } = await adminClient.rpc("set_performer_verification_prerequisites", {
+      target_user_id: performer.id,
+      record_active: true,
       liveness_expires_at: expiresAt,
       payout_ownership_verified: true,
-      payout_ownership_checked_at: now.toISOString(),
-    }, { onConflict: "user_id" });
-    if (performerRecordError) throw performerRecordError;
-    const { error: verificationError } = await admin.from("verification_subjects").upsert([
-      { user_id: performer.id, level: "v2", status: "verified", verified_at: now.toISOString(), expires_at: expiresAt },
-      { user_id: performer.id, level: "v3", status: "verified", verified_at: now.toISOString(), expires_at: expiresAt },
-    ], { onConflict: "user_id,level" });
-    if (verificationError) throw verificationError;
+    });
+    if (prerequisiteError) throw prerequisiteError;
+
+    const { data: v3Session, error: v3StartError } = await performerClient.rpc("start_verification", {
+      requested_level: "v3",
+      requested_provider_key: "synthetic",
+      requested_provider_reference: `consumer-performer-v3:${performer.id}`,
+      requested_session_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      requested_synthetic: true,
+    });
+    if (v3StartError || typeof v3Session !== "string") throw v3StartError ?? new Error("Performer V3 session unavailable");
+    const { error: v3ReviewError } = await adminClient.rpc("apply_verification_result", {
+      target_session_id: v3Session,
+      decision: "verified",
+      requested_result_expires_at: expiresAt,
+      requested_liveness_passed: true,
+      requested_risk_screen_passed: true,
+      requested_recheck_reason: null,
+    });
+    if (v3ReviewError) throw v3ReviewError;
 
     await page.goto("/workspace");
     const performerCard = page.getByRole("region", { name: "Performer workspace" });

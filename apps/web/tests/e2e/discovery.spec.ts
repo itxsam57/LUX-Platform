@@ -20,6 +20,10 @@ function email(prefix: string, testInfo: TestInfo) {
   return `${prefix}-${testInfo.project.name}-${Date.now()}-${Math.random().toString(16).slice(2)}@lux.test`;
 }
 
+function uniqueHandle(prefix: string, userId: string) {
+  return `${prefix}_${userId.replaceAll("-", "").slice(0, 8)}`;
+}
+
 async function createUser(address: string) {
   const { data, error } = await admin.auth.admin.createUser({
     email: address,
@@ -135,40 +139,45 @@ test("Explore, Feed, and Search enforce visibility and reciprocal block boundari
       assureAdult(blockedClient),
     ]);
 
-    await configureProfile(viewerClient, "discover_viewer", "Discovery Viewer", "public");
-    await configureProfile(publicClient, "discover_public", "Discovery Public", "public");
-    await configureProfile(unlistedClient, "discover_unlisted", "Discovery Unlisted", "unlisted");
-    await configureProfile(privateClient, "discover_private", "Discovery Private", "private");
-    await configureProfile(blockedClient, "discover_blocked", "Discovery Blocked", "public");
+    const viewerHandle = uniqueHandle("discview", viewer.id);
+    const publicHandle = uniqueHandle("discpub", publicUser.id);
+    const unlistedHandle = uniqueHandle("discunl", unlistedUser.id);
+    const privateHandle = uniqueHandle("discpri", privateUser.id);
+    const blockedHandle = uniqueHandle("discblk", blockedUser.id);
+    await configureProfile(viewerClient, viewerHandle, "Discovery Viewer", "public");
+    await configureProfile(publicClient, publicHandle, "Discovery Public", "public");
+    await configureProfile(unlistedClient, unlistedHandle, "Discovery Unlisted", "unlisted");
+    await configureProfile(privateClient, privateHandle, "Discovery Private", "private");
+    await configureProfile(blockedClient, blockedHandle, "Discovery Blocked", "public");
 
-    await relationship(viewerClient, "discover_unlisted", "follow");
-    await relationship(blockedClient, "discover_viewer", "block");
+    await relationship(viewerClient, unlistedHandle, "follow");
+    await relationship(blockedClient, viewerHandle, "block");
 
     await login(page, viewerEmail, "/app/explore");
-    await expect(profileCard(page, "discover_public")).toHaveCount(1);
-    await expect(profileCard(page, "discover_unlisted")).toHaveCount(0);
-    await expect(profileCard(page, "discover_private")).toHaveCount(0);
-    await expect(profileCard(page, "discover_blocked")).toHaveCount(0);
+    await expect(profileCard(page, publicHandle)).toHaveCount(1);
+    await expect(profileCard(page, unlistedHandle)).toHaveCount(0);
+    await expect(profileCard(page, privateHandle)).toHaveCount(0);
+    await expect(profileCard(page, blockedHandle)).toHaveCount(0);
 
     await page.goto("/app/feed?mode=for_you");
     await expect(page.getByRole("heading", { name: "Your feed" })).toBeVisible();
-    await expect(profileCard(page, "discover_public")).toHaveCount(1);
-    await expect(profileCard(page, "discover_unlisted")).toHaveCount(0);
-    await expect(profileCard(page, "discover_private")).toHaveCount(0);
-    await expect(profileCard(page, "discover_blocked")).toHaveCount(0);
+    await expect(profileCard(page, publicHandle)).toHaveCount(1);
+    await expect(profileCard(page, unlistedHandle)).toHaveCount(0);
+    await expect(profileCard(page, privateHandle)).toHaveCount(0);
+    await expect(profileCard(page, blockedHandle)).toHaveCount(0);
 
     await page.goto("/app/feed?mode=following");
-    await expect(profileCard(page, "discover_unlisted")).toHaveCount(1);
-    await expect(profileCard(page, "discover_public")).toHaveCount(0);
-    await expect(profileCard(page, "discover_private")).toHaveCount(0);
-    await expect(profileCard(page, "discover_blocked")).toHaveCount(0);
+    await expect(profileCard(page, unlistedHandle)).toHaveCount(1);
+    await expect(profileCard(page, publicHandle)).toHaveCount(0);
+    await expect(profileCard(page, privateHandle)).toHaveCount(0);
+    await expect(profileCard(page, blockedHandle)).toHaveCount(0);
 
     await page.goto("/app/search?q=discover");
     await expect(page.getByRole("heading", { name: "Search public profiles" })).toBeVisible();
-    await expect(profileCard(page, "discover_public")).toHaveCount(1);
-    await expect(profileCard(page, "discover_unlisted")).toHaveCount(0);
-    await expect(profileCard(page, "discover_private")).toHaveCount(0);
-    await expect(profileCard(page, "discover_blocked")).toHaveCount(0);
+    await expect(profileCard(page, publicHandle)).toHaveCount(1);
+    await expect(profileCard(page, unlistedHandle)).toHaveCount(0);
+    await expect(profileCard(page, privateHandle)).toHaveCount(0);
+    await expect(profileCard(page, blockedHandle)).toHaveCount(0);
 
     const body = await page.locator("body").innerText();
     expect(body).not.toContain(viewer.id);

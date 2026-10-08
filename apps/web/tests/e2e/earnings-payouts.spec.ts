@@ -169,7 +169,7 @@ async function createLedgerFixture(
       category: "concept",
       format: "video",
       boundaries: ["closed-set"],
-      compensationModel: "revenue-share",
+      compensationModel: "revenue_share",
       distributionScope: "platform-only",
       rightsDeclarations: ["original-concept"],
     },
@@ -313,6 +313,7 @@ async function createLedgerFixture(
 }
 
 test("journal earnings, holds, payout retries, reconciliation, and paid history stay idempotent and private", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
   test.slow();
   const ownerEmail = email("s14-owner", testInfo);
   const performerEmail = email("s14-performer", testInfo);

@@ -108,6 +108,7 @@ export async function setDemandSupportAction(formData: FormData): Promise<void> 
   if (error) redirect(`/demand/${publicId}?error=support`);
   revalidatePath(`/demand/${publicId}`);
   revalidatePath("/app/demand");
+  redirect(`/demand/${publicId}?notice=support`);
 }
 
 export async function respondToDemandAction(formData: FormData): Promise<NavigationActionResult> {
@@ -167,6 +168,7 @@ export async function addDemandDiscussionAction(formData: FormData): Promise<voi
   });
   if (error) redirect(`/demand/${publicId}?error=discussion`);
   revalidatePath(`/demand/${publicId}`);
+  redirect(`/demand/${publicId}?notice=discussion`);
 }
 
 export async function hideDemandDiscussionAction(formData: FormData): Promise<void> {
@@ -183,4 +185,5 @@ export async function hideDemandDiscussionAction(formData: FormData): Promise<vo
   });
   if (error) redirect(`/demand/${publicId}?error=discussion-moderation`);
   revalidatePath(`/demand/${publicId}`);
+  redirect(`/demand/${publicId}?notice=discussion-hidden`);
 }

@@ -42,7 +42,7 @@ export default async function DemandDetailPage({
   searchParams,
 }: {
   params: Promise<{ publicId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string }>;
 }) {
   const { publicId } = await params;
   const viewer = await requireAdultViewer(`/demand/${publicId}`);
@@ -60,6 +60,7 @@ export default async function DemandDetailPage({
       <div className="workspace-stack demand-page demand-page--narrow">
         <Link className="workspace-inline-link" href="/app/demand">← Crowd Demand Board</Link>
         {query.error ? <div className="demand-error" role="alert">The requested demand change could not be recorded safely.</div> : null}
+        {query.notice ? <div className="auth-message auth-message--success" role="status">Demand discussion updated.</div> : null}
         {error || !demand ? (
           <section className="demand-empty">
             <h1>Demand unavailable</h1>
