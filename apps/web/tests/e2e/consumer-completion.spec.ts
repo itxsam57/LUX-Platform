@@ -94,10 +94,10 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await login(page, aliceEmail, `/u/${bobHandle}`);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.goto("/app/saved");
-    const savedRow = page.getByRole("row").filter({ hasText: `@${bobHandle}` });
-    await expect(savedRow).toHaveCount(1);
+    const savedProfileLink = page.locator(`a[href="/u/${bobHandle}"]`).filter({ hasText: "Open" });
+    await expect(savedProfileLink).toHaveCount(1);
     await page.reload();
-    await expect(page.getByRole("row").filter({ hasText: `@${bobHandle}` })).toHaveCount(1);
+    await expect(page.locator(`a[href="/u/${bobHandle}"]`).filter({ hasText: "Open" })).toHaveCount(1);
 
     await page.goto("/messages");
     await page.getByLabel("Member handle").fill(bobHandle);
@@ -170,6 +170,26 @@ test("performer role activation keeps consent separate while availability and of
     await expect(requestRow).toHaveCount(1);
     await requestRow.getByRole("button", { name: "Approve" }).click();
     await expect(adminPage).toHaveURL(/notice=approved/);
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: educationError } = await performerClient.rpc("acknowledge_consent_education", {
+      requested_policy_version: "slice-5-consent-v1",
+    });
+    if (educationError) throw educationError;
+    const { error: performerRecordError } = await admin.from("performer_records").upsert({
+      user_id: performer.id,
+      active: true,
+      liveness_expires_at: expiresAt,
+      payout_ownership_verified: true,
+      payout_ownership_checked_at: now.toISOString(),
+    }, { onConflict: "user_id" });
+    if (performerRecordError) throw performerRecordError;
+    const { error: verificationError } = await admin.from("verification_subjects").upsert([
+      { user_id: performer.id, level: "v2", status: "verified", verified_at: now.toISOString(), expires_at: expiresAt },
+      { user_id: performer.id, level: "v3", status: "verified", verified_at: now.toISOString(), expires_at: expiresAt },
+    ], { onConflict: "user_id,level" });
+    if (verificationError) throw verificationError;
 
     await page.goto("/workspace");
     const performerCard = page.getByRole("region", { name: "Performer workspace" });
