@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -24,29 +25,8 @@ async function createUser(address: string) {
   return data.user;
 }
 
-function retryableAuthCleanup(error: unknown): boolean {
-  return Boolean(
-    error
-    && typeof error === "object"
-    && "name" in error
-    && String((error as { name?: unknown }).name) === "AuthRetryableFetchError"
-  );
-}
-
 async function removeUser(id: string) {
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const { error } = await admin.auth.admin.deleteUser(id);
-      if (!error) return;
-      lastError = error;
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
-  }
-  if (retryableAuthCleanup(lastError)) return;
-  throw lastError instanceof Error ? lastError : new Error("Marketplace journey user cleanup failed");
+  await cleanupTestUser(admin, id);
 }
 
 async function authenticatedClient(address: string): Promise<SupabaseClient> {
@@ -220,8 +200,9 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
 
     const creatorHandle = await profileHandle(creatorClient, creator.id);
     const performerHandle = await profileHandle(performerClient, performer.id);
+    await verifyCreatorV2(creatorClient, creator.id, reviewer);
 
-    // Slice 4: a fan can discover the public creator without private identifiers.
+    // Slice 4: a fan can discover the eligible verified public creator without private identifiers.
     await login(page, fanEmail, "/app/explore");
     await expect(page.getByRole("heading", { name: "Discover creators and projects" })).toBeVisible();
     const creatorCard = page.getByRole("article").filter({ hasText: `@${creatorHandle}` });
@@ -249,8 +230,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await demandCard.getByRole("button", { name: "Mark interested" }).click();
     await expect(demandCard.getByTestId("creator-demand-response")).toHaveText("Interested");
 
-    // Slice 5 verification gates are completed only after the creator has voluntarily shown interest.
-    await verifyCreatorV2(creatorClient, creator.id, reviewer);
+    // Depicted-performer verification is completed before project/consent work.
     await verifyPerformer(performerClient, performer.id, reviewer);
 
     await demandCard.getByRole("link", { name: "Create project draft" }).click();

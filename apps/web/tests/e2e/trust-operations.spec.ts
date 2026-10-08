@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -112,7 +113,7 @@ test("support resolution and appeal overturn stay synchronized between consumer 
     await expect(staffPage.getByText(/support_case_created|support_case_resolved|appeal/i)).toBeVisible();
   } finally {
     await staffContext.close();
-    await admin.auth.admin.deleteUser(consumer.id);
-    await admin.auth.admin.deleteUser(staff.id);
+    await cleanupTestUser(admin, consumer.id);
+    await cleanupTestUser(admin, staff.id);
   }
 });

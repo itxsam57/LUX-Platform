@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const protectedDiscoveryRoutes = ["/app/feed", "/app/explore", "/app/search"] as const;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -30,8 +31,7 @@ async function createUser(address: string) {
 }
 
 async function removeUser(id: string) {
-  const { error } = await admin.auth.admin.deleteUser(id);
-  if (error) throw error;
+  await cleanupTestUser(admin, id);
 }
 
 async function authenticatedClient(address: string): Promise<SupabaseClient> {

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,8 +33,7 @@ async function createConfirmedUser(email: string, password = PASSWORD) {
 }
 
 async function removeUser(userId: string) {
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await cleanupTestUser(admin, userId);
 }
 
 async function login(page: Page, email: string, password = PASSWORD, next?: string) {

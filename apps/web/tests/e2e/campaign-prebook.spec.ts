@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -85,7 +86,7 @@ async function configureVerifiedCreator(ownerEmail: string, ownerId: string, tes
     });
     if (v2ReviewError) throw v2ReviewError;
   } finally {
-    await admin.auth.admin.deleteUser(superAdmin.id);
+    await cleanupTestUser(admin, superAdmin.id);
   }
 
   return ownerClient;
@@ -237,7 +238,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await expect(page.getByRole("heading", { name: "Confirm your pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirm pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: /pay|authorize/i })).toHaveCount(0);
-    await page.getByLabel("Funding tier").selectOption("supporter");
+    await page.locator('select[name="tier_key"]').selectOption("supporter");
     await page.getByLabel("Supporter visibility").selectOption("default");
     await page.getByLabel("Supporter badge choice").fill("founding-supporter");
 
@@ -265,7 +266,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await expect(page).toHaveURL(new RegExp(`/p/${campaignPublicId}$`));
     await expectNoHorizontalOverflow(page);
   } finally {
-    await admin.auth.admin.deleteUser(owner.id);
-    await admin.auth.admin.deleteUser(supporter.id);
+    await cleanupTestUser(admin, owner.id);
+    await cleanupTestUser(admin, supporter.id);
   }
 });

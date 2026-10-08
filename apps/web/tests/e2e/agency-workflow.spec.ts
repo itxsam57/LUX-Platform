@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -169,8 +170,8 @@ test("agency representation is performer-controlled from invitation through revo
     expect(postRevocationError).not.toBeNull();
   } finally {
     await agencyContext.close();
-    await admin.auth.admin.deleteUser(agencyUser.id);
-    await admin.auth.admin.deleteUser(performerUser.id);
-    await admin.auth.admin.deleteUser(staffUser.id);
+    await cleanupTestUser(admin, agencyUser.id);
+    await cleanupTestUser(admin, performerUser.id);
+    await cleanupTestUser(admin, staffUser.id);
   }
 });

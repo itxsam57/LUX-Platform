@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -51,7 +52,7 @@ async function configureVerifiedCreator(ownerEmail: string, ownerId: string, tes
       requested_liveness_passed: true, requested_risk_screen_passed: true, requested_recheck_reason: null,
     });
     if (resultError) throw resultError;
-  } finally { await admin.auth.admin.deleteUser(superAdmin.id); }
+  } finally { await cleanupTestUser(admin, superAdmin.id); }
   return ownerClient;
 }
 async function login(page: Page, address: string, target: string) {
@@ -193,5 +194,5 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await page.reload();
     await expect(page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" })).toHaveCount(2);
     await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
-  } finally { await admin.auth.admin.deleteUser(owner.id); await admin.auth.admin.deleteUser(supporter.id); }
+  } finally { await cleanupTestUser(admin, owner.id); await cleanupTestUser(admin, supporter.id); }
 });

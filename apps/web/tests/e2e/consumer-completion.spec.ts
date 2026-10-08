@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -105,7 +106,7 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await expect(page).toHaveURL(/\/messages\/mth[0-9a-f]{24}$/);
     const threadPath = new URL(page.url()).pathname;
 
-    await page.getByLabel("Message").fill("A private message that must survive refresh and remain visible only to this thread.");
+    await page.locator("textarea#message-body").fill("A private message that must survive refresh and remain visible only to this thread.");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.getByRole("status")).toContainText("Message sent");
     await page.reload();
@@ -121,7 +122,7 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await expect(threadRow).toHaveCount(1);
     await threadRow.getByRole("link", { name: "Open" }).click();
     await expect(bobPage.getByText("A private message that must survive refresh and remain visible only to this thread.")).toBeVisible();
-    await bobPage.getByLabel("Message").fill("Reply from the other participant.");
+    await bobPage.locator("textarea#message-body").fill("Reply from the other participant.");
     await bobPage.getByRole("button", { name: "Send" }).click();
 
     await page.reload();
@@ -140,8 +141,8 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await noOverflow(page);
   } finally {
     await bobContext.close();
-    await admin.auth.admin.deleteUser(alice.id);
-    await admin.auth.admin.deleteUser(bob.id);
+    await cleanupTestUser(admin, alice.id);
+    await cleanupTestUser(admin, bob.id);
   }
 });
 
@@ -223,7 +224,7 @@ test("performer role activation keeps consent separate while availability and of
     await expect(page).toHaveURL(/\/access-denied/);
   } finally {
     await adminContext.close();
-    await admin.auth.admin.deleteUser(performer.id);
-    await admin.auth.admin.deleteUser(superAdmin.id);
+    await cleanupTestUser(admin, performer.id);
+    await cleanupTestUser(admin, superAdmin.id);
   }
 });

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -69,7 +70,7 @@ async function configureCreator(ownerEmail: string, ownerId: string, testInfo: T
     });
     if (reviewError) throw reviewError;
   } finally {
-    await admin.auth.admin.deleteUser(superAdmin.id);
+    await cleanupTestUser(admin, superAdmin.id);
   }
 
   const { error: activateError } = await ownerClient.rpc("activate_workspace", {
@@ -144,7 +145,7 @@ async function verifyPerformer(performerEmail: string, performerId: string, test
     });
     if (v3ReviewError) throw v3ReviewError;
   } finally {
-    await admin.auth.admin.deleteUser(superAdmin.id);
+    await cleanupTestUser(admin, superAdmin.id);
   }
 
   return performer;
@@ -252,7 +253,7 @@ test("exact terms require personal verified acceptance and consent before creato
     await page.reload();
     await expect(page.getByText("Contract locked")).toBeVisible();
   } finally {
-    await admin.auth.admin.deleteUser(owner.id);
-    await admin.auth.admin.deleteUser(performer.id);
+    await cleanupTestUser(admin, owner.id);
+    await cleanupTestUser(admin, performer.id);
   }
 });

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -704,10 +705,10 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     expect(batchIds.has(secondBatchPublicId)).toBe(true);
   } finally {
     await Promise.all([
-      admin.auth.admin.deleteUser(ownerUser.id),
-      admin.auth.admin.deleteUser(performerUser.id),
-      admin.auth.admin.deleteUser(supporterUser.id),
-      admin.auth.admin.deleteUser(staffUser.id),
+      cleanupTestUser(admin, ownerUser.id),
+      cleanupTestUser(admin, performerUser.id),
+      cleanupTestUser(admin, supporterUser.id),
+      cleanupTestUser(admin, staffUser.id),
     ]);
   }
 });

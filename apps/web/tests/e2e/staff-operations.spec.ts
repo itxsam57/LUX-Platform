@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -120,7 +121,7 @@ test("staff operations expose only the active role capability matrix and deny di
     }
   } finally {
     for (const userId of createdIds) {
-      await admin.auth.admin.deleteUser(userId);
+      await cleanupTestUser(admin, userId);
     }
   }
 });
