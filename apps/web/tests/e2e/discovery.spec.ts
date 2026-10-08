@@ -173,7 +173,7 @@ test("Explore, Feed, and Search enforce visibility and reciprocal block boundari
     await expect(profileCard(page, blockedHandle)).toHaveCount(0);
 
     await page.goto("/app/search?q=discover");
-    await expect(page.getByRole("heading", { name: "Search public profiles" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Search creators, demands, campaigns, and releases" })).toBeVisible();
     await expect(profileCard(page, publicHandle)).toHaveCount(1);
     await expect(profileCard(page, unlistedHandle)).toHaveCount(0);
     await expect(profileCard(page, privateHandle)).toHaveCount(0);

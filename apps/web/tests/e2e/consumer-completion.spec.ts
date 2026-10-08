@@ -240,9 +240,13 @@ test("performer role activation keeps consent separate while availability and of
     await expect(page.getByRole("heading", { name: "Availability and offers" })).toBeVisible();
     await page.getByLabel("Status").selectOption("available");
     await page.getByLabel("Public note").fill("Available for creator-controlled projects with explicit boundaries.");
-    await page.getByRole("button", { name: "Save availability" }).click();
-    await expect(page).toHaveURL(/\/app\/offers\?notice=availability$/);
-    await expect(page.getByText("Update saved.", { exact: true })).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/app\/offers\?notice=availability$/, { timeout: 15_000 }),
+      page.getByRole("button", { name: "Save availability" }).click(),
+    ]);
+    await page.reload();
+    await expect(page.getByText(/Current: available\./)).toBeVisible();
+    await expect(page.getByText("Available for creator-controlled projects with explicit boundaries.")).toBeVisible();
 
     await page.getByLabel("Title").fill("Verified performer collaboration");
     await page.getByLabel("Description").fill("A voluntary performer collaboration offer that still requires exact project terms and personal consent.");

@@ -61,6 +61,8 @@ test("support resolution and appeal overturn stay synchronized between consumer 
     if (bootstrapError) throw bootstrapError;
 
     await login(page, consumerEmail, "/app/support");
+    await page.goto("/app/support");
+    await expect(page.getByRole("heading", { name: "Support and case center" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Subject").fill("Account navigation support");
     await page.getByLabel("What happened?").fill("The account owner needs a staff-reviewed support case to verify the full appeal workflow.");
     await page.getByRole("button", { name: "Create support request" }).click();

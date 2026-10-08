@@ -151,7 +151,7 @@ function TermsForm({
         return split ? `${String(split.handle ?? "")}|${String(split.basisPoints ?? "")}` : "";
       })
       .filter(Boolean)
-      .join("\\n")
+      .join("\n")
     : "";
 
   return (

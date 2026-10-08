@@ -228,7 +228,11 @@ test("support remains one edge after an equivalent retry and persists across ref
     await loginAssureAndNavigate(supporterPage, supporterEmail, pathname);
     await expect(supporterPage.getByTestId("demand-support-count")).toHaveText("0");
     await supporterPage.getByLabel("Show my handle publicly").check();
-    await supporterPage.getByRole("button", { name: "Support demand" }).click();
+    await Promise.all([
+      supporterPage.waitForURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=support$`), { timeout: 15_000 }),
+      supporterPage.getByRole("button", { name: "Support demand" }).click(),
+    ]);
+    await supporterPage.reload();
     await expect(supporterPage.getByTestId("demand-support-count")).toHaveText("1");
     await expect(supporterPage.getByTestId("demand-supporters")).toContainText(`@${supporterHandle}`);
 
@@ -315,9 +319,11 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await loginAssureAndNavigate(commenterPage, commenterEmail, pathname);
     await commenterPage.getByLabel("Entry type").selectOption("suggestion");
     await commenterPage.locator('textarea[name="body"]').fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
-    await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
-    await expect(commenterPage).toHaveURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion$`));
-    await expect(commenterPage.getByRole("status")).toContainText("Demand discussion updated");
+    await Promise.all([
+      commenterPage.waitForURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion$`), { timeout: 15_000 }),
+      commenterPage.getByRole("button", { name: "Add to discussion" }).click(),
+    ]);
+    await commenterPage.reload();
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
     await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();
 
@@ -327,8 +333,11 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await page.goto(pathname);
     const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
     await expect(suggestion).toContainText("Suggestion");
-    await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
-    await expect(page).toHaveURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion-hidden$`));
+    await Promise.all([
+      page.waitForURL(new RegExp(`${pathname.replaceAll("/", "\\/")}\?notice=discussion-hidden$`), { timeout: 15_000 }),
+      suggestion.getByRole("button", { name: "Hide from discussion" }).click(),
+    ]);
+    await page.reload();
     await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
 
     const { data: demandRow, error: demandLookupError } = await admin

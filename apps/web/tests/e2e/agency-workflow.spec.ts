@@ -170,7 +170,7 @@ test("agency representation is performer-controlled from invitation through revo
     });
     expect(postRevocationError).not.toBeNull();
   } finally {
-    await agencyContext.close();
+    await agencyContext.close().catch(() => undefined);
     await cleanupTestUser(admin, agencyUser.id);
     await cleanupTestUser(admin, performerUser.id);
     await cleanupTestUser(admin, staffUser.id);

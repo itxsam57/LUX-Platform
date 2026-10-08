@@ -24,6 +24,12 @@ function idempotency(prefix: string) {
   return `${prefix}:${crypto.randomUUID()}`;
 }
 
+function requireNoError(error: { message?: string; code?: string } | null, stage: string) {
+  if (error) {
+    throw new Error(`${stage}: ${error.code ?? "unknown"} ${error.message ?? "unknown error"}`);
+  }
+}
+
 async function createUser(address: string) {
   const { data, error } = await admin.auth.admin.createUser({
     email: address,
@@ -76,7 +82,7 @@ async function verifyLevel(
     requested_risk_screen_passed: true,
     requested_recheck_reason: null,
   });
-  if (resultError) throw resultError;
+  requireNoError(resultError, "verification result");
 }
 
 async function configureCreator(ownerEmail: string, ownerId: string, reviewer: SupabaseClient) {
@@ -92,11 +98,11 @@ async function configureCreator(ownerEmail: string, ownerId: string, reviewer: S
     target_membership_id: membershipId,
     decision: "approved",
   });
-  if (reviewError) throw reviewError;
+  requireNoError(reviewError, "delivery/workspace review");
   const { error: activateError } = await owner.rpc("activate_workspace", {
     target_membership_id: membershipId,
   });
-  if (activateError) throw activateError;
+  requireNoError(activateError, "workspace activation");
   await verifyLevel(owner, reviewer, ownerId, "v2", `s14-owner-v2:${ownerId}`);
   return owner;
 }
@@ -108,14 +114,14 @@ async function configurePerformer(performerEmail: string, performerId: string, r
   const { error: educationError } = await performer.rpc("acknowledge_consent_education", {
     requested_policy_version: "slice-5-consent-v1",
   });
-  if (educationError) throw educationError;
+  requireNoError(educationError, "consent education");
   const { error: prerequisiteError } = await reviewer.rpc("set_performer_verification_prerequisites", {
     target_user_id: performerId,
     record_active: true,
     liveness_expires_at: RESULT_EXPIRY(),
     payout_ownership_verified: true,
   });
-  if (prerequisiteError) throw prerequisiteError;
+  requireNoError(prerequisiteError, "performer verification prerequisites");
   await verifyLevel(performer, reviewer, performerId, "v3", `s14-performer-v3:${performerId}`);
   return performer;
 }
@@ -204,24 +210,24 @@ async function createLedgerFixture(
     requested_terms_hash: termsHash,
     step_up_proof: "owner-step-up-confirmed",
   });
-  if (ownerAcceptError) throw ownerAcceptError;
+  requireNoError(ownerAcceptError, "owner terms acceptance");
   const { error: performerAcceptError } = await performer.rpc("accept_project_terms", {
     requested_project_public_id: projectPublicId,
     requested_terms_hash: termsHash,
     step_up_proof: "performer-step-up-confirmed",
   });
-  if (performerAcceptError) throw performerAcceptError;
+  requireNoError(performerAcceptError, "performer terms acceptance");
   const { error: consentError } = await performer.rpc("record_depicted_consent", {
     requested_project_public_id: projectPublicId,
     requested_terms_hash: termsHash,
     step_up_proof: "performer-consent-confirmed",
   });
-  if (consentError) throw consentError;
+  requireNoError(consentError, "depicted consent");
   const { error: lockError } = await owner.rpc("lock_project_contract", {
     requested_project_public_id: projectPublicId,
     requested_terms_hash: termsHash,
   });
-  if (lockError) throw lockError;
+  requireNoError(lockError, "contract lock");
 
   const { data: campaign, error: campaignError } = await owner.rpc("save_campaign_draft", {
     requested_project_public_id: projectPublicId,
@@ -242,12 +248,12 @@ async function createLedgerFixture(
     requested_campaign_public_id: campaignPublicId,
     expected_terms_version: 1,
   });
-  if (submitCampaignError) throw submitCampaignError;
+  requireNoError(submitCampaignError, "campaign submit");
   const { error: publishCampaignError } = await owner.rpc("publish_campaign", {
     requested_campaign_public_id: campaignPublicId,
     expected_terms_version: 1,
   });
-  if (publishCampaignError) throw publishCampaignError;
+  requireNoError(publishCampaignError, "campaign publish");
 
   const { data: commitment, error: commitmentError } = await supporter.rpc("create_prebook", {
     requested_campaign_public_id: campaignPublicId,
@@ -280,7 +286,7 @@ async function createLedgerFixture(
       requested_refunded_minor: 0,
       requested_idempotency_key: idempotency(`s14-payment-${transition.state}`),
     });
-    if (transitionError) throw transitionError;
+    requireNoError(transitionError, "payment transition");
   }
 
   const { error: rulesError } = await owner.rpc("configure_project_revenue_rules", {
@@ -293,14 +299,14 @@ async function createLedgerFixture(
     },
     requested_idempotency_key: idempotency("s14-rules"),
   });
-  if (rulesError) throw rulesError;
+  requireNoError(rulesError, "revenue rules");
   const { error: syncError } = await admin.rpc("sync_payment_ledger", {
     requested_provider_key: "sandbox",
     requested_provider_transaction_ref: providerRefs.transaction,
     requested_processing_fee_minor: 0,
     requested_idempotency_key: idempotency("s14-ledger-sync"),
   });
-  if (syncError) throw syncError;
+  requireNoError(syncError, "ledger sync");
 
   return {
     projectPublicId,
@@ -329,7 +335,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
 
   try {
     const { error: bootstrapError } = await admin.rpc("bootstrap_super_admin", { target_user_id: staffUser.id });
-    if (bootstrapError) throw bootstrapError;
+    requireNoError(bootstrapError, "staff bootstrap");
     const reviewer = await authenticatedClient(staffEmail);
     await assureAdult(reviewer);
     const owner = await configureCreator(ownerEmail, ownerUser.id, reviewer);
@@ -398,7 +404,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_state: "ready",
       requested_note: "Transcode, malware, and media checks completed",
     });
-    if (processingError) throw processingError;
+    requireNoError(processingError, "delivery processing");
     for (const [item, note] of [
       ["legality", "Contract and legality evidence match"],
       ["consent", "Consent evidence matches the locked terms"],
@@ -419,13 +425,13 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_state: "approved",
       requested_note: "I approve this exact final cut for release",
     });
-    if (approvalError) throw approvalError;
+    requireNoError(approvalError, "final cut approval");
     const { error: reviewError } = await reviewer.rpc("decide_delivery_review", {
       requested_delivery_public_id: deliveryPublicId,
       requested_decision: "approve",
       requested_reason: "All release gates pass for this immutable version",
     });
-    if (reviewError) throw reviewError;
+    requireNoError(reviewError, "delivery/workspace review");
     const { data: release, error: releaseError } = await owner.rpc("create_release", {
       requested_delivery_public_id: deliveryPublicId,
       requested_metadata: {
@@ -503,7 +509,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_project_public_id: fixture.projectPublicId,
       requested_idempotency_key: idempotency("s14-promotion-after-release"),
     });
-    if (promotionError) throw promotionError;
+    requireNoError(promotionError, "earnings promotion");
     expect(Number(promotion?.promotedMinor)).toBe(4500);
 
     await login(page, staffEmail, "/workspace/staff/finance");
@@ -559,14 +565,14 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
         requested_currency: "USD",
         requested_idempotency_key: payoutIdempotencyKey,
       });
-      if (duplicateRequestError) throw duplicateRequestError;
+      requireNoError(duplicateRequestError, "duplicate payout request");
       expect(duplicateRequest?.publicId).toBe(payoutPublicId);
     }
     const { data: projectRow, error: projectRowError } = await admin.from("projects").select("id").eq("public_id", fixture.projectPublicId).single();
     if (projectRowError || !projectRow?.id) throw projectRowError ?? new Error("Slice 14 project row unavailable");
     const { count: payoutCount, error: payoutCountError } = await admin.from("payout_requests").select("id", { count: "exact", head: true })
       .eq("project_id", projectRow.id).eq("participant_user_id", performerUser.id);
-    if (payoutCountError) throw payoutCountError;
+    requireNoError(payoutCountError, "payout request count");
     expect(payoutCount).toBe(1);
     await expectNoFinanceSecrets(page, [fixture.privateBrief, providerPayoutRef, ...Object.values(fixture.providerRefs)]);
     await signOut(page);
@@ -577,7 +583,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     const processingRow = page.getByRole("row").filter({ hasText: payoutPublicId });
     await expect(processingRow).toContainText("processing");
     const { data: firstQueue, error: firstQueueError } = await reviewer.rpc("list_finance_payout_queue");
-    if (firstQueueError) throw firstQueueError;
+    requireNoError(firstQueueError, "first finance payout queue");
     const firstQueuedPayout = firstQueue?.payouts?.find((row: { publicId?: string }) => row.publicId === payoutPublicId);
     const firstBatchPublicId = String(firstQueuedPayout?.batchPublicId ?? "");
     expect(firstBatchPublicId).toMatch(/^pbt[0-9a-f]{24}$/);
@@ -592,7 +598,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_occurred_at: new Date().toISOString(),
       requested_signature_verified: true,
     });
-    if (mismatchError) throw mismatchError;
+    requireNoError(mismatchError, "payout mismatch event");
     expect(mismatch?.ignored).toBe(true);
     await page.reload();
     await expect(page.getByText("payout_amount_mismatch")).toBeVisible();
@@ -610,7 +616,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_occurred_at: new Date().toISOString(),
       requested_signature_verified: true,
     });
-    if (failedError) throw failedError;
+    requireNoError(failedError, "payout failed event");
     expect(failed?.state).toBe("failed");
     await signOut(page);
 
@@ -629,7 +635,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await page.getByRole("button", { name: "Create batch" }).click();
     await expect(page.getByRole("status")).toContainText("Monthly payout batch created");
     const { data: secondQueue, error: secondQueueError } = await reviewer.rpc("list_finance_payout_queue");
-    if (secondQueueError) throw secondQueueError;
+    requireNoError(secondQueueError, "second finance payout queue");
     const secondQueuedPayout = secondQueue?.payouts?.find((row: { publicId?: string }) => row.publicId === payoutPublicId);
     const secondBatchPublicId = String(secondQueuedPayout?.batchPublicId ?? "");
     expect(secondBatchPublicId).toMatch(/^pbt[0-9a-f]{24}$/);
@@ -645,7 +651,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requested_occurred_at: new Date().toISOString(),
       requested_signature_verified: true,
     });
-    if (paidError) throw paidError;
+    requireNoError(paidError, "payout paid event");
     expect(paid?.state).toBe("paid");
     await expectNoFinanceSecrets(page, [fixture.privateBrief, providerPayoutRef, ...Object.values(fixture.providerRefs)]);
     await signOut(page);
@@ -683,7 +689,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     const { data: auditRows, error: auditError } = await admin.from("audit_events")
       .select("event_type,actor_user_id,details")
       .contains("details", { projectPublicId: fixture.projectPublicId });
-    if (auditError) throw auditError;
+    requireNoError(auditError, "audit projection");
     const eventTypes = new Set((auditRows ?? []).map((row) => row.event_type));
     for (const expectedType of [
       "project_revenue_rules_configured",
@@ -700,7 +706,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       .select("event_type,actor_user_id,details")
       .eq("event_type", "monthly_payout_batch_created")
       .eq("actor_user_id", staffUser.id);
-    if (batchAuditError) throw batchAuditError;
+    requireNoError(batchAuditError, "batch audit projection");
     const batchIds = new Set((batchAudits ?? []).map((row) => String(row.details?.batchPublicId ?? "")));
     expect(batchIds.has(firstBatchPublicId)).toBe(true);
     expect(batchIds.has(secondBatchPublicId)).toBe(true);

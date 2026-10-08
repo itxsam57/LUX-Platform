@@ -297,8 +297,15 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await creatorPage.getByLabel("Rights scope").fill("streaming-only");
     await creatorPage.getByLabel("Schedule").fill("January to March 2027");
     await creatorPage.getByLabel("Cancellation terms").fill("Either party may leave before contract lock");
+    await creatorPage.getByLabel("Accepted script SHA-256").fill("ab".repeat(32));
+    await creatorPage.getByLabel("Territory").fill("Platform distribution territories only");
+    await creatorPage.getByLabel("Duration").fill("For the duration of the project and stated release rights");
+    await creatorPage.getByLabel("Withdrawal terms").fill("Before contract lock, participation may be withdrawn. After lock, withdrawal follows the cancellation and dispute terms.");
+    await creatorPage.getByLabel("Dispute resolution").fill("Use the LUX dispute process first; mandatory legal rights remain unaffected.");
+    await creatorPage.getByLabel("Revenue splits").fill(`${performerHandle}|10000`);
     await creatorPage.getByLabel("Final-cut approval required").selectOption("true");
     await creatorPage.getByRole("button", { name: "Publish immutable terms" }).click();
+    await expect(creatorPage).toHaveURL(new RegExp(`/studio/projects/${projectPublicId}/terms\?notice=published$`), { timeout: 15_000 });
     await expect(creatorPage.getByRole("status")).toContainText("Immutable terms published");
 
     await performerPage.goto(`/studio/projects/${projectPublicId}/terms`);
