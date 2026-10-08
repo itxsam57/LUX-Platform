@@ -1,8 +1,9 @@
--- Remove PL/pgSQL ambiguity between the rate-limit function parameter and bucket column.
--- This keeps the existing hashed-subject, fixed-window behavior unchanged.
+-- Remove PL/pgSQL ambiguity in the operational rate-limit bucket upsert.
+-- Keep the original function signature/parameter names stable because PostgreSQL does not
+-- permit CREATE OR REPLACE FUNCTION to rename an existing input parameter.
 
 create or replace function private.consume_operational_rate_limit(
-  requested_limit_key text,
+  limit_key text,
   subject_user_id uuid
 )
 returns void
@@ -24,7 +25,7 @@ begin
   select config.max_requests,config.window_seconds,config.enabled
   into allowed_requests,configured_window,configured_enabled
   from public.operational_rate_limits config
-  where config.key=requested_limit_key;
+  where config.key=limit_key;
 
   if not found or not configured_enabled then
     return;
@@ -38,7 +39,7 @@ begin
   insert into public.operational_rate_limit_buckets(
     limit_key,subject_hash,window_started_at,request_count,updated_at
   ) values (
-    requested_limit_key,normalized_subject_hash,bucket_window,1,now()
+    limit_key,normalized_subject_hash,bucket_window,1,now()
   )
   on conflict on constraint operational_rate_limit_buckets_pkey do update
   set window_started_at=excluded.window_started_at,
