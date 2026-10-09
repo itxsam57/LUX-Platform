@@ -389,7 +389,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await login(page, ownerEmail, `/studio/projects/${fixture.projectPublicId}/production`);
     await expect(page.getByRole("heading", { name: "Slice 14 journal payout project" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Private assets" })).toBeVisible();
-    await expect(page.getByText(finalAssetPublicId)).toBeVisible();
+    await expect(page.locator(`option[value="${finalAssetPublicId}"]`)).toHaveCount(1);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Slice 14 journal payout project" })).toBeVisible();
     await signOut(page);
