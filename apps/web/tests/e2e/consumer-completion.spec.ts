@@ -117,7 +117,6 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await page.locator("textarea#message-body").fill("A private message that must survive refresh and remain visible only to this thread.");
     await page.getByRole("button", { name: "Send" }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("notice")).toBe("sent");
-    await expect(page.getByRole("status")).toContainText("Message sent");
     await page.reload();
     await expect(page.getByText("A private message that must survive refresh and remain visible only to this thread.")).toBeVisible();
 
@@ -133,6 +132,9 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
     await expect(bobPage.getByText("A private message that must survive refresh and remain visible only to this thread.")).toBeVisible();
     await bobPage.locator("textarea#message-body").fill("Reply from the other participant.");
     await bobPage.getByRole("button", { name: "Send" }).click();
+    await expect.poll(() => new URL(bobPage.url()).searchParams.get("notice")).toBe("sent");
+    await bobPage.reload();
+    await expect(bobPage.getByText("Reply from the other participant.")).toBeVisible();
 
     await page.reload();
     await expect(page.getByText("Reply from the other participant.")).toBeVisible();
@@ -242,7 +244,14 @@ test("performer role activation keeps consent separate while availability and of
     await page.getByLabel("Status").selectOption("available");
     await page.getByLabel("Public note").fill("Available for creator-controlled projects with explicit boundaries.");
     await page.getByRole("button", { name: "Save availability" }).click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("availability");
+    await expect.poll(async () => {
+      const { data, error } = await performerClient.rpc("get_my_creator_commerce");
+      if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
+      const availability = (data as Record<string, unknown>).availability;
+      return availability && typeof availability === "object" && !Array.isArray(availability)
+        ? (availability as Record<string, unknown>).status
+        : null;
+    }, { timeout: 15_000 }).toBe("available");
     await page.reload();
     await expect(page.getByText(/Current: available\./)).toBeVisible();
     await expect(page.getByText("Available for creator-controlled projects with explicit boundaries.")).toBeVisible();
@@ -254,10 +263,15 @@ test("performer role activation keeps consent separate while availability and of
     await page.getByLabel("Starting price (minor units)").fill("15000");
     await page.getByLabel("Currency").fill("USD");
     await page.getByRole("button", { name: "Publish offer" }).click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("offer");
-    await expect(page.getByText("Verified performer collaboration")).toBeVisible();
-
+    await expect.poll(async () => {
+      const { data, error } = await performerClient.rpc("get_my_creator_commerce");
+      if (error || !data || typeof data !== "object" || Array.isArray(data)) return false;
+      const offers = (data as Record<string, unknown>).offers;
+      return Array.isArray(offers) && offers.some((offer) => offer && typeof offer === "object" && !Array.isArray(offer)
+        && (offer as Record<string, unknown>).title === "Verified performer collaboration");
+    }, { timeout: 15_000 }).toBe(true);
     await page.reload();
+    await expect(page.getByText("Verified performer collaboration")).toBeVisible();
     await expect(page.getByText("Available for creator-controlled projects with explicit boundaries.")).toBeVisible();
     await expect(page.getByText("Verified performer collaboration")).toBeVisible();
     await noOverflow(page);

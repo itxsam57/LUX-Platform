@@ -1026,7 +1026,15 @@ svg {
 
 .representation-revoke-form {
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  isolation: isolate;
+}
+
+.representation-revoke-form .ui-button {
+  justify-self: start;
 }
 
 .ui-pagination {

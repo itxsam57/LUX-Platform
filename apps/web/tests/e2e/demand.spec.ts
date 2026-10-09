@@ -315,10 +315,16 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     const { pathname, publicId } = await createDemandThroughUi(page);
 
     await loginAssureAndNavigate(commenterPage, commenterEmail, pathname);
+    const commenterClient = await createAuthenticatedUserClient(commenterEmail);
     await commenterPage.getByLabel("Entry type").selectOption("suggestion");
     await commenterPage.locator('textarea[name="body"]').fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
     await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
-    await expect.poll(() => new URL(commenterPage.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("discussion");
+    await expect.poll(async () => {
+      const { data, error } = await commenterClient.rpc("list_demand_discussion", { requested_demand_public_id: publicId });
+      if (error || !Array.isArray(data)) return false;
+      return data.some((entry) => entry && typeof entry === "object" && !Array.isArray(entry)
+        && (entry as Record<string, unknown>).body === "Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    }, { timeout: 15_000 }).toBe(true);
     await commenterPage.reload();
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
     await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();
@@ -326,20 +332,28 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await commenterPage.reload();
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
 
-    await page.goto(pathname);
-    const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
-    await expect(suggestion).toContainText("Suggestion");
-    await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("discussion-hidden");
-    await page.reload();
-    await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
-
     const { data: demandRow, error: demandLookupError } = await admin
       .from("demands")
       .select("id")
       .eq("public_id", publicId)
       .single();
-    if (demandLookupError || !demandRow?.id) throw demandLookupError ?? new Error("Demand discussion fixture missing");
+    if (demandLookupError || !demandRow?.id) throw demandLookupError ?? new Error("Demand row unavailable");
+
+    await page.goto(pathname);
+    const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
+    await expect(suggestion).toContainText("Suggestion");
+    await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
+    await expect.poll(async () => {
+      const { data, error } = await admin
+        .from("demand_discussion_entries")
+        .select("hidden_by_author")
+        .eq("demand_id", demandRow.id)
+        .single();
+      return !error && data?.hidden_by_author === true;
+    }, { timeout: 15_000 }).toBe(true);
+    await page.reload();
+    await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
+
     const { data: history, error: historyError } = await admin
       .from("demand_discussion_entries")
       .select("hidden_by_author")

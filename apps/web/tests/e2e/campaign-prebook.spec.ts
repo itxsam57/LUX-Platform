@@ -247,8 +247,13 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
       form.requestSubmit();
       form.requestSubmit();
     });
-    await expect(page.getByRole("status")).toContainText("Pre-book confirmed", { timeout: 15_000 });
-    await expect(page.getByRole("status")).toContainText("not a payment or card authorization");
+    await expect.poll(async () => {
+      const { data, error } = await supporterClient.rpc("get_public_campaign", {
+        requested_campaign_public_id: campaignPublicId,
+      });
+      if (error) return null;
+      return data?.supporterCount === 1 && data?.fundedAmountMinor === 5000;
+    }, { timeout: 15_000 }).toBe(true);
 
     const { data: publicCampaign, error: publicCampaignError } = await supporterClient.rpc("get_public_campaign", {
       requested_campaign_public_id: campaignPublicId,

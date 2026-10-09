@@ -87,7 +87,8 @@ test("support resolution and appeal overturn stay synchronized between consumer 
     await page.getByRole("button", { name: "Create support request" }).click();
     await expect(page).toHaveURL(/\/app\/support\?notice=support$/);
 
-    const consumerSupportRow = page.getByRole("row").filter({ hasText: "Account navigation support" });
+    const supportTable = page.getByRole("table", { name: "Your support requests" });
+    const consumerSupportRow = supportTable.getByRole("row").filter({ hasText: "Account navigation support" });
     await expect(consumerSupportRow).toHaveCount(1);
     const supportText = await consumerSupportRow.innerText();
     const supportId = supportText.match(/sup[0-9a-f]{24}/)?.[0];
@@ -112,7 +113,8 @@ test("support resolution and appeal overturn stay synchronized between consumer 
     await page.getByRole("button", { name: "Open appeal" }).click();
     await expect(page).toHaveURL(/\/app\/support\?notice=appeal$/);
 
-    const appealRow = page.getByRole("row").filter({ hasText: `support_case: ${supportId}` });
+    const appealsTable = page.getByRole("table", { name: "Your appeals" });
+    const appealRow = appealsTable.getByRole("row").filter({ hasText: `support_case: ${supportId}` });
     await expect(appealRow).toHaveCount(1);
     const appealText = await appealRow.innerText();
     const appealId = appealText.match(/apl[0-9a-f]{24}/)?.[0];
@@ -127,8 +129,8 @@ test("support resolution and appeal overturn stay synchronized between consumer 
     await expect(staffPage).toHaveURL(/queue=appeals&notice=reviewed/);
 
     await page.reload();
-    await expect(page.getByRole("row").filter({ hasText: supportId })).toContainText("in progress");
-    await expect(page.getByRole("row").filter({ hasText: appealId })).toContainText("overturned");
+    await expect(page.getByRole("table", { name: "Your support requests" }).getByRole("row").filter({ hasText: supportId })).toContainText("in progress");
+    await expect(page.getByRole("table", { name: "Your appeals" }).getByRole("row").filter({ hasText: appealId })).toContainText("overturned");
 
     await staffPage.goto("/workspace/staff/operations?queue=audit");
     await expect(staffPage.getByRole("heading", { name: "Audit" })).toBeVisible();

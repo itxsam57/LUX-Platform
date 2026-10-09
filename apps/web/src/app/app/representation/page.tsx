@@ -45,8 +45,6 @@ export default async function RepresentationPage({ searchParams }: { searchParam
         <div><span className="eyebrow">{agreement.agencyVerificationStatus === "approved" ? "Verified agency" : `Agency ${agreement.agencyVerificationStatus}`}</span><h2>{agreement.agencyName}</h2><p>{agreement.publicId} · proposed {formatTime(agreement.proposedAt)}</p></div>
         <Status label={agreement.status.replaceAll("_", " ")} tone={agreement.status === "accepted" ? "success" : agreement.status === "proposed" || agreement.status === "revocation_pending" ? "warning" : "neutral"} />
       </div>
-      <Table caption={`Representation terms for ${agreement.agencyName}`}><thead><tr><th scope="col">Scopes</th><th scope="col">Commission</th><th scope="col">Revocation notice</th><th scope="col">Terms hash</th></tr></thead><tbody><tr><td>{scopeLabel(agreement.scopes)}</td><td>{(agreement.commissionBasisPoints / 100).toFixed(2)}%</td><td>{agreement.revocationNoticeDays} days</td><td><code>{agreement.termsHash}</code></td></tr></tbody></Table>
-
       {agreement.status === "proposed" ? <div className="component-row">
         <NavigationActionForm action={respondToAgencyRepresentationAction}><input type="hidden" name="agreement_public_id" value={agreement.publicId} /><input type="hidden" name="decision" value="accept" /><Button type="submit">Accept these exact terms</Button></NavigationActionForm>
         <NavigationActionForm action={respondToAgencyRepresentationAction}><input type="hidden" name="agreement_public_id" value={agreement.publicId} /><input type="hidden" name="decision" value="decline" /><Button type="submit" variant="danger">Decline</Button></NavigationActionForm>
@@ -57,6 +55,8 @@ export default async function RepresentationPage({ searchParams }: { searchParam
         <Input id={`revoke-reason-${agreement.publicId}`} name="reason" label="Revocation reason" description={`Your agreed notice period is ${agreement.revocationNoticeDays} days.`} minLength={3} maxLength={500} required />
         <Button type="submit" variant="danger">Revoke representation</Button>
       </NavigationActionForm> : agreement.status === "revocation_pending" ? <div className="auth-message" role="status">Revocation is recorded and becomes effective {formatTime(agreement.revocationEffectiveAt)}.</div> : null}
+
+      <Table caption={`Representation terms for ${agreement.agencyName}`}><thead><tr><th scope="col">Scopes</th><th scope="col">Commission</th><th scope="col">Revocation notice</th><th scope="col">Terms hash</th></tr></thead><tbody><tr><td>{scopeLabel(agreement.scopes)}</td><td>{(agreement.commissionBasisPoints / 100).toFixed(2)}%</td><td>{agreement.revocationNoticeDays} days</td><td><code>{agreement.termsHash}</code></td></tr></tbody></Table>
 
       <section aria-labelledby={`activity-${agreement.publicId}`}><h3 id={`activity-${agreement.publicId}`}>Immutable activity</h3>{agreement.activity.length ? <Table caption={`Representation activity for ${agreement.agencyName}`}><thead><tr><th scope="col">Event</th><th scope="col">Time</th></tr></thead><tbody>{agreement.activity.map((event) => <tr key={event.publicId}><td>{event.eventType.replaceAll("_", " ")}</td><td>{formatTime(event.createdAt)}</td></tr>)}</tbody></Table> : <p>No activity has been recorded yet.</p>}</section>
     </article>)}
