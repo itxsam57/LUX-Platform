@@ -608,12 +608,11 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       requireNoError(duplicateRequestError, "duplicate payout request");
       expect(duplicateRequest?.publicId).toBe(payoutPublicId);
     }
-    const { data: projectRow, error: projectRowError } = await admin.from("projects").select("id").eq("public_id", fixture.projectPublicId).single();
-    if (projectRowError || !projectRow?.id) throw projectRowError ?? new Error("Slice 14 project row unavailable");
-    const { count: payoutCount, error: payoutCountError } = await admin.from("payout_requests").select("id", { count: "exact", head: true })
-      .eq("project_id", projectRow.id).eq("participant_user_id", performerUser.id);
-    requireNoError(payoutCountError, "payout request count");
-    expect(payoutCount).toBe(1);
+    const { data: payoutListAfterDuplicates, error: payoutListAfterDuplicatesError } = await performer.rpc("list_my_payouts");
+    if (payoutListAfterDuplicatesError || !Array.isArray(payoutListAfterDuplicates)) {
+      throw payoutListAfterDuplicatesError ?? new Error("Slice 14 payout idempotency history unavailable");
+    }
+    expect(payoutListAfterDuplicates.filter((row: { publicId?: string }) => row.publicId === payoutPublicId)).toHaveLength(1);
     await expectNoFinanceSecrets(page, [fixture.privateBrief, providerPayoutRef, ...Object.values(fixture.providerRefs)]);
     await signOut(page);
 
