@@ -585,20 +585,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await expect.poll(() => {
       const current = new URL(page.url());
       return current.searchParams.get("notice") ?? current.searchParams.get("error");
-    }, { timeout: 15_000 }).not.toBeNull();
-    const currentPayoutUrl = new URL(page.url());
-    const payoutDestination = currentPayoutUrl.searchParams.get("notice") ?? currentPayoutUrl.searchParams.get("error");
-    if (payoutDestination !== "payout-requested") {
-      const { error: directPayoutError } = await performer.rpc("request_payout", {
-        requested_project_public_id: fixture.projectPublicId,
-        requested_amount_minor: 1500,
-        requested_currency: "USD",
-        requested_idempotency_key: payoutIdempotencyKey,
-      });
-      throw new Error(
-        `UI payout destination=${payoutDestination}; direct RPC=${directPayoutError?.code ?? "success"}:${directPayoutError?.message ?? "success"}`,
-      );
-    }
+    }, { timeout: 15_000 }).toBe("payout-requested");
     await expect.poll(async () => {
       const { data, error } = await performer.rpc("list_my_payouts");
       if (error || !Array.isArray(data)) return null;
