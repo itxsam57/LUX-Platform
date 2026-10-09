@@ -333,6 +333,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     createUser(staffEmail),
   ]);
   const providerPayoutRef = `po_sbx_${crypto.randomUUID().replaceAll("-", "")}`;
+  const reportedCopyUrl = `https://copies.example/slice-14-premiere-${crypto.randomUUID()}`;
 
   try {
     const { error: bootstrapError } = await admin.rpc("bootstrap_super_admin", { target_user_id: staffUser.id });
@@ -452,7 +453,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await expect(page.getByRole("button", { name: "Watch securely" })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("heading", { name: "Ready to watch" })).toBeVisible();
-    await page.getByLabel("Copy URL").fill("https://copies.example/slice-14-premiere");
+    await page.getByLabel("Copy URL").fill(reportedCopyUrl);
     await page.getByLabel("What did you find?").fill("A copied release appears to reproduce the approved final delivery.");
     await page.getByRole("button", { name: "Report copied release" }).click();
     await expect(page).toHaveURL(/notice=report/);
@@ -473,16 +474,21 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await signOut(page);
 
     await login(page, staffEmail, "/workspace/staff/copyright");
-    const intakeRow = page.getByRole("row").filter({ hasText: "https://copies.example/slice-14-premiere" });
+    const intakeRow = page.getByRole("row").filter({ hasText: reportedCopyUrl });
     await expect(intakeRow).toHaveCount(1);
     await intakeRow.getByLabel("Opening reason").fill("Reported copy requires audited source matching and rights review.");
     await intakeRow.getByRole("button", { name: "Open case" }).click();
     await expect(page).toHaveURL(/notice=opened/);
-    let copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: "Slice 14 Premiere" }).filter({ hasText: "https://copies.example/slice-14-premiere" });
-    await expect(copyrightCase).toHaveCount(1);
-    const caseText = await copyrightCase.innerText();
-    const copyrightCaseId = caseText.match(/cpy[0-9a-f]{24}/)?.[0];
+    const openedIntakeRow = page.getByRole("row").filter({ hasText: reportedCopyUrl });
+    const caseLink = openedIntakeRow.locator('a[href^="/workspace/staff/copyright/cpy"]');
+    await expect(caseLink).toHaveCount(1);
+    const caseHref = await caseLink.getAttribute("href");
+    const copyrightCaseId = caseHref?.match(/cpy[0-9a-f]{24}/)?.[0];
     if (!copyrightCaseId) throw new Error("Copyright case public ID unavailable");
+    let copyrightCase = page.locator("article.workspace-request-panel").filter({
+      has: page.locator(`a[href="/workspace/staff/copyright/${copyrightCaseId}"]`),
+    });
+    await expect(copyrightCase).toHaveCount(1);
 
     await copyrightCase.getByLabel("Case action").selectOption("begin_matching");
     await copyrightCase.getByLabel("Audited reason").fill("Begin fingerprint comparison against the registered release.");
@@ -502,7 +508,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await signOut(page);
 
     await login(page, ownerEmail, "/app/copyright");
-    const creatorCaseRow = page.getByRole("row").filter({ hasText: "https://copies.example/slice-14-premiere" });
+    const creatorCaseRow = page.getByRole("row").filter({ hasText: reportedCopyUrl });
     await expect(creatorCaseRow).toContainText("false positive");
     await signOut(page);
 
