@@ -116,6 +116,7 @@ test("private messaging and saved items survive refresh, deduplicate, and close 
 
     await page.locator("textarea#message-body").fill("A private message that must survive refresh and remain visible only to this thread.");
     await page.getByRole("button", { name: "Send" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice")).toBe("sent");
     await expect(page.getByRole("status")).toContainText("Message sent");
     await page.reload();
     await expect(page.getByText("A private message that must survive refresh and remain visible only to this thread.")).toBeVisible();
@@ -240,10 +241,8 @@ test("performer role activation keeps consent separate while availability and of
     await expect(page.getByRole("heading", { name: "Availability and offers" })).toBeVisible();
     await page.getByLabel("Status").selectOption("available");
     await page.getByLabel("Public note").fill("Available for creator-controlled projects with explicit boundaries.");
-    await Promise.all([
-      page.waitForURL(/\/app\/offers\?notice=availability$/, { timeout: 15_000 }),
-      page.getByRole("button", { name: "Save availability" }).click(),
-    ]);
+    await page.getByRole("button", { name: "Save availability" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("availability");
     await page.reload();
     await expect(page.getByText(/Current: available\./)).toBeVisible();
     await expect(page.getByText("Available for creator-controlled projects with explicit boundaries.")).toBeVisible();
@@ -255,6 +254,7 @@ test("performer role activation keeps consent separate while availability and of
     await page.getByLabel("Starting price (minor units)").fill("15000");
     await page.getByLabel("Currency").fill("USD");
     await page.getByRole("button", { name: "Publish offer" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("offer");
     await expect(page.getByText("Verified performer collaboration")).toBeVisible();
 
     await page.reload();

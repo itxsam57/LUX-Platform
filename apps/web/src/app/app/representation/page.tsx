@@ -52,7 +52,7 @@ export default async function RepresentationPage({ searchParams }: { searchParam
         <NavigationActionForm action={respondToAgencyRepresentationAction}><input type="hidden" name="agreement_public_id" value={agreement.publicId} /><input type="hidden" name="decision" value="decline" /><Button type="submit" variant="danger">Decline</Button></NavigationActionForm>
       </div> : null}
 
-      {agreement.status === "accepted" ? <NavigationActionForm action={revokeAgencyRepresentationAction} className="workspace-form-grid">
+      {agreement.status === "accepted" ? <NavigationActionForm action={revokeAgencyRepresentationAction} className="workspace-form-grid representation-revoke-form">
         <input type="hidden" name="agreement_public_id" value={agreement.publicId} />
         <Input id={`revoke-reason-${agreement.publicId}`} name="reason" label="Revocation reason" description={`Your agreed notice period is ${agreement.revocationNoticeDays} days.`} minLength={3} maxLength={500} required />
         <Button type="submit" variant="danger">Revoke representation</Button>

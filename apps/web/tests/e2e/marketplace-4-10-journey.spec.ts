@@ -305,7 +305,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await creatorPage.getByLabel("Revenue splits").fill(`${performerHandle}|10000`);
     await creatorPage.getByLabel("Final-cut approval required").selectOption("true");
     await creatorPage.getByRole("button", { name: "Publish immutable terms" }).click();
-    await expect(creatorPage).toHaveURL(new RegExp(`/studio/projects/${projectPublicId}/terms\?notice=published$`), { timeout: 15_000 });
+    await expect.poll(() => new URL(creatorPage.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("published");
     await expect(creatorPage.getByRole("status")).toContainText("Immutable terms published");
 
     await performerPage.goto(`/studio/projects/${projectPublicId}/terms`);

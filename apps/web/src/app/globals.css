@@ -1024,6 +1024,11 @@ svg {
   border-bottom: 0;
 }
 
+.representation-revoke-form {
+  position: relative;
+  z-index: 1;
+}
+
 .ui-pagination {
   display: flex;
   flex-wrap: wrap;

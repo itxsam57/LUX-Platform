@@ -28,6 +28,24 @@ async function createUser(address: string) {
   return data.user;
 }
 
+async function authenticatedClient(address: string) {
+  const value = createClient(supabaseUrl!, publishableKey!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error } = await value.auth.signInWithPassword({ email: address, password: PASSWORD });
+  if (error) throw error;
+  return value;
+}
+
+async function assureAdult(address: string) {
+  const value = await authenticatedClient(address);
+  const { error } = await value.rpc("confirm_adult_attestation", {
+    jurisdiction_code: "PK",
+    policy_version: "trust-operations-e2e",
+  });
+  if (error) throw error;
+}
+
 async function login(page: Page, address: string, target: string) {
   await page.goto(`/auth/login?next=${encodeURIComponent(target)}`);
   await page.getByLabel("Email address").fill(address);
@@ -59,6 +77,7 @@ test("support resolution and appeal overturn stay synchronized between consumer 
   try {
     const { error: bootstrapError } = await admin.rpc("bootstrap_super_admin", { target_user_id: staff.id });
     if (bootstrapError) throw bootstrapError;
+    await Promise.all([assureAdult(consumerEmail), assureAdult(staffEmail)]);
 
     await login(page, consumerEmail, "/app/support");
     await page.goto("/app/support");
