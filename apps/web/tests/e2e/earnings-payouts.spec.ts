@@ -362,9 +362,9 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await signOut(page);
 
     const assetSpecs = [
-      ["final-release.mp4", "13"],
-      ["poster.png", "14"],
-      ["preview.mp4", "15"],
+      ["final-release.mp4", "1"],
+      ["poster.png", "2"],
+      ["preview.mp4", "3"],
     ] as const;
     const assets: string[] = [];
     for (const [name, nibble] of assetSpecs) {

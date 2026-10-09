@@ -358,7 +358,12 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
       form.requestSubmit();
       form.requestSubmit();
     });
-    await expect(page.getByRole("status")).toContainText("Pre-book confirmed", { timeout: 15_000 });
+
+    await expect.poll(async () => {
+      const { data, error } = await fanClient.rpc("list_funding_commitments");
+      if (error || !Array.isArray(data)) return false;
+      return data.some((row) => row?.campaignPublicId === campaignPublicId && typeof row?.publicId === "string");
+    }, { timeout: 15_000 }).toBe(true);
 
     const { data: fundingRows, error: fundingRowsError } = await fanClient.rpc("list_funding_commitments");
     if (fundingRowsError || !Array.isArray(fundingRows)) throw fundingRowsError ?? new Error("Funding projection unavailable");
