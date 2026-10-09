@@ -555,7 +555,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await page.locator("#hold-kind").selectOption("verification");
     await page.locator("#hold-reason").fill("Temporary payout verification review");
     await page.getByRole("button", { name: "Place hold" }).click();
-    await expect(page.getByRole("status")).toContainText("Earnings hold placed");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("hold");
     const holdRow = page.getByRole("row").filter({ hasText: `@${fixture.performerHandle}` }).filter({ hasText: "verification" });
     await expect(holdRow).toContainText("$10.00");
     await expectNoFinanceSecrets(page, [fixture.privateBrief, providerPayoutRef, ...Object.values(fixture.providerRefs)]);
