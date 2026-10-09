@@ -572,7 +572,8 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await login(page, staffEmail, "/workspace/staff/finance");
     const openHold = page.getByRole("row").filter({ hasText: `@${fixture.performerHandle}` }).filter({ hasText: "verification" });
     await openHold.getByRole("button", { name: "Release" }).click();
-    await expect(page.getByRole("status")).toContainText("Earnings hold released");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("release");
+    await expect(page.getByRole("row").filter({ hasText: `@${fixture.performerHandle}` }).filter({ hasText: "verification" })).toHaveCount(0);
     await signOut(page);
 
     await login(page, performerEmail, "/app/earnings");
@@ -585,7 +586,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
       form.requestSubmit();
       form.requestSubmit();
     });
-    await expect(page.getByRole("status")).toContainText("Payout requested");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("payout-requested");
     const { data: payoutListAfterRequest, error: payoutListError } = await performer.rpc("list_my_payouts");
     if (payoutListError || !Array.isArray(payoutListAfterRequest) || !payoutListAfterRequest[0]?.publicId) {
       throw payoutListError ?? new Error("Slice 14 payout history unavailable");
@@ -614,7 +615,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
 
     await login(page, staffEmail, "/workspace/staff/finance");
     await page.getByRole("button", { name: "Create batch" }).click();
-    await expect(page.getByRole("status")).toContainText("Monthly payout batch created");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("batch");
     const processingRow = page.getByRole("row").filter({ hasText: payoutPublicId });
     await expect(processingRow).toContainText("processing");
     const { data: firstQueue, error: firstQueueError } = await reviewer.rpc("list_finance_payout_queue");
@@ -659,7 +660,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     const failedPayoutRow = page.getByRole("row").filter({ hasText: "Slice 14 journal payout project" }).filter({ hasText: "failed" });
     await expect(failedPayoutRow).toContainText("1").catch(() => undefined);
     await failedPayoutRow.getByRole("button", { name: "Retry" }).click();
-    await expect(page.getByRole("status")).toContainText("Payout retry queued");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("payout-retried");
     const { data: payoutAfterRetry, error: payoutAfterRetryError } = await performer.rpc("list_my_payouts");
     if (payoutAfterRetryError || !Array.isArray(payoutAfterRetry)) throw payoutAfterRetryError ?? new Error("Retry history unavailable");
     expect(payoutAfterRetry[0]?.state).toBe("requested");
@@ -668,7 +669,7 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
 
     await login(page, staffEmail, "/workspace/staff/finance");
     await page.getByRole("button", { name: "Create batch" }).click();
-    await expect(page.getByRole("status")).toContainText("Monthly payout batch created");
+    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("batch");
     const { data: secondQueue, error: secondQueueError } = await reviewer.rpc("list_finance_payout_queue");
     requireNoError(secondQueueError, "second finance payout queue");
     const secondQueuedPayout = secondQueue?.payouts?.find((row: { publicId?: string }) => row.publicId === payoutPublicId);
