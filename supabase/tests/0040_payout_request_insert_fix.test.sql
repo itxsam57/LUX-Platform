@@ -12,11 +12,11 @@ select has_function(
 select ok(
   position(
     'reservation_ledger_transaction_id,last_ledger_transaction_id'
-    in regexp_replace(lower(pg_get_functiondef('public.request_payout(text,bigint,text,text)'::regprocedure)), E'\s+', '', 'g')
+    in regexp_replace(lower(pg_get_functiondef('public.request_payout(text,bigint,text,text)'::regprocedure)), '[[:space:]]+', '', 'g')
   ) > 0
   and position(
     'journal_id,journal_id'
-    in regexp_replace(lower(pg_get_functiondef('public.request_payout(text,bigint,text,text)'::regprocedure)), E'\s+', '', 'g')
+    in regexp_replace(lower(pg_get_functiondef('public.request_payout(text,bigint,text,text)'::regprocedure)), '[[:space:]]+', '', 'g')
   ) > 0,
   'first payout request initializes both ledger references from the reservation journal'
 );
