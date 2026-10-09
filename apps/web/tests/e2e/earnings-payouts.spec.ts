@@ -107,10 +107,34 @@ async function configureCreator(ownerEmail: string, ownerId: string, reviewer: S
   return owner;
 }
 
+async function verifyPayoutRecipient(performer: SupabaseClient, performerId: string) {
+  const providerKey = "sandbox_payout";
+  const recipientReference = `recipient_${performerId.replaceAll("-", "").slice(0, 24)}`;
+  const { error: onboardingError } = await performer.rpc("start_payout_recipient_onboarding", {
+    requested_provider_key: providerKey,
+    requested_recipient_reference: recipientReference,
+    requested_onboarding_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  });
+  requireNoError(onboardingError, "payout recipient onboarding");
+
+  const { error: providerError } = await admin.rpc("apply_payout_recipient_provider_event", {
+    requested_provider_key: providerKey,
+    requested_event_id: `payout-recipient-${crypto.randomUUID()}`,
+    requested_subject_user_id: performerId,
+    requested_recipient_reference: recipientReference,
+    requested_state: "verified",
+    requested_ownership_verified: true,
+    requested_occurred_at: new Date().toISOString(),
+    requested_payload_hash: "a".repeat(64),
+  });
+  requireNoError(providerError, "payout recipient provider result");
+}
+
 async function configurePerformer(performerEmail: string, performerId: string, reviewer: SupabaseClient) {
   const performer = await authenticatedClient(performerEmail);
   await assureAdult(performer);
   await verifyLevel(performer, reviewer, performerId, "v2", `s14-performer-v2:${performerId}`);
+  await verifyPayoutRecipient(performer, performerId);
   const { error: educationError } = await performer.rpc("acknowledge_consent_education", {
     requested_policy_version: "slice-5-consent-v1",
   });
