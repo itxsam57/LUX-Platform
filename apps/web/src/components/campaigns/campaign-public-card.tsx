@@ -11,6 +11,19 @@ function number(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function tiers(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const row = entry as Record<string, unknown>;
+    const key = typeof row.key === "string" ? row.key : null;
+    const title = typeof row.title === "string" ? row.title : null;
+    const amountMinor = typeof row.amountMinor === "number" && Number.isSafeInteger(row.amountMinor) && row.amountMinor > 0 ? row.amountMinor : null;
+    const accessPromise = typeof row.accessPromise === "string" ? row.accessPromise : null;
+    return key && title && amountMinor && accessPromise ? [{ key, title, amountMinor, accessPromise }] : [];
+  });
+}
+
 function supporterLabel(count: number) {
   return `${count} ${count === 1 ? "supporter" : "supporters"}`;
 }
@@ -20,6 +33,7 @@ export function CampaignPublicCard({ campaign }: CampaignPublicCardProps) {
   const fundedAmount = number(campaign.fundedAmountMinor);
   const target = number(campaign.fundingTargetMinor);
   const currency = String(campaign.currency ?? "");
+  const fundingTiers = tiers(campaign.tiers);
 
   return (
     <article className="campaign-public-card">
@@ -36,6 +50,23 @@ export function CampaignPublicCard({ campaign }: CampaignPublicCardProps) {
         <div><span>Deadline</span><strong>{String(campaign.deadline ?? "")}</strong></div>
         <div><span>Expected delivery</span><strong>{String(campaign.expectedDeliveryWindow ?? "")}</strong></div>
       </section>
+
+      {fundingTiers.length ? (
+        <section className="campaign-public-section">
+          <h2>Funding tiers</h2>
+          <div className="studio-stack">
+            {fundingTiers.map((tier) => (
+              <article className="studio-card" key={tier.key}>
+                <div className="studio-meta">
+                  <strong>{tier.title}</strong>
+                  <span>{tier.amountMinor.toLocaleString("en-US")} {currency} minor units</span>
+                </div>
+                <p>{tier.accessPromise}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="campaign-public-section">
         <h2>Guaranteed outcomes</h2>

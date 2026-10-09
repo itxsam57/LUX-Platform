@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(25);
 
 select has_table('public','project_invitations','Slice 7 stores collaboration invitations');
 select has_table('public','project_invitation_proposals','Slice 7 stores immutable invitation proposal versions');
@@ -49,6 +49,21 @@ select throws_ok(
  '42501','project_communication_not_allowed','agency cannot act without an explicit communication grant');
 
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a1','role','authenticated')::text,true);
+-- S16 requires a verified agency and performer-accepted scoped representation.
+select throws_ok(format($q$select public.set_project_agency_authority(%L,'s7_agency',true)$q$,(select payload->>'publicId' from s7_project)),
+ '42501','agency_unavailable','workspace approval alone does not authorize an unverified agency');
+insert into public.agency_profiles(public_id,owner_user_id,display_name,jurisdiction_code,verification_status)
+values('agy000000000000000000000007','10000000-0000-0000-0000-0000000000a3','S7 Agency','PK','approved');
+insert into public.agency_staff_memberships(agency_id,user_id,staff_role,added_by_user_id)
+select id,owner_user_id,'owner',owner_user_id from public.agency_profiles where public_id='agy000000000000000000000007';
+select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a3','role','authenticated')::text,true);
+create temp table s7_representation(payload jsonb);
+insert into s7_representation select public.invite_performer_representation('s7_owner',
+ '{"communications":true,"opportunities":false,"negotiations":false,"projectAdmin":true,"contractAdmin":false,"earningsVisibility":false,"commissionBasisPoints":0,"revocationNoticeDays":0}'::jsonb);
+select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a1','role','authenticated')::text,true);
+select throws_ok(format($q$select public.set_project_agency_authority(%L,'s7_agency',true)$q$,(select payload->>'publicId' from s7_project)),
+ '42501','agency_representation_scope_required','proposed representation does not authorize project administration');
+select public.respond_agency_representation((select payload->>'publicId' from s7_representation),'accept');
 select lives_ok(format($q$select public.set_project_agency_authority(%L,'s7_agency',true)$q$,(select payload->>'publicId' from s7_project)),'owner can explicitly grant agency communication authority');
 select set_config('request.jwt.claims',jsonb_build_object('sub','10000000-0000-0000-0000-0000000000a3','role','authenticated')::text,true);
 select lives_ok(format($q$select public.send_project_invitation(%L,'s7_recipient','editor',jsonb_build_object('note','Agency managed proposal'))$q$,(select payload->>'publicId' from s7_project)),'authorized agency can send an attributed invitation');

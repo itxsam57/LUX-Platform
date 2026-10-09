@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -38,8 +39,7 @@ async function createConfirmedUser(email: string) {
 }
 
 async function removeUser(userId: string) {
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await cleanupTestUser(admin, userId);
 }
 
 async function createAuthenticatedUserClient(email: string) {
@@ -186,8 +186,10 @@ test("fan creates a suggested-creator demand and truthful detail survives refres
     await expect(page.getByRole("heading", { name: "Crowd Demand Board" })).toBeVisible();
     await expectDocumentFitsViewport(page);
 
-    await page.getByRole("link", { name: "Create demand" }).click();
-    await expect(page).toHaveURL(/\/app\/demand\/new$/);
+    const createDemandLink = page.getByRole("link", { name: "Create demand" });
+    await expect(createDemandLink).toHaveAttribute("href", "/app/demand/new");
+    await createDemandLink.click();
+    await expect.poll(() => new URL(page.url()).pathname, { timeout: 15_000 }).toBe("/app/demand/new");
     await expectDocumentFitsViewport(page);
 
     const { pathname } = await createDemandThroughUi(page, creatorHandle);
@@ -229,6 +231,8 @@ test("support remains one edge after an equivalent retry and persists across ref
     await expect(supporterPage.getByTestId("demand-support-count")).toHaveText("0");
     await supporterPage.getByLabel("Show my handle publicly").check();
     await supporterPage.getByRole("button", { name: "Support demand" }).click();
+    await expect.poll(() => new URL(supporterPage.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("support");
+    await supporterPage.reload();
     await expect(supporterPage.getByTestId("demand-support-count")).toHaveText("1");
     await expect(supporterPage.getByTestId("demand-supporters")).toContainText(`@${supporterHandle}`);
 
@@ -296,5 +300,55 @@ test("suggested creator can decline privately and only their interest becomes pu
     await creatorContext.close();
     await removeUser(author.id);
     await removeUser(creator.id);
+  }
+});
+
+
+test("demand discussion persists, respects crowd-input boundaries, and author moderation hides without deleting history", async ({ page, browser }, testInfo) => {
+  const authorEmail = testEmail("demand-discussion-author", testInfo);
+  const commenterEmail = testEmail("demand-discussion-commenter", testInfo);
+  const author = await createConfirmedUser(authorEmail);
+  const commenter = await createConfirmedUser(commenterEmail);
+  const commenterContext = await openSecondaryContext(browser, testInfo);
+  const commenterPage = await commenterContext.newPage();
+
+  try {
+    await loginAssureAndNavigate(page, authorEmail, "/app/demand");
+    const { pathname, publicId } = await createDemandThroughUi(page);
+
+    await loginAssureAndNavigate(commenterPage, commenterEmail, pathname);
+    const commenterClient = await createAuthenticatedUserClient(commenterEmail);
+    await commenterPage.getByLabel("Entry type").selectOption("suggestion");
+    await commenterPage.locator('textarea[name="body"]').fill("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    await commenterPage.getByRole("button", { name: "Add to discussion" }).click();
+    await expect.poll(async () => {
+      const { data, error } = await commenterClient.rpc("list_demand_discussion", { requested_demand_public_id: publicId });
+      if (error || !Array.isArray(data)) return false;
+      return data.some((entry) => entry && typeof entry === "object" && !Array.isArray(entry)
+        && (entry as Record<string, unknown>).body === "Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    }, { timeout: 15_000 }).toBe(true);
+    await commenterPage.reload();
+    await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
+    await expect(commenterPage.getByText(/never create performer consent, contract acceptance, or production authority/i)).toBeVisible();
+
+    await commenterPage.reload();
+    await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
+
+    await page.goto(pathname);
+    const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
+    await expect(suggestion).toContainText("Suggestion");
+    await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
+    await expect.poll(async () => {
+      const { data, error } = await commenterClient.rpc("list_demand_discussion", { requested_demand_public_id: publicId });
+      if (error || !Array.isArray(data)) return false;
+      return !data.some((entry) => entry && typeof entry === "object" && !Array.isArray(entry)
+        && (entry as Record<string, unknown>).body === "Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
+    }, { timeout: 15_000 }).toBe(true);
+    await page.reload();
+    await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
+  } finally {
+    await commenterContext.close();
+    await removeUser(author.id);
+    await removeUser(commenter.id);
   }
 });

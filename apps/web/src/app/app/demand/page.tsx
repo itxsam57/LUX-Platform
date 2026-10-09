@@ -25,7 +25,7 @@ export default async function DemandBoardPage() {
             <h1>Crowd Demand Board</h1>
             <p>Request ideas, support existing demand, and keep creator participation voluntary until a creator explicitly marks interest.</p>
           </div>
-          <Link className="demand-button demand-button--primary" href="/app/demand/new">Create demand</Link>
+          <a className="demand-button demand-button--primary" href="/app/demand/new">Create demand</a>
         </header>
 
         {error ? (

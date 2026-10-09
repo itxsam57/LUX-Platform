@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import sharp from "sharp";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,6 +17,10 @@ function emailFor(prefix: string, testInfo: TestInfo) {
   return `${prefix}-${project}-${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(16).slice(2)}@lux.test`;
 }
 
+function uniqueHandle(prefix: string, userId: string) {
+  return `${prefix}_${userId.replaceAll("-", "").slice(0, 8)}`;
+}
+
 async function createConfirmedUser(email: string) {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("Profile hardening test user was not created.");
@@ -23,8 +28,7 @@ async function createConfirmedUser(email: string) {
 }
 
 async function removeUser(userId: string) {
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await cleanupTestUser(admin, userId);
 }
 
 async function loginAndAssure(page: Page, email: string, target = "/workspace") {
@@ -75,17 +79,19 @@ test("duplicate handles and unsafe links fail safely while valid profile edits p
   const contenderPage = await contenderContext.newPage();
 
   try {
+    const ownerHandle = uniqueHandle("taken", owner.id);
+    const contenderHandle = uniqueHandle("valid", contender.id);
     await loginAndAssure(page, ownerEmail);
-    await configurePublicProfile(page, "taken_handle", "Handle Owner");
+    await configurePublicProfile(page, ownerHandle, "Handle Owner");
 
     await loginAndAssure(contenderPage, contenderEmail);
     await contenderPage.goto("/settings/profile");
-    await contenderPage.getByLabel("Handle").fill("taken_handle");
+    await contenderPage.getByLabel("Handle").fill(ownerHandle);
     await contenderPage.getByLabel("Display name").fill("Contender");
     await contenderPage.getByRole("button", { name: "Save profile" }).click();
     await expect(contenderPage.getByTestId("profile-action-message")).toContainText("That handle is already in use");
 
-    await contenderPage.getByLabel("Handle").fill("validation_bravo");
+    await contenderPage.getByLabel("Handle").fill(contenderHandle);
     await contenderPage.getByLabel("Link 1 label").fill("Unsafe");
     await contenderPage.getByLabel("Link 1 URL").fill("javascript:alert(1)");
     await contenderPage.getByRole("button", { name: "Save profile" }).click();
@@ -99,7 +105,7 @@ test("duplicate handles and unsafe links fail safely while valid profile edits p
     await expect(contenderPage.getByTestId("profile-action-message")).toContainText("Profile saved");
 
     await contenderPage.reload();
-    await expect(contenderPage.getByLabel("Handle")).toHaveValue("validation_bravo");
+    await expect(contenderPage.getByLabel("Handle")).toHaveValue(contenderHandle);
     await expect(contenderPage.getByLabel("Display name")).toHaveValue("Contender");
     await expect(contenderPage.getByLabel("Bio")).toHaveValue("Persistent profile bio");
     await expect(contenderPage.getByLabel("Language")).toHaveValue("ur-PK");
@@ -117,8 +123,9 @@ test("avatar replacement overwrites the guarded object without changing the publ
   const anonymousContext = await secondaryContext(browser, testInfo);
 
   try {
+    const handle = uniqueHandle("replace", user.id);
     await loginAndAssure(page, email);
-    await configurePublicProfile(page, "replace_media_alpha", "Replace Media Alpha");
+    await configurePublicProfile(page, handle, "Replace Media Alpha");
 
     const firstImage = await sharp({
       create: { width: 400, height: 400, channels: 3, background: { r: 210, g: 20, b: 20 } },
@@ -130,21 +137,21 @@ test("avatar replacement overwrites the guarded object without changing the publ
     await page.locator("#avatar-file").setInputFiles({ name: "first.png", mimeType: "image/png", buffer: firstImage });
     await submitProfileMedia(page, "Process and upload avatar");
     await expect(page.getByText("Avatar updated as metadata-stripped WebP.")).toBeVisible();
-    const firstResponse = await anonymousContext.request.get("/profile-media/replace_media_alpha/avatar");
+    const firstResponse = await anonymousContext.request.get(`/profile-media/${handle}/avatar`);
     expect(firstResponse.status()).toBe(200);
     const firstBytes = await firstResponse.body();
 
     await page.locator("#avatar-file").setInputFiles({ name: "second.png", mimeType: "image/png", buffer: secondImage });
     await submitProfileMedia(page, "Process and upload avatar");
     await expect(page.getByText("Avatar updated as metadata-stripped WebP.")).toBeVisible();
-    const secondResponse = await anonymousContext.request.get("/profile-media/replace_media_alpha/avatar");
+    const secondResponse = await anonymousContext.request.get(`/profile-media/${handle}/avatar`);
     expect(secondResponse.status()).toBe(200);
     const secondBytes = await secondResponse.body();
 
     expect(Buffer.compare(firstBytes, secondBytes)).not.toBe(0);
-    await page.goto("/u/replace_media_alpha");
+    await page.goto(`/u/${handle}`);
     const markup = await page.content();
-    expect(markup).toContain("/profile-media/replace_media_alpha/avatar");
+    expect(markup).toContain(`/profile-media/${handle}/avatar`);
     expect(markup).not.toContain(user.id);
   } finally {
     await anonymousContext.close();
@@ -161,12 +168,14 @@ test("follow counts change without refresh and unblock permits a fresh follow", 
   const bravoPage = await bravoContext.newPage();
 
   try {
+    const alphaHandle = uniqueHandle("counta", alpha.id);
+    const bravoHandle = uniqueHandle("countb", bravo.id);
     await loginAndAssure(page, alphaEmail);
-    await configurePublicProfile(page, "count_alpha", "Count Alpha");
+    await configurePublicProfile(page, alphaHandle, "Count Alpha");
     await loginAndAssure(bravoPage, bravoEmail);
-    await configurePublicProfile(bravoPage, "count_bravo", "Count Bravo");
+    await configurePublicProfile(bravoPage, bravoHandle, "Count Bravo");
 
-    await page.goto("/u/count_bravo");
+    await page.goto(`/u/${bravoHandle}`);
     const counts = page.locator(".profile-social-counts");
     await expect(counts).toContainText("0 followers");
     await page.getByRole("button", { name: "Follow" }).click();
@@ -178,15 +187,15 @@ test("follow counts change without refresh and unblock permits a fresh follow", 
     await page.getByRole("button", { name: "Follow" }).click();
     await expect(counts).toContainText("1 followers");
 
-    await bravoPage.goto("/u/count_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await bravoPage.getByRole("button", { name: "Block" }).click();
     await expect(bravoPage.getByText("Block complete.")).toBeVisible();
     await bravoPage.goto("/settings/privacy");
-    const blockedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@count_alpha" });
+    const blockedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: `@${alphaHandle}` });
     await blockedRow.getByRole("button", { name: "Unblock" }).click();
-    await expect(blockedRow).toContainText("@count_alpha unblocked");
+    await expect(blockedRow).toContainText(`@${alphaHandle} unblocked`);
 
-    await bravoPage.goto("/u/count_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await bravoPage.getByRole("button", { name: "Follow" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unfollow" })).toBeVisible();
   } finally {

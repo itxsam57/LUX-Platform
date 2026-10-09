@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -20,29 +21,8 @@ async function createUser(address: string) {
   return data.user;
 }
 
-function retryableAuthCleanup(error: unknown): boolean {
-  return Boolean(
-    error
-    && typeof error === "object"
-    && "name" in error
-    && String((error as { name?: unknown }).name) === "AuthRetryableFetchError"
-  );
-}
-
 async function removeUser(id: string) {
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const { error } = await admin.auth.admin.deleteUser(id);
-      if (!error) return;
-      lastError = error;
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
-  }
-  if (retryableAuthCleanup(lastError)) return;
-  throw lastError instanceof Error ? lastError : new Error("test user cleanup failed");
+  await cleanupTestUser(admin, id);
 }
 
 async function authenticatedClient(address: string): Promise<SupabaseClient> {

@@ -6,7 +6,8 @@
     "overrides": {
       "nanoid": "3.3.18",
       "postcss": "8.5.23",
-      "sharp": "0.35.3"
+      "sharp": "0.35.5",
+      "source-map-js": "1.2.2"
     },
     "onlyBuiltDependencies": [
       "esbuild",
@@ -22,11 +23,13 @@
     "typecheck": "pnpm --filter @lux/web typecheck",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "pnpm --filter @lux/web test:unit",
+    "test:engineering": "node --test scripts/engineering/*.test.mjs",
     "test:integration": "pnpm --filter @lux/web test:integration",
     "test:database": "supabase test db",
     "test:e2e": "pnpm --filter @lux/web test:e2e",
     "repo:check": "node scripts/engineering/check-repository.mjs",
     "runtime:dependencies": "node scripts/engineering/check-runtime-dependencies.mjs",
+    "backup:recovery": "node scripts/engineering/backup-recovery.mjs",
     "security:secrets": "node scripts/engineering/scan-secrets.mjs",
     "security:dependencies": "pnpm audit --prod --audit-level moderate",
     "verify:quick": "pnpm repo:check && pnpm security:secrets && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration",

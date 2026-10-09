@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,6 +16,10 @@ function emailFor(prefix: string, testInfo: TestInfo) {
   return `${prefix}-${project}-${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(16).slice(2)}@lux.test`;
 }
 
+function uniqueHandle(prefix: string, userId: string) {
+  return `${prefix}_${userId.replaceAll("-", "").slice(0, 8)}`;
+}
+
 async function createConfirmedUser(email: string) {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("Privacy test user was not created.");
@@ -22,8 +27,7 @@ async function createConfirmedUser(email: string) {
 }
 
 async function removeUser(userId: string) {
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await cleanupTestUser(admin, userId);
 }
 
 async function login(page: Page, email: string, target: string) {
@@ -133,12 +137,14 @@ test("existing block and mute can be removed after adult assurance expires", asy
   const bravoPage = await bravoContext.newPage();
 
   try {
+    const alphaHandle = uniqueHandle("privacya", alpha.id);
+    const bravoHandle = uniqueHandle("privacyb", bravo.id);
     await loginAndAssure(page, alphaEmail);
-    await configurePublicProfile(page, "privacy_alpha", "Privacy Alpha");
+    await configurePublicProfile(page, alphaHandle, "Privacy Alpha");
     await loginAndAssure(bravoPage, bravoEmail);
-    await configurePublicProfile(bravoPage, "privacy_bravo", "Privacy Bravo");
+    await configurePublicProfile(bravoPage, bravoHandle, "Privacy Bravo");
 
-    await page.goto("/u/privacy_bravo");
+    await page.goto(`/u/${bravoHandle}`);
     await page.getByRole("button", { name: "Block" }).click();
     await expect(page.getByText("Block complete.")).toBeVisible();
 
@@ -147,25 +153,25 @@ test("existing block and mute can be removed after adult assurance expires", asy
 
     await page.goto("/settings/privacy");
     await expect(page).toHaveURL(/\/settings\/privacy$/);
-    const blockRow = page.locator(".privacy-relationship-row").filter({ hasText: "@privacy_bravo" });
+    const blockRow = page.locator(".privacy-relationship-row").filter({ hasText: `@${bravoHandle}` });
     await expect(blockRow).toHaveCount(1);
     await blockRow.getByRole("button", { name: "Unblock" }).click();
-    await expect(blockRow).toContainText("@privacy_bravo unblocked");
+    await expect(blockRow).toContainText(`@${bravoHandle} unblocked`);
 
     await page.goto("/settings/profile");
     await expect(page).toHaveURL(/\/age-assurance/);
 
-    await bravoPage.goto("/u/privacy_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await expect(bravoPage.getByRole("heading", { name: "Privacy Alpha" })).toBeVisible();
     await bravoPage.getByRole("button", { name: "Mute" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unmute" })).toBeVisible();
     const { error: revokeBravoError } = await admin.rpc("revoke_age_assurance", { target_user_id: bravo.id });
     if (revokeBravoError) throw revokeBravoError;
     await bravoPage.goto("/settings/privacy");
-    const muteRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@privacy_alpha" });
+    const muteRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: `@${alphaHandle}` });
     await expect(muteRow).toHaveCount(1);
     await muteRow.getByRole("button", { name: "Unmute" }).click();
-    await expect(muteRow).toContainText("@privacy_alpha unmuted");
+    await expect(muteRow).toContainText(`@${alphaHandle} unmuted`);
   } finally {
     await bravoContext.close();
     await removeUser(alpha.id);
@@ -182,22 +188,24 @@ test("notifications are recipient-only, markable, deep-linked, and suppressed af
   const recipientPage = await recipientContext.newPage();
 
   try {
+    const followerHandle = uniqueHandle("notifyf", follower.id);
+    const recipientHandle = uniqueHandle("notifyr", recipient.id);
     await loginAndAssure(page, followerEmail);
-    await configurePublicProfile(page, "notify_follower", "Notify Follower");
+    await configurePublicProfile(page, followerHandle, "Notify Follower");
     await loginAndAssure(recipientPage, recipientEmail);
-    await configurePublicProfile(recipientPage, "notify_recipient", "Notify Recipient");
+    await configurePublicProfile(recipientPage, recipientHandle, "Notify Recipient");
 
-    await page.goto("/u/notify_recipient");
+    await page.goto(`/u/${recipientHandle}`);
     await page.getByRole("button", { name: "Follow" }).click();
     await expect(page.getByRole("button", { name: "Unfollow" })).toBeVisible();
 
     await recipientPage.goto("/notifications");
     await expect(recipientPage.getByRole("heading", { name: "New follower" })).toBeVisible();
-    await expect(recipientPage.getByRole("link", { name: "Open profile" })).toHaveAttribute("href", "/u/notify_follower");
+    await expect(recipientPage.getByRole("link", { name: "Open profile" })).toHaveAttribute("href", `/u/${followerHandle}`);
     await recipientPage.getByRole("button", { name: "Mark read" }).click();
     await expect(recipientPage.getByText("0 unread")).toBeVisible();
 
-    await recipientPage.goto("/u/notify_follower");
+    await recipientPage.goto(`/u/${followerHandle}`);
     await recipientPage.getByRole("button", { name: "Block" }).click();
     await expect(recipientPage.getByText("Block complete.")).toBeVisible();
     await recipientPage.goto("/notifications");

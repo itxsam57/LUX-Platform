@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAdultViewer } from "@/lib/auth/context";
 import { getPublicAppUrl, getVerificationProviderRuntime } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createSyntheticVerificationAdapter } from "@/lib/verification/synthetic-adapter";
+import { getConfiguredVerificationAdapter } from "@/lib/verification/runtime";
 import type { VerificationStatus, VerificationTargetLevel } from "@/lib/verification/types";
 
 export type VerificationActionState = {
@@ -57,14 +58,12 @@ export async function startVerificationAction(
     );
   }
 
-  if (runtime.mode !== "synthetic") {
-    return failure(
-      "The configured production identity provider adapter is not available in this build.",
-      level,
-    );
+  let adapter;
+  try {
+    adapter = getConfiguredVerificationAdapter();
+  } catch {
+    return failure("The configured identity provider could not be initialized safely.", level);
   }
-
-  const adapter = createSyntheticVerificationAdapter();
   let session;
   try {
     session = await adapter.createSession({
@@ -93,9 +92,12 @@ export async function startVerificationAction(
   }
 
   revalidatePath("/settings/verification");
+  if (session.launchUrl) redirect(session.launchUrl);
   return {
     status: "success",
-    message: "Development-only workflow started. Review is still required; this action did not verify the account.",
+    message: session.synthetic
+      ? "Development-only workflow started. Review is still required; this action did not verify the account."
+      : "Verification session started.",
     level,
     verificationStatus: "pending",
   };

@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { Badge, Card } from "@/components/ui/primitives";
+import { Badge, Button, Card } from "@/components/ui/primitives";
+import { setSavedItemAction } from "@/app/app/saved/actions";
+import { startDirectMessageAction } from "@/app/messages/actions";
 import { ProfileSocialActions } from "@/components/profile/profile-social-actions";
 import type { ProfileLink, ProfileVisibility } from "@/lib/profile/policy";
+import type { PublicProfileRelease } from "@/lib/releases/policy";
+import type { CreatorCommerceView } from "@/lib/creator/commerce";
 
 export type PublicProfileView = {
   handle: string;
@@ -25,11 +29,15 @@ export function PublicProfile({
   signedIn,
   isOwner,
   verificationLevel,
+  releases,
+  commerce,
 }: {
   profile: PublicProfileView;
   signedIn: boolean;
   isOwner: boolean;
   verificationLevel: "v2" | "v3" | null;
+  releases: PublicProfileRelease[];
+  commerce: CreatorCommerceView | null;
 }) {
   return (
     <main className="public-profile-shell">
@@ -106,6 +114,21 @@ export function PublicProfile({
                   followingCount: profile.followingCount,
                 }}
               />
+              {!profile.blockedByMe ? (
+                <div className="workspace-inline-form">
+                  <form action={startDirectMessageAction}>
+                    <input type="hidden" name="handle" value={profile.handle} />
+                    <Button type="submit" size="small">Message</Button>
+                  </form>
+                  <form action={setSavedItemAction}>
+                    <input type="hidden" name="item_type" value="profile" />
+                    <input type="hidden" name="item_public_id" value={profile.handle} />
+                    <input type="hidden" name="saved" value="true" />
+                    <input type="hidden" name="return_to" value={`/u/${profile.handle}`} />
+                    <Button type="submit" size="small" variant="secondary">Save</Button>
+                  </form>
+                </div>
+              ) : null}
             </>
           ) : (
             <>
@@ -117,6 +140,57 @@ export function PublicProfile({
           )}
         </Card>
       </div>
+
+      {commerce && (commerce.availability || commerce.offers.length) ? (
+        <Card className="public-profile-card">
+          <span className="eyebrow">Availability and offers</span>
+          <h2>Voluntary project availability</h2>
+          {commerce.availability ? (
+            <p className="muted-copy">
+              Status: {commerce.availability.status.replaceAll("_", " ")}
+              {commerce.availability.nextAvailableAt ? ` · next ${new Date(commerce.availability.nextAvailableAt).toLocaleDateString()}` : ""}
+              {commerce.availability.note ? ` · ${commerce.availability.note}` : ""}
+            </p>
+          ) : <p className="muted-copy">No public availability status.</p>}
+          {commerce.offers.length ? (
+            <div className="studio-stack">
+              {commerce.offers.map((offer) => (
+                <article key={offer.publicId}>
+                  <h3>{offer.title}</h3>
+                  <p className="muted-copy">{offer.description}</p>
+                  <div className="studio-meta">
+                    <span>{offer.roleName}</span>
+                    <span>{offer.category.replaceAll("_", " ")}</span>
+                    <span>{offer.startingMinor === null ? "Terms negotiated" : `${offer.startingMinor} ${offer.currency}`}</span>
+                  </div>
+                  {signedIn && !isOwner ? <Link className="workspace-inline-link" href={`/messages?with=${encodeURIComponent(profile.handle)}`}>Discuss this offer</Link> : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
+          <p className="muted-copy">Availability and offers are invitations to discuss only; they are not consent, bookings, or contracts.</p>
+        </Card>
+      ) : null}
+
+      <Card className="public-profile-card">
+        <span className="eyebrow">Released work</span>
+        <h2>Approved releases</h2>
+        {releases.length ? (
+          <div className="studio-stack">
+            {releases.map((release) => (
+              <article key={release.publicId}>
+                <h3>{release.title}</h3>
+                <p className="muted-copy">{release.synopsis}</p>
+                <div className="studio-meta">
+                  <span>Approved delivery v{release.deliveryVersion}</span>
+                  <span>SHA-256 {release.deliverySha256.slice(0, 12)}…</span>
+                </div>
+                <Link className="workspace-inline-link" href={`/releases/${release.publicId}`}>View release</Link>
+              </article>
+            ))}
+          </div>
+        ) : <p className="muted-copy">No approved releases are visible for this profile.</p>}
+      </Card>
     </main>
   );
 }

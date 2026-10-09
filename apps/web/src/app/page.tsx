@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero-card">
-        <span className="eyebrow">Creator-controlled marketplace through funding</span>
+        <span className="eyebrow">Creator-controlled marketplace from demand through release</span>
         <h1>LUX Platform</h1>
         <p className="lede">
           Adult fans can discover creators, signal demand, and support published campaigns while creators and depicted people keep control over participation, negotiation, exact terms, consent, and release decisions. Current funding flows use privacy-safe persisted state; synthetic identity and payment adapters remain development and CI tools only.
@@ -24,6 +24,11 @@ export default function HomePage() {
           <Link className="ui-button ui-button--quiet ui-button--medium" href="/design-system">
             Design system
           </Link>
+        </div>
+        <div className="component-row" aria-label="Public information">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/help">Help</Link>
         </div>
       </section>
     </main>

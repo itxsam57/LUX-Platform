@@ -10,6 +10,7 @@ export type DemandDraft = {
   category: string;
   format: string;
   suggestedCreatorHandle: string | null;
+  scriptOutline: string | null;
   budget: DemandBudget | null;
   safetyLabels: string[];
   expiresAt: string | null;
@@ -76,6 +77,14 @@ function normalizeSuggestedCreatorHandle(value: unknown): string | null {
   if (!handlePattern.test(normalized)) {
     fail("invalid_suggested_creator_handle");
   }
+  return normalized;
+}
+
+function normalizeOptionalLongText(value: unknown, code: string, minimum: number, maximum: number): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") fail(code);
+  const normalized = value.trim();
+  if (normalized.length < minimum || normalized.length > maximum || controlCharacterPattern.test(normalized)) fail(code);
   return normalized;
 }
 
@@ -160,6 +169,7 @@ export function normalizeDemandDraft(input: unknown, now = new Date()): DemandDr
     category: normalizeSlug(draft.category, "invalid_demand_category"),
     format: normalizeSlug(draft.format, "invalid_demand_format"),
     suggestedCreatorHandle: normalizeSuggestedCreatorHandle(draft.suggestedCreatorHandle),
+    scriptOutline: normalizeOptionalLongText(draft.scriptOutline, "invalid_demand_script_outline", 20, 4000),
     budget: normalizeBudget(draft.budget),
     safetyLabels: normalizeSafetyLabels(draft.safetyLabels),
     expiresAt: normalizeExpiry(draft.expiresAt, now),

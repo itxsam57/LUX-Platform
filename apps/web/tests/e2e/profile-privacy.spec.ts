@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import sharp from "sharp";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,6 +17,10 @@ function emailFor(prefix: string, testInfo: TestInfo) {
   return `${prefix}-${project}-${Date.now()}-${testInfo.workerIndex}-${Math.random().toString(16).slice(2)}@lux.test`;
 }
 
+function uniqueHandle(prefix: string, userId: string) {
+  return `${prefix}_${userId.replaceAll("-", "").slice(0, 8)}`;
+}
+
 async function createConfirmedUser(email: string) {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("Profile test user was not created.");
@@ -23,8 +28,7 @@ async function createConfirmedUser(email: string) {
 }
 
 async function removeUser(userId: string) {
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await cleanupTestUser(admin, userId);
 }
 
 async function loginAndAssure(page: Page, email: string, target = "/workspace") {
@@ -63,10 +67,11 @@ test("owner edits a profile and public projection leaks no private account ident
   const anonymousPage = await anonymousContext.newPage();
 
   try {
+    const handle = uniqueHandle("public", user.id);
     await loginAndAssure(page, email);
-    await configurePublicProfile(page, "public_alpha", "Public Alpha");
+    await configurePublicProfile(page, handle, "Public Alpha");
 
-    await anonymousPage.goto("/u/public_alpha");
+    await anonymousPage.goto(`/u/${handle}`);
     await expect(anonymousPage.getByRole("heading", { name: "Public Alpha" })).toBeVisible();
     await expect(anonymousPage.getByText("Public bio for Public Alpha")).toBeVisible();
     const markup = await anonymousPage.locator("body").innerText();
@@ -85,8 +90,9 @@ test("profile media uploads are processed to guarded WebP and obey profile priva
   const anonymousContext = await secondaryContext(browser, testInfo);
 
   try {
+    const handle = uniqueHandle("media", user.id);
     await loginAndAssure(page, email);
-    await configurePublicProfile(page, "media_upload_alpha", "Media Upload Alpha");
+    await configurePublicProfile(page, handle, "Media Upload Alpha");
 
     const avatar = await sharp({
       create: {
@@ -121,7 +127,7 @@ test("profile media uploads are processed to guarded WebP and obey profile priva
     await page.getByRole("button", { name: "Process and upload banner" }).click();
     await expect(page.getByText("Banner updated as metadata-stripped WebP.")).toBeVisible();
 
-    const avatarResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/avatar");
+    const avatarResponse = await anonymousContext.request.get(`/profile-media/${handle}/avatar`);
     expect(avatarResponse.status()).toBe(200);
     expect(avatarResponse.headers()["content-type"]).toContain("image/webp");
     expect(avatarResponse.headers()["cache-control"]).toContain("public");
@@ -133,7 +139,7 @@ test("profile media uploads are processed to guarded WebP and obey profile priva
     expect(avatarMetadata.orientation).toBeUndefined();
     expect(avatarMetadata.exif).toBeUndefined();
 
-    const bannerResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/banner");
+    const bannerResponse = await anonymousContext.request.get(`/profile-media/${handle}/banner`);
     expect(bannerResponse.status()).toBe(200);
     expect(bannerResponse.headers()["content-type"]).toContain("image/webp");
     const processedBanner = await bannerResponse.body();
@@ -142,10 +148,10 @@ test("profile media uploads are processed to guarded WebP and obey profile priva
     expect(bannerMetadata.width).toBeLessThanOrEqual(2400);
     expect(bannerMetadata.height).toBeLessThanOrEqual(900);
 
-    await page.goto("/u/media_upload_alpha");
+    await page.goto(`/u/${handle}`);
     const publicMarkup = await page.content();
-    expect(publicMarkup).toContain("/profile-media/media_upload_alpha/avatar");
-    expect(publicMarkup).toContain("/profile-media/media_upload_alpha/banner");
+    expect(publicMarkup).toContain(`/profile-media/${handle}/avatar`);
+    expect(publicMarkup).toContain(`/profile-media/${handle}/banner`);
     expect(publicMarkup).not.toContain(user.id);
 
     await page.goto("/settings/profile");
@@ -153,8 +159,8 @@ test("profile media uploads are processed to guarded WebP and obey profile priva
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByTestId("profile-action-message")).toContainText("Profile saved");
 
-    const privateAvatarResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/avatar");
-    const privateBannerResponse = await anonymousContext.request.get("/profile-media/media_upload_alpha/banner");
+    const privateAvatarResponse = await anonymousContext.request.get(`/profile-media/${handle}/avatar`);
+    const privateBannerResponse = await anonymousContext.request.get(`/profile-media/${handle}/banner`);
     expect(privateAvatarResponse.status()).toBe(404);
     expect(privateBannerResponse.status()).toBe(404);
   } finally {
@@ -170,24 +176,25 @@ test("unlisted remains direct-link visible while private is owner-only", async (
   const anonymousPage = await anonymousContext.newPage();
 
   try {
+    const handle = uniqueHandle("visibility", user.id);
     await loginAndAssure(page, email);
-    await configurePublicProfile(page, "visibility_alpha", "Visibility Alpha");
+    await configurePublicProfile(page, handle, "Visibility Alpha");
 
     await page.goto("/settings/profile");
     await page.getByLabel("Profile visibility").selectOption("unlisted");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByTestId("profile-action-message")).toContainText("Profile saved");
-    await anonymousPage.goto("/u/visibility_alpha");
+    await anonymousPage.goto(`/u/${handle}`);
     await expect(anonymousPage.getByRole("heading", { name: "Visibility Alpha" })).toBeVisible();
 
     await page.goto("/settings/profile");
     await page.getByLabel("Profile visibility").selectOption("private");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByTestId("profile-action-message")).toContainText("Profile saved");
-    await anonymousPage.goto("/u/visibility_alpha");
+    await anonymousPage.goto(`/u/${handle}`);
     await expect(anonymousPage.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
 
-    await page.goto("/u/visibility_alpha");
+    await page.goto(`/u/${handle}`);
     await expect(page.getByRole("heading", { name: "Visibility Alpha" })).toBeVisible();
   } finally {
     await anonymousContext.close();
@@ -204,40 +211,42 @@ test("follow, block, unblock, and mute stay synchronized without permission leak
   const bravoPage = await bravoContext.newPage();
 
   try {
+    const alphaHandle = uniqueHandle("sociala", alpha.id);
+    const bravoHandle = uniqueHandle("socialb", bravo.id);
     await loginAndAssure(page, alphaEmail);
-    await configurePublicProfile(page, "social_alpha", "Social Alpha");
+    await configurePublicProfile(page, alphaHandle, "Social Alpha");
     await loginAndAssure(bravoPage, bravoEmail);
-    await configurePublicProfile(bravoPage, "social_bravo", "Social Bravo");
+    await configurePublicProfile(bravoPage, bravoHandle, "Social Bravo");
 
-    await page.goto("/u/social_bravo");
+    await page.goto(`/u/${bravoHandle}`);
     await page.getByRole("button", { name: "Follow" }).click();
     await expect(page.getByRole("button", { name: "Unfollow" })).toBeVisible();
 
-    await bravoPage.goto("/u/social_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await bravoPage.getByRole("button", { name: "Block" }).click();
     await expect(bravoPage.getByText("Block complete.")).toBeVisible();
 
-    await page.goto("/u/social_bravo");
+    await page.goto(`/u/${bravoHandle}`);
     await expect(page.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
-    await bravoPage.goto("/u/social_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await expect(bravoPage.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
 
     await bravoPage.goto("/settings/privacy");
-    const blockedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@social_alpha" });
+    const blockedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: `@${alphaHandle}` });
     await expect(blockedRow).toHaveCount(1);
     await blockedRow.getByRole("button", { name: "Unblock" }).click();
-    await expect(blockedRow).toContainText("@social_alpha unblocked");
+    await expect(blockedRow).toContainText(`@${alphaHandle} unblocked`);
 
-    await bravoPage.goto("/u/social_alpha");
+    await bravoPage.goto(`/u/${alphaHandle}`);
     await expect(bravoPage.getByRole("heading", { name: "Social Alpha" })).toBeVisible();
     await bravoPage.getByRole("button", { name: "Mute" }).click();
     await expect(bravoPage.getByRole("button", { name: "Unmute" })).toBeVisible();
 
     await bravoPage.goto("/settings/privacy");
-    const mutedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: "@social_alpha" });
+    const mutedRow = bravoPage.locator(".privacy-relationship-row").filter({ hasText: `@${alphaHandle}` });
     await expect(mutedRow).toHaveCount(1);
     await mutedRow.getByRole("button", { name: "Unmute" }).click();
-    await expect(mutedRow).toContainText("@social_alpha unmuted");
+    await expect(mutedRow).toContainText(`@${alphaHandle} unmuted`);
   } finally {
     await bravoContext.close();
     await removeUser(alpha.id);

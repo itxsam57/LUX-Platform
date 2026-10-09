@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -24,29 +25,8 @@ async function createUser(address: string) {
   return data.user;
 }
 
-function retryableAuthCleanup(error: unknown): boolean {
-  return Boolean(
-    error
-    && typeof error === "object"
-    && "name" in error
-    && String((error as { name?: unknown }).name) === "AuthRetryableFetchError"
-  );
-}
-
 async function removeUser(id: string) {
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const { error } = await admin.auth.admin.deleteUser(id);
-      if (!error) return;
-      lastError = error;
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
-  }
-  if (retryableAuthCleanup(lastError)) return;
-  throw lastError instanceof Error ? lastError : new Error("Marketplace journey user cleanup failed");
+  await cleanupTestUser(admin, id);
 }
 
 async function authenticatedClient(address: string): Promise<SupabaseClient> {
@@ -220,13 +200,16 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
 
     const creatorHandle = await profileHandle(creatorClient, creator.id);
     const performerHandle = await profileHandle(performerClient, performer.id);
+    await verifyCreatorV2(creatorClient, creator.id, reviewer);
 
-    // Slice 4: a fan can discover the public creator without private identifiers.
+    // Slice 4: a fan can discover the eligible verified public creator without private identifiers.
     await login(page, fanEmail, "/app/explore");
-    await expect(page.getByRole("heading", { name: "Discover public creators" })).toBeVisible();
-    const creatorCard = page.getByRole("article").filter({ hasText: `@${creatorHandle}` });
+    await expect(page.getByRole("heading", { name: "Discover creators and projects" })).toBeVisible();
+    const creatorCard = page.getByRole("article").filter({
+      has: page.locator(`a[href="/u/${creatorHandle}"]`),
+    });
     await expect(creatorCard).toHaveCount(1);
-    await expect(creatorCard.getByText("Creator", { exact: true })).toBeVisible();
+    await expect(creatorCard.getByText("profile", { exact: true })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(creator.id);
 
     // Slice 6: the fan requests an idea; only the named creator can opt in.
@@ -249,8 +232,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await demandCard.getByRole("button", { name: "Mark interested" }).click();
     await expect(demandCard.getByTestId("creator-demand-response")).toHaveText("Interested");
 
-    // Slice 5 verification gates are completed only after the creator has voluntarily shown interest.
-    await verifyCreatorV2(creatorClient, creator.id, reviewer);
+    // Depicted-performer verification is completed before project/consent work.
     await verifyPerformer(performerClient, performer.id, reviewer);
 
     await demandCard.getByRole("link", { name: "Create project draft" }).click();
@@ -315,8 +297,15 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await creatorPage.getByLabel("Rights scope").fill("streaming-only");
     await creatorPage.getByLabel("Schedule").fill("January to March 2027");
     await creatorPage.getByLabel("Cancellation terms").fill("Either party may leave before contract lock");
+    await creatorPage.getByLabel("Accepted script SHA-256").fill("ab".repeat(32));
+    await creatorPage.getByLabel("Territory").fill("Platform distribution territories only");
+    await creatorPage.getByLabel("Duration").fill("For the duration of the project and stated release rights");
+    await creatorPage.getByLabel("Withdrawal terms").fill("Before contract lock, participation may be withdrawn. After lock, withdrawal follows the cancellation and dispute terms.");
+    await creatorPage.getByLabel("Dispute resolution").fill("Use the LUX dispute process first; mandatory legal rights remain unaffected.");
+    await creatorPage.getByLabel("Revenue splits").fill(`${performerHandle}|10000`);
     await creatorPage.getByLabel("Final-cut approval required").selectOption("true");
     await creatorPage.getByRole("button", { name: "Publish immutable terms" }).click();
+    await expect.poll(() => new URL(creatorPage.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("published");
     await expect(creatorPage.getByRole("status")).toContainText("Immutable terms published");
 
     await performerPage.goto(`/studio/projects/${projectPublicId}/terms`);
@@ -344,6 +333,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await creatorPage.getByLabel("Optional supporter choices").fill("Creator-approved poster vote");
     await creatorPage.getByLabel("Refund rules").fill("If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.");
     await creatorPage.getByLabel("Material change rules").fill("Material campaign changes require a new version and fresh supporter action where applicable.");
+    await creatorPage.getByLabel("Funding tiers").fill("supporter | Supporter | 5000 | Access to the approved release");
     await creatorPage.getByRole("button", { name: "Save campaign draft" }).click();
     await expect(creatorPage.getByRole("status")).toContainText("Campaign draft saved");
     const campaignPublicId = new URL(creatorPage.url()).searchParams.get("campaign");
@@ -360,7 +350,7 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
     await page.goto(`/p/${campaignPublicId}`);
     await page.getByRole("link", { name: "Pre-book" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${campaignPublicId}$`));
-    await page.getByLabel("Pre-book amount (minor units)").fill("5000");
+    await page.locator('select[name="tier_key"]').selectOption("supporter");
     await page.getByLabel("Supporter visibility").selectOption("default");
     await page.getByLabel("Supporter badge choice").fill("founding-supporter");
     await page.locator("form[data-prebook-form]").evaluate((node) => {
@@ -368,7 +358,12 @@ test("Slices 4-10 form one creator-controlled marketplace journey", async ({ pag
       form.requestSubmit();
       form.requestSubmit();
     });
-    await expect(page.getByRole("status")).toContainText("Pre-book confirmed", { timeout: 15_000 });
+
+    await expect.poll(async () => {
+      const { data, error } = await fanClient.rpc("list_funding_commitments");
+      if (error || !Array.isArray(data)) return false;
+      return data.some((row) => row?.campaignPublicId === campaignPublicId && typeof row?.publicId === "string");
+    }, { timeout: 15_000 }).toBe(true);
 
     const { data: fundingRows, error: fundingRowsError } = await fanClient.rpc("list_funding_commitments");
     if (fundingRowsError || !Array.isArray(fundingRows)) throw fundingRowsError ?? new Error("Funding projection unavailable");

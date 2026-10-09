@@ -7,11 +7,18 @@ export type CanonicalProjectTerms = {
   rightsScope: string;
   schedule: string;
   cancellation: string;
+  scriptHash?: string;
+  territory?: string;
+  duration?: string;
+  withdrawal?: string;
+  disputeResolution?: string;
+  revenueSplits?: Array<{ handle: string; basisPoints: number }>;
   finalCutApprovalRequired: boolean;
 };
 
 const materialFields: ReadonlyArray<keyof CanonicalProjectTerms> = [
   "role", "boundaries", "collaborators", "compensation", "distributionScope", "rightsScope",
+  "scriptHash", "territory", "duration", "withdrawal", "disputeResolution", "revenueSplits",
 ];
 
 function same(left: unknown, right: unknown) {

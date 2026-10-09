@@ -9,7 +9,9 @@ const requiredFiles = [
   "docs/engineering/PROJECT-PROFILE.md",
   "docs/engineering/PROJECT-TEST-MATRIX.md",
   "docs/engineering/REGRESSION-REGISTER.md",
+  "docs/engineering/RELEASE-CHECKLIST.md",
   "docs/engineering/02_SLICE_2_AUTH_SECURITY_SPEC.md",
+  "scripts/engineering/backup-recovery.mjs",
   "supabase/config.toml",
   "supabase/migrations/20260806000100_slice_2_auth_workspace.sql",
   "supabase/tests/0001_auth_workspace_rls.test.sql",
@@ -40,6 +42,19 @@ const failures = [];
 for (const file of requiredFiles) if (!existsSync(file)) failures.push(`Missing required file: ${file}`);
 
 const tracked = gitTrackedFiles();
+
+const migrationVersions = new Map();
+for (const file of tracked.filter((name) => name.startsWith("supabase/migrations/"))) {
+  const match = file.match(/^supabase\/migrations\/(\d{14})_/);
+  if (!match) continue;
+  const existing = migrationVersions.get(match[1]);
+  if (existing) {
+    failures.push(`Duplicate Supabase migration version ${match[1]}: ${existing} and ${file}`);
+  } else {
+    migrationVersions.set(match[1], file);
+  }
+}
+
 for (const file of tracked) {
   if (file === ".env.example") continue;
   for (const rule of forbiddenTrackedPatterns) {
@@ -55,10 +70,12 @@ if (existsSync("package.json")) {
     "verify:affected",
     "verify:full",
     "test:unit",
+    "test:engineering",
     "test:integration",
     "test:database",
     "test:e2e",
     "report:handoff",
+    "backup:recovery",
   ]) {
     if (!rootPackage.scripts?.[script]) failures.push(`Missing master command: ${script}`);
   }

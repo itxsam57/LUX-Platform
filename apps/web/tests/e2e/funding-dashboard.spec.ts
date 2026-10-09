@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -51,7 +52,7 @@ async function configureVerifiedCreator(ownerEmail: string, ownerId: string, tes
       requested_liveness_passed: true, requested_risk_screen_passed: true, requested_recheck_reason: null,
     });
     if (resultError) throw resultError;
-  } finally { await admin.auth.admin.deleteUser(superAdmin.id); }
+  } finally { await cleanupTestUser(admin, superAdmin.id); }
   return ownerClient;
 }
 async function login(page: Page, address: string, target: string) {
@@ -136,14 +137,18 @@ test("fan funding dashboard preserves private, truthful payment and change state
     const fixture = await fundedFixture(ownerClient, supporterClient, owner.id);
     await login(page, supporterEmail, "/app/funding");
     await expect(page.getByRole("heading", { name: "Funding dashboard" })).toBeVisible();
-    for (const tab of ["Active", "Successful", "Refunded", "All"]) await expect(page.getByRole("link", { name: tab })).toBeVisible();
+    for (const tab of ["Active", "Successful", "Refunded", "All"]) await expect(page.getByRole("link", { name: tab, exact: true })).toBeVisible();
     await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await expect(page.locator(".funding-state").filter({ hasText: /^authorized$/ })).toBeVisible();
     await expect(page.getByText(/sandbox.*not production/i)).toBeVisible();
     await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
     await page.getByRole("link", { name: "Successful" }).click(); await expect(page.getByText("No successful funding yet")).toBeVisible();
     await page.getByRole("link", { name: "Refunded" }).click(); await expect(page.getByText("No refunded funding yet")).toBeVisible();
-    await page.getByRole("link", { name: "All" }).click(); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
+    const allFundingLink = page.locator('a[href="/app/funding?status=all"]');
+    await expect(allFundingLink).toHaveAttribute("href", "/app/funding?status=all");
+    await page.goto("/app/funding?status=all");
+    await expect(page.getByRole("link", { name: "All", exact: true })).toHaveClass(/funding-tab--active/);
+    await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await page.getByRole("link", { name: "View funding" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${fixture.commitmentPublicId}$`));
     await expect(page.getByRole("heading", { name: "Slice 10 funding lifecycle project" })).toBeVisible();
@@ -174,5 +179,24 @@ test("fan funding dashboard preserves private, truthful payment and change state
     if (captureError) throw captureError;
     await page.goto("/app/funding?status=successful"); await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await expect(page.locator(".funding-state").filter({ hasText: /^captured$/ })).toBeVisible(); await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
-  } finally { await admin.auth.admin.deleteUser(owner.id); await admin.auth.admin.deleteUser(supporter.id); }
+
+    await page.goto("/app/orders");
+    await expect(page.getByRole("heading", { name: "Orders" })).toBeVisible();
+    const orderRow = page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" });
+    await expect(orderRow).toContainText("captured");
+    await expect(orderRow).toContainText("$50.00");
+    await page.reload();
+    await expect(page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" })).toHaveCount(1);
+    await expectNoSensitiveFundingIds(page);
+
+    await page.goto("/app/wallet");
+    await expect(page.getByRole("heading", { name: "Wallet records" })).toBeVisible();
+    const walletRows = page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" });
+    await expect(walletRows).toHaveCount(2);
+    await expect(walletRows.filter({ hasText: "authorization" })).toHaveCount(1);
+    await expect(walletRows.filter({ hasText: "purchase" })).toHaveCount(1);
+    await page.reload();
+    await expect(page.getByRole("row").filter({ hasText: "Slice 10 funding lifecycle project" })).toHaveCount(2);
+    await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
+  } finally { await cleanupTestUser(admin, owner.id); await cleanupTestUser(admin, supporter.id); }
 });

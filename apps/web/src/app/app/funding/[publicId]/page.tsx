@@ -5,15 +5,37 @@ import { notFound } from "next/navigation";
 import { UrlActionFeedback } from "@/components/feedback/url-action-feedback";
 import { FundingDetail, parseFundingDetail } from "@/components/funding/funding-detail";
 import { PrebookForm } from "@/components/funding/prebook-form";
+import { SupporterProductionUpdates } from "@/components/funding/supporter-production-updates";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { requireAdultViewer } from "@/lib/auth/context";
+import { parseSupporterProductionUpdates } from "@/lib/production/policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { acceptChangedTermsAction, createPrebookAction, requestFundingRefundAction, saveSupporterBadgeAction } from "./actions";
+import { getPaymentProviderRuntime } from "@/lib/supabase/env";
+import {
+  acceptChangedTermsAction,
+  createPrebookAction,
+  requestFundingRefundAction,
+  saveSupporterBadgeAction,
+  startFundingCheckoutAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function campaignTiers(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const row = record(entry);
+    if (!row) return [];
+    const key = typeof row.key === "string" && /^[a-z0-9][a-z0-9_-]{1,47}$/.test(row.key) ? row.key : null;
+    const title = typeof row.title === "string" && row.title.trim().length >= 2 ? row.title.trim() : null;
+    const amountMinor = typeof row.amountMinor === "number" && Number.isSafeInteger(row.amountMinor) && row.amountMinor > 0 ? row.amountMinor : null;
+    const accessPromise = typeof row.accessPromise === "string" && row.accessPromise.trim().length >= 3 ? row.accessPromise.trim() : null;
+    return key && title && amountMinor && accessPromise ? [{ key, title, amountMinor, accessPromise }] : [];
+  });
 }
 
 async function CampaignPrebook({ publicId }: { publicId: string }) {
@@ -23,6 +45,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
   const campaign = record(data);
   if (error || !campaign) notFound();
   const idempotencyKey = `prebook:${randomUUID()}`;
+  const tiers = campaignTiers(campaign.tiers);
 
   return (
     <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
@@ -39,7 +62,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
         <Suspense fallback={null}>
           <UrlActionFeedback
             notices={{ confirmed: "Pre-book confirmed. This is not a payment or card authorization." }}
-            genericError="The pre-book could not be confirmed safely. Review the amount and current campaign eligibility."
+            genericError="The pre-book could not be confirmed safely. Review the selected tier or amount and current campaign eligibility."
           />
         </Suspense>
 
@@ -53,7 +76,7 @@ async function CampaignPrebook({ publicId }: { publicId: string }) {
         </section>
 
         <section className="studio-card">
-          <PrebookForm campaignPublicId={publicId} idempotencyKey={idempotencyKey} action={createPrebookAction} />
+          <PrebookForm campaignPublicId={publicId} idempotencyKey={idempotencyKey} tiers={tiers} action={createPrebookAction} />
         </section>
       </main>
     </WorkspaceShell>
@@ -66,6 +89,9 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
   const { data, error } = await supabase.rpc("get_funding_commitment", { requested_commitment_public_id: publicId });
   const funding = parseFundingDetail(data);
   if (error || !funding) notFound();
+  const { data: productionUpdates } = await supabase.rpc("list_supporter_production_updates", { requested_campaign_public_id: funding.campaignPublicId });
+  const updates = parseSupporterProductionUpdates(productionUpdates);
+  const paymentRuntime = getPaymentProviderRuntime();
 
   return (
     <WorkspaceShell email={viewer.user.email ?? "Verified account"} context={viewer.context}>
@@ -79,6 +105,7 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
           <div className="studio-actions">
             <Link className="studio-button" href="/app/funding">Funding dashboard</Link>
             <Link className="studio-button" href={`/p/${funding.campaignPublicId}`}>Campaign</Link>
+            <Link className="studio-button" href={`/app/support?type=funding_commitment&subject=${funding.publicId}`}>Dispute / support</Link>
           </div>
         </header>
 
@@ -106,6 +133,22 @@ async function SupporterFundingDetail({ publicId }: { publicId: string }) {
           acceptIdempotencyKey={`accept-change:${randomUUID()}`}
           refundIdempotencyKey={`refund:${randomUUID()}`}
         />
+        {funding.paymentState === "pending" ? (
+          <section className="studio-card">
+            <h2>Complete payment</h2>
+            {paymentRuntime.mode === "provider" ? (
+              <form action={startFundingCheckoutAction} className="studio-form">
+                <input type="hidden" name="commitment_public_id" value={funding.publicId} />
+                <input type="hidden" name="idempotency_key" value={`checkout:${randomUUID()}`} />
+                <p className="muted-copy">Payment opens on the approved provider-hosted checkout. LUX never receives raw card numbers or security codes.</p>
+                <button className="studio-button studio-button--primary" type="submit">Continue to secure checkout</button>
+              </form>
+            ) : (
+              <p className="muted-copy">Production checkout is unavailable until an approved payment provider is connected.</p>
+            )}
+          </section>
+        ) : null}
+        <SupporterProductionUpdates updates={updates} />
       </main>
     </WorkspaceShell>
   );

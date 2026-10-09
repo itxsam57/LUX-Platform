@@ -1,7 +1,7 @@
 export const FOUNDATION_SLICE = {
-  id: "slice-10",
-  number: 10,
-  name: "Fan Funding Dashboard and Badges",
+  id: "slice-17",
+  number: 17,
+  name: "Administration and Launch Hardening",
   healthStatus: "ok",
   requiredRoutes: [
     "/",
@@ -33,9 +33,20 @@ export const FOUNDATION_SLICE = {
     "/app/demand",
     "/app/demand/new",
     "/app/funding",
+    "/app/earnings",
+    "/app/copyright",
+    "/app/support",
     "/studio/projects",
     "/studio/projects/new",
     "/studio/invitations",
+    "/workspace/staff/delivery-review",
+    "/workspace/staff/finance",
+    "/workspace/staff/copyright",
+    "/workspace/staff/agency-verification",
+    "/workspace/staff/operations",
+    "/privacy",
+    "/terms",
+    "/help",
   ] as const,
 } as const;
 

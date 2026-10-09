@@ -1024,6 +1024,19 @@ svg {
   border-bottom: 0;
 }
 
+.representation-revoke-form {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  isolation: isolate;
+}
+
+.representation-revoke-form .ui-button {
+  justify-self: start;
+}
+
 .ui-pagination {
   display: flex;
   flex-wrap: wrap;

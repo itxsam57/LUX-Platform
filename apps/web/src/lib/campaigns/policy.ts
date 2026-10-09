@@ -9,6 +9,13 @@ export type CampaignEligibilityInput = {
   campaignTermsComplete: boolean;
 };
 
+export type CampaignTierInput = {
+  key: string;
+  title: string;
+  amountMinor: number;
+  accessPromise: string;
+};
+
 export type CampaignTermsInput = {
   fundingTargetMinor: number;
   currency: string;
@@ -16,6 +23,7 @@ export type CampaignTermsInput = {
   expectedDeliveryWindow: string;
   guarantees: string[];
   optionalChoices: string[];
+  tiers: CampaignTierInput[];
   refundRules: string;
   materialChangeRules: string;
 };
@@ -56,11 +64,31 @@ export function normalizeCampaignTerms(input: CampaignTermsInput, now: Date): Ca
     throw new Error("incomplete_campaign_terms");
   }
 
+  if (input.tiers.length < 1 || input.tiers.length > 12) {
+    throw new Error("invalid_campaign_tiers");
+  }
+  const seenTierKeys = new Set<string>();
+  const tiers = input.tiers.map((tier) => {
+    const key = tier.key.trim().toLowerCase();
+    const title = tier.title.trim();
+    const accessPromise = tier.accessPromise.trim();
+    if (!/^[a-z0-9][a-z0-9_-]{1,47}$/.test(key)
+      || title.length < 2 || title.length > 120
+      || !Number.isSafeInteger(tier.amountMinor) || tier.amountMinor < 1
+      || accessPromise.length < 3 || accessPromise.length > 500
+      || seenTierKeys.has(key)) {
+      throw new Error("invalid_campaign_tiers");
+    }
+    seenTierKeys.add(key);
+    return { key, title, amountMinor: tier.amountMinor, accessPromise };
+  });
+
   return {
     ...input,
     expectedDeliveryWindow: input.expectedDeliveryWindow.trim(),
     guarantees: input.guarantees.map((item) => item.trim()),
     optionalChoices: input.optionalChoices.map((item) => item.trim()),
+    tiers,
     refundRules: input.refundRules.trim(),
     materialChangeRules: input.materialChangeRules.trim(),
   };

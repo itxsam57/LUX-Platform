@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getConfiguredStorageAdapter } from "@/lib/storage/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ handle: string; kind: string }> },
 ) {
   const { handle, kind } = await params;
-  if (kind !== "avatar" && kind !== "banner") {
-    return new NextResponse(null, { status: 404 });
-  }
+  if (kind !== "avatar" && kind !== "banner") return new NextResponse(null, { status: 404 });
 
   const supabase = await createServerSupabaseClient();
   const [{ data: objectPath }, { data: profileProjection }] = await Promise.all([
@@ -22,16 +21,20 @@ export async function GET(
     return new NextResponse(null, { status: 404 });
   }
 
-  const { data: file, error } = await supabase.storage.from("profile-media").download(objectPath);
-  if (error || !file) return new NextResponse(null, { status: 404 });
+  let object;
+  try {
+    object = await getConfiguredStorageAdapter(supabase).download({ bucket: "profile-media", objectPath });
+  } catch {
+    return new NextResponse(null, { status: 502 });
+  }
+  if (!object) return new NextResponse(null, { status: 404 });
 
   const visibility = (profileProjection as Record<string, unknown>).visibility;
-  const bytes = await file.arrayBuffer();
-  return new NextResponse(bytes, {
+  return new NextResponse(object.body, {
     status: 200,
     headers: {
-      "Content-Type": "image/webp",
-      "Content-Length": String(bytes.byteLength),
+      "Content-Type": object.contentType || "image/webp",
+      "Content-Length": String(object.size),
       "Cache-Control": visibility === "private" ? "private, no-store" : "public, max-age=60, must-revalidate",
       "X-Content-Type-Options": "nosniff",
     },

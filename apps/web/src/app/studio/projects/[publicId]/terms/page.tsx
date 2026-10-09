@@ -144,6 +144,15 @@ function TermsForm({
       .filter(Boolean)
       .join("\n")
     : "";
+  const revenueSplits = Array.isArray(defaults?.revenueSplits)
+    ? defaults.revenueSplits
+      .map((item) => {
+        const split = object(item);
+        return split ? `${String(split.handle ?? "")}|${String(split.basisPoints ?? "")}` : "";
+      })
+      .filter(Boolean)
+      .join("\n")
+    : "";
 
   return (
     <NavigationActionForm action={publishTermsAction} className="studio-form">
@@ -158,6 +167,12 @@ function TermsForm({
       <label>Rights scope<input name="rights_scope" defaultValue={String(defaults?.rightsScope ?? "")} required /></label>
       <label>Schedule<input name="schedule" defaultValue={String(defaults?.schedule ?? "")} required /></label>
       <label>Cancellation terms<textarea name="cancellation" defaultValue={String(defaults?.cancellation ?? "")} rows={3} required /></label>
+      <label>Accepted script SHA-256<input name="script_hash" defaultValue={String(defaults?.scriptHash ?? "")} minLength={64} maxLength={64} pattern="[0-9a-fA-F]{64}" required /></label>
+      <label>Territory<input name="territory" defaultValue={String(defaults?.territory ?? "Platform distribution territories only")} minLength={3} maxLength={500} required /></label>
+      <label>Duration<input name="duration" defaultValue={String(defaults?.duration ?? "For the duration of the project and stated release rights")} minLength={3} maxLength={500} required /></label>
+      <label>Withdrawal terms<textarea name="withdrawal" defaultValue={String(defaults?.withdrawal ?? "Before contract lock, participation may be withdrawn. After lock, withdrawal follows the cancellation and dispute terms.")} minLength={20} maxLength={2000} rows={4} required /></label>
+      <label>Dispute resolution<textarea name="dispute_resolution" defaultValue={String(defaults?.disputeResolution ?? "Use the LUX dispute process first; mandatory legal rights remain unaffected.")} minLength={20} maxLength={2000} rows={4} required /></label>
+      <label>Revenue splits<textarea name="revenue_splits" defaultValue={revenueSplits} rows={4} placeholder="handle|basisPoints" required /><small>One participant per line. Basis points must total 10000.</small></label>
       <label>
         <span>Final-cut approval required</span>
         <select name="final_cut" defaultValue={defaults?.finalCutApprovalRequired === false ? "false" : "true"}>

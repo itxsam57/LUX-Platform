@@ -17,6 +17,26 @@ function lines(value: string) {
   return value.split("\n").map((item) => item.trim()).filter(Boolean);
 }
 
+function tiers(value: string) {
+  const rows = lines(value);
+  if (!rows.length || rows.length > 12) return null;
+  const parsed = rows.map((row) => {
+    const parts = row.split("|").map((item) => item.trim());
+    if (parts.length !== 4) return null;
+    const [key, title, amountValue, accessPromise] = parts;
+    const amountMinor = Number(amountValue);
+    if (!/^[a-z0-9][a-z0-9_-]{1,47}$/.test(key)
+      || title.length < 2 || title.length > 120
+      || !Number.isSafeInteger(amountMinor) || amountMinor < 1
+      || accessPromise.length < 3 || accessPromise.length > 500) return null;
+    return { key, title, amountMinor, accessPromise };
+  });
+  if (parsed.some((item) => item === null)) return null;
+  const result = parsed as Array<{ key: string; title: string; amountMinor: number; accessPromise: string }>;
+  if (new Set(result.map((item) => item.key)).size !== result.length) return null;
+  return result;
+}
+
 function campaignPath(projectPublicId: string, campaignPublicId?: string, version?: number, suffix?: string) {
   const params = new URLSearchParams();
   if (campaignPublicId && campaignPattern.test(campaignPublicId)) params.set("campaign", campaignPublicId);
@@ -38,6 +58,14 @@ export async function saveCampaignDraftAction(formData: FormData): Promise<Navig
 
   const target = Number(text(formData, "funding_target_minor"));
   const deadline = text(formData, "deadline");
+  const parsedTiers = tiers(text(formData, "tiers"));
+  if (!parsedTiers) {
+    return navigationActionResult(
+      "error",
+      "Add at least one valid campaign tier using key | title | amount | access promise.",
+      campaignPath(projectPublicId, text(formData, "campaign_public_id"), Number(text(formData, "terms_version")), "error=tiers"),
+    );
+  }
   const requestedTerms = {
     fundingTargetMinor: target,
     currency: text(formData, "currency"),
@@ -45,6 +73,7 @@ export async function saveCampaignDraftAction(formData: FormData): Promise<Navig
     expectedDeliveryWindow: text(formData, "expected_delivery_window"),
     guarantees: lines(text(formData, "guarantees")),
     optionalChoices: lines(text(formData, "optional_choices")),
+    tiers: parsedTiers,
     refundRules: text(formData, "refund_rules"),
     materialChangeRules: text(formData, "material_change_rules"),
   };

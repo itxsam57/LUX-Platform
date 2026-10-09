@@ -1,10 +1,27 @@
 .demand-page {
   width: min(100%, 72rem);
+  min-width: 0;
   margin: 0 auto;
 }
 
 .demand-page--narrow {
   width: min(100%, 52rem);
+}
+
+.demand-page .studio-card,
+.demand-page .studio-form,
+.demand-page .studio-form label,
+.demand-page .workspace-inline-form {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.demand-page .studio-form input,
+.demand-page .studio-form textarea,
+.demand-page .studio-form select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .demand-page__header {

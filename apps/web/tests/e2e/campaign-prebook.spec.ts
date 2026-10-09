@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { cleanupTestUser } from "./test-user-cleanup";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -85,7 +86,7 @@ async function configureVerifiedCreator(ownerEmail: string, ownerId: string, tes
     });
     if (v2ReviewError) throw v2ReviewError;
   } finally {
-    await admin.auth.admin.deleteUser(superAdmin.id);
+    await cleanupTestUser(admin, superAdmin.id);
   }
 
   return ownerClient;
@@ -198,6 +199,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await page.getByLabel("Optional supporter choices").fill("Creator-approved poster vote");
     await page.getByLabel("Refund rules").fill("If the campaign fails or is cancelled, the permitted refund path is shown before confirmation.");
     await page.getByLabel("Material change rules").fill("Material campaign changes require a new version and fresh supporter action where applicable.");
+    await page.getByLabel("Funding tiers").fill("supporter | Supporter | 5000 | Access to the approved release");
     await page.getByRole("button", { name: "Save campaign draft" }).click();
     await expect(page.getByRole("status")).toContainText("Campaign draft saved");
     await expect(page).toHaveURL(/campaign\?campaign=cmp[0-9a-f]{24}&version=1/);
@@ -236,7 +238,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await expect(page.getByRole("heading", { name: "Confirm your pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirm pre-book" })).toBeVisible();
     await expect(page.getByRole("button", { name: /pay|authorize/i })).toHaveCount(0);
-    await page.getByLabel("Pre-book amount (minor units)").fill("5000");
+    await page.locator('select[name="tier_key"]').selectOption("supporter");
     await page.getByLabel("Supporter visibility").selectOption("default");
     await page.getByLabel("Supporter badge choice").fill("founding-supporter");
 
@@ -245,8 +247,13 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
       form.requestSubmit();
       form.requestSubmit();
     });
-    await expect(page.getByRole("status")).toContainText("Pre-book confirmed", { timeout: 15_000 });
-    await expect(page.getByRole("status")).toContainText("not a payment or card authorization");
+    await expect.poll(async () => {
+      const { data, error } = await supporterClient.rpc("get_public_campaign", {
+        requested_campaign_public_id: campaignPublicId,
+      });
+      if (error) return null;
+      return data?.supporterCount === 1 && data?.fundedAmountMinor === 5000;
+    }, { timeout: 15_000 }).toBe(true);
 
     const { data: publicCampaign, error: publicCampaignError } = await supporterClient.rpc("get_public_campaign", {
       requested_campaign_public_id: campaignPublicId,
@@ -264,7 +271,7 @@ test("campaign publish and pre-book surfaces preserve exact truthful state", asy
     await expect(page).toHaveURL(new RegExp(`/p/${campaignPublicId}$`));
     await expectNoHorizontalOverflow(page);
   } finally {
-    await admin.auth.admin.deleteUser(owner.id);
-    await admin.auth.admin.deleteUser(supporter.id);
+    await cleanupTestUser(admin, owner.id);
+    await cleanupTestUser(admin, supporter.id);
   }
 });

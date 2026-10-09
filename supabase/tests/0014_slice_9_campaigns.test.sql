@@ -36,6 +36,13 @@ from public.workspace_memberships membership
 where membership.user_id=active.user_id and membership.status='approved'
   and active.user_id='10000000-0000-0000-0000-0000000000c1' and membership.role='creator';
 
+insert into public.performer_records(user_id,active,liveness_expires_at,payout_ownership_verified,payout_ownership_checked_at)
+values ('10000000-0000-0000-0000-0000000000c2',true,now()+interval '1 year',true,now())
+on conflict(user_id) do update set active=true,liveness_expires_at=excluded.liveness_expires_at,payout_ownership_verified=true,payout_ownership_checked_at=now(),updated_at=now();
+insert into public.consent_education_acknowledgements(user_id,policy_version)
+values ('10000000-0000-0000-0000-0000000000c2',private.current_consent_education_version())
+on conflict(user_id,policy_version) do nothing;
+
 insert into public.verification_subjects(user_id,level,status,verified_at,expires_at) values
 ('10000000-0000-0000-0000-0000000000c1','v2','verified',now(),now()+interval '1 year'),
 ('10000000-0000-0000-0000-0000000000c2','v2','verified',now(),now()+interval '1 year'),

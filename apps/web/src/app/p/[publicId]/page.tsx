@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { logoutCurrentDeviceAction } from "@/app/auth/actions";
+import { setSavedItemAction } from "@/app/app/saved/actions";
 import { CampaignPublicCard } from "@/components/campaigns/campaign-public-card";
 import { getOptionalViewer } from "@/lib/auth/context";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -36,7 +37,18 @@ export default async function PublicCampaignPage({ params }: { params: Promise<{
         </div>
       </nav>
       <CampaignPublicCard campaign={campaign} />
-      <Link className="studio-button studio-button--primary" href={`/app/funding/${publicId}`}>Pre-book</Link>
+      <div className="workspace-inline-form">
+        <Link className="studio-button studio-button--primary" href={`/app/funding/${publicId}`}>Pre-book</Link>
+        {viewer ? (
+          <form action={setSavedItemAction}>
+            <input type="hidden" name="item_type" value="campaign" />
+            <input type="hidden" name="item_public_id" value={publicId} />
+            <input type="hidden" name="saved" value="true" />
+            <input type="hidden" name="return_to" value={`/p/${publicId}`} />
+            <button className="studio-button" type="submit">Save campaign</button>
+          </form>
+        ) : null}
+      </div>
     </main>
   );
 }

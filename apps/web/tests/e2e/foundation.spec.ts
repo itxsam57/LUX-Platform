@@ -14,8 +14,8 @@ test("home, auth, and design-system navigation remain synchronized without refre
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "LUX Platform" })).toBeVisible();
-  await expect(page.getByText("Build Slice 10: Fan Funding Dashboard and Badges")).toBeVisible();
-  await expect(page.getByText("Creator-controlled marketplace through funding")).toBeVisible();
+  await expect(page.getByText("Build Slice 17: Administration and Launch Hardening")).toBeVisible();
+  await expect(page.getByText("Creator-controlled marketplace from demand through release")).toBeVisible();
 
   await page.getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/auth\/login$/);
@@ -43,13 +43,13 @@ test("primary account navigation is keyboard accessible", async ({ page }) => {
   await expect(page).toHaveURL(/\/auth\/sign-up$/);
 });
 
-test("health endpoint returns the Slice 10 contract", async ({ request }) => {
+test("health endpoint returns the Slice 17 contract", async ({ request }) => {
   const response = await request.get("/health");
   expect(response.ok()).toBeTruthy();
   await expect(response.json()).resolves.toMatchObject({
     service: "lux-web",
     status: "ok",
-    buildSlice: 10,
+    buildSlice: 17,
   });
 });
 

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Avatar, Badge, Card } from "@/components/ui/primitives";
+import { setHiddenMarketplaceItemAction } from "@/app/app/discovery-preferences/actions";
+import { Avatar, Badge, Button, Card } from "@/components/ui/primitives";
 import type { DiscoveryProfile } from "@/lib/discovery/projection";
 
 function initials(value: string): string {
@@ -12,19 +13,18 @@ function initials(value: string): string {
     .join("") || "LX";
 }
 
-export function DiscoveryCard({ profile }: { profile: DiscoveryProfile }) {
+export function DiscoveryCard({
+  profile,
+  returnTo,
+}: {
+  profile: DiscoveryProfile;
+  returnTo: string;
+}) {
   return (
     <Card as="article" className="discovery-card">
       <div className="discovery-card__identity">
         {profile.avatarUrl ? (
-          <Image
-            className="discovery-card__avatar"
-            src={profile.avatarUrl}
-            alt=""
-            width={56}
-            height={56}
-            unoptimized
-          />
+          <Image className="discovery-card__avatar" src={profile.avatarUrl} alt="" width={56} height={56} unoptimized />
         ) : (
           <Avatar initials={initials(profile.displayName)} label={`${profile.displayName} avatar`} size="large" />
         )}
@@ -38,8 +38,21 @@ export function DiscoveryCard({ profile }: { profile: DiscoveryProfile }) {
       </div>
       {profile.bio ? <p className="discovery-card__bio">{profile.bio}</p> : <p className="muted-copy">No public biography yet.</p>}
       <div className="discovery-card__footer">
-        {profile.followed ? <Badge tone="success">Following</Badge> : <span />}
-        <Link className="workspace-inline-link" href={`/u/${encodeURIComponent(profile.handle)}`}>Open profile</Link>
+        <div className="workspace-inline-form">
+          {profile.followed ? <Badge tone="success">Following</Badge> : null}
+          {profile.interestMatch ? <Badge tone="info">Interest match</Badge> : null}
+        </div>
+        <div className="workspace-inline-form">
+          <Link className="workspace-inline-link" href={`/u/${encodeURIComponent(profile.handle)}`}>Open profile</Link>
+          <form action={setHiddenMarketplaceItemAction}>
+            <input type="hidden" name="item_type" value="profile"/>
+            <input type="hidden" name="item_public_id" value={profile.handle}/>
+            <input type="hidden" name="hidden" value="true"/>
+            <input type="hidden" name="return_to" value={returnTo}/>
+            <Button type="submit" size="small" variant="secondary">Hide</Button>
+          </form>
+          <Link className="workspace-inline-link" href={`/app/support?report_type=profile&report_subject=${encodeURIComponent(profile.handle)}#report-heading`}>Report</Link>
+        </div>
       </div>
     </Card>
   );

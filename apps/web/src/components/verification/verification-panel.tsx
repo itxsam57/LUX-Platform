@@ -143,7 +143,7 @@ export function VerificationPanel({
             {synthetic
               ? "This development-only workflow proves application behavior. It is not production identity verification and never self-promotes an account."
               : provider.mode === "provider"
-                ? "A production provider is configured. LUX still requires an implemented approved adapter before a session can start."
+                ? "A production provider is configured. Sessions launch through the provider adapter while LUX stores only normalized verification outcomes."
                 : "Production verification fails closed until an approved provider is configured."}
           </p>
         </div>
@@ -179,7 +179,7 @@ export function VerificationPanel({
           {canStartV2 ? (
             <form action={v2Action} className="verification-action-form">
               <input type="hidden" name="level" value="v2" />
-              <Button type="submit" loading={v2Pending} disabled={provider.mode !== "synthetic"}>
+              <Button type="submit" loading={v2Pending} disabled={provider.mode === "unavailable"}>
                 {synthetic ? "Start development V2" : "Start V2 verification"}
               </Button>
               <ActionMessage state={v2ActionState} />
@@ -226,7 +226,7 @@ export function VerificationPanel({
           {canStartV3 ? (
             <form action={v3Action} className="verification-action-form">
               <input type="hidden" name="level" value="v3" />
-              <Button type="submit" loading={v3Pending} disabled={provider.mode !== "synthetic"}>
+              <Button type="submit" loading={v3Pending} disabled={provider.mode === "unavailable"}>
                 {synthetic ? "Start development V3" : "Start V3 verification"}
               </Button>
               <ActionMessage state={v3ActionState} />
