@@ -494,13 +494,17 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await copyrightCase.getByLabel("Audited reason").fill("Begin fingerprint comparison against the registered release.");
     await copyrightCase.getByRole("button", { name: "Apply transition" }).click();
     await expect(page).toHaveURL(/notice=updated/);
-    copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: copyrightCaseId });
+    copyrightCase = page.locator("article.workspace-request-panel").filter({
+      has: page.locator(`a[href="/workspace/staff/copyright/${copyrightCaseId}"]`),
+    });
     await copyrightCase.getByLabel("Source match").selectOption("no_match");
     await copyrightCase.getByLabel("Match reason").fill("No supported source-session fingerprint matched the reported copy.");
     await copyrightCase.getByRole("button", { name: "Record match" }).click();
     await expect(page).toHaveURL(/notice=match/);
 
-    copyrightCase = page.locator("article.workspace-request-panel").filter({ hasText: copyrightCaseId });
+    copyrightCase = page.locator("article.workspace-request-panel").filter({
+      has: page.locator(`a[href="/workspace/staff/copyright/${copyrightCaseId}"]`),
+    });
     await copyrightCase.getByLabel("Case action").selectOption("mark_false_positive");
     await copyrightCase.getByLabel("Audited reason").fill("Close as false positive after the audited source comparison found no supported match.");
     await copyrightCase.getByRole("button", { name: "Apply transition" }).click();
