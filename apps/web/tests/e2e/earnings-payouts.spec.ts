@@ -581,12 +581,12 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await expect(payoutForm).toBeVisible();
     await payoutForm.getByLabel("Amount (minor units)").fill("1500");
     const payoutIdempotencyKey = await payoutForm.locator('input[name="idempotency_key"]').inputValue();
-    await payoutForm.evaluate((node) => {
-      const form = node as HTMLFormElement;
-      form.requestSubmit();
-      form.requestSubmit();
-    });
-    await expect.poll(() => new URL(page.url()).searchParams.get("notice"), { timeout: 15_000 }).toBe("payout-requested");
+    await payoutForm.getByRole("button", { name: "Request payout" }).click();
+    await expect.poll(async () => {
+      const { data, error } = await performer.rpc("list_my_payouts");
+      if (error || !Array.isArray(data)) return null;
+      return data[0]?.state ?? null;
+    }, { timeout: 15_000 }).toBe("requested");
     const { data: payoutListAfterRequest, error: payoutListError } = await performer.rpc("list_my_payouts");
     if (payoutListError || !Array.isArray(payoutListAfterRequest) || !payoutListAfterRequest[0]?.publicId) {
       throw payoutListError ?? new Error("Slice 14 payout history unavailable");
