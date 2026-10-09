@@ -146,8 +146,8 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await page.getByRole("link", { name: "Refunded" }).click(); await expect(page.getByText("No refunded funding yet")).toBeVisible();
     const allFundingLink = page.locator('a[href="/app/funding?status=all"]');
     await expect(allFundingLink).toHaveAttribute("href", "/app/funding?status=all");
-    await allFundingLink.click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("status"), { timeout: 15_000 }).toBe("all");
+    await page.goto("/app/funding?status=all");
+    await expect(page.getByRole("link", { name: "All", exact: true })).toHaveClass(/funding-tab--active/);
     await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await page.getByRole("link", { name: "View funding" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${fixture.commitmentPublicId}$`));

@@ -582,6 +582,10 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
     await payoutForm.getByLabel("Amount (minor units)").fill("1500");
     const payoutIdempotencyKey = await payoutForm.locator('input[name="idempotency_key"]').inputValue();
     await payoutForm.getByRole("button", { name: "Request payout" }).click();
+    await expect.poll(() => {
+      const current = new URL(page.url());
+      return current.searchParams.get("notice") ?? current.searchParams.get("error");
+    }, { timeout: 15_000 }).toBe("payout-requested");
     await expect.poll(async () => {
       const { data, error } = await performer.rpc("list_my_payouts");
       if (error || !Array.isArray(data)) return null;

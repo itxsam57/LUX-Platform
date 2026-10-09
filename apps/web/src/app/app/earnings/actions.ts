@@ -30,6 +30,15 @@ function result(
 }
 
 
+function payoutFailureSuffix(error: { message?: string | null } | null | undefined) {
+  const message = error?.message ?? "";
+  if (message.includes("payout_held")) return "error=payout-held";
+  if (message.includes("payout_exceeds_available_balance")) return "error=payout-balance";
+  if (message.includes("payout_not_allowed")) return "error=payout-not-allowed";
+  if (message.includes("invalid_payout_request")) return "error=payout-invalid";
+  return "error=payout";
+}
+
 export async function startPayoutOnboardingAction(formData: FormData): Promise<void> {
   const viewer = await requireAdultViewer(EARNINGS_PATH);
   const idempotencyKey = parseFinanceIdempotencyKey(text(formData, "idempotency_key"));
@@ -77,7 +86,7 @@ export async function requestPayoutAction(formData: FormData): Promise<Navigatio
     requested_currency: currency,
     requested_idempotency_key: idempotencyKey,
   });
-  if (error) return result("error", "The payout could not be reserved from your available balance.", "error=payout");
+  if (error) return result("error", "The payout could not be reserved from your available balance.", payoutFailureSuffix(error));
 
   revalidatePath(EARNINGS_PATH);
   return result("success", "Payout requested.", "notice=payout-requested");
