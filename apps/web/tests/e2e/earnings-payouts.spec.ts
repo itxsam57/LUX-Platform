@@ -549,11 +549,11 @@ test("journal earnings, holds, payout retries, reconciliation, and paid history 
 
     await login(page, staffEmail, "/workspace/staff/finance");
     await expect(page.getByRole("heading", { name: "Finance queue" })).toBeVisible();
-    await page.getByLabel("Project public ID", { exact: true }).nth(1).fill(fixture.projectPublicId);
-    await page.getByLabel("Participant handle").fill(fixture.performerHandle);
-    await page.getByLabel("Amount (minor units)").fill("1000");
-    await page.getByLabel("Hold kind").selectOption("verification");
-    await page.getByLabel("Reason").fill("Temporary payout verification review");
+    await page.locator("#hold-project").fill(fixture.projectPublicId);
+    await page.locator("#hold-participant").fill(fixture.performerHandle);
+    await page.locator("#hold-amount").fill("1000");
+    await page.locator("#hold-kind").selectOption("verification");
+    await page.locator("#hold-reason").fill("Temporary payout verification review");
     await page.getByRole("button", { name: "Place hold" }).click();
     await expect(page.getByRole("status")).toContainText("Earnings hold placed");
     const holdRow = page.getByRole("row").filter({ hasText: `@${fixture.performerHandle}` }).filter({ hasText: "verification" });
