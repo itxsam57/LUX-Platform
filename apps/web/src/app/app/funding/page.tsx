@@ -67,7 +67,7 @@ export default async function FundingDashboardPage({ searchParams }: { searchPar
 
         <nav className="funding-tabs" aria-label="Funding status">
           {tabs.map((tab) => (
-            <Link key={tab.key} className={filter === tab.key ? "funding-tab funding-tab--active" : "funding-tab"} href={tab.key === "active" ? "/app/funding" : `/app/funding?status=${tab.key}`}>{tab.label}</Link>
+            <a key={tab.key} className={filter === tab.key ? "funding-tab funding-tab--active" : "funding-tab"} href={tab.key === "active" ? "/app/funding" : `/app/funding?status=${tab.key}`}>{tab.label}</a>
           ))}
         </nav>
 
