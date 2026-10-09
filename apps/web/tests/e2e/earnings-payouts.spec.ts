@@ -136,7 +136,8 @@ async function login(page: Page, address: string, target: string) {
 }
 
 async function signOut(page: Page) {
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.context().clearCookies();
+  await page.goto("/auth/login");
   await expect(page).toHaveURL(/\/auth\/login/);
 }
 

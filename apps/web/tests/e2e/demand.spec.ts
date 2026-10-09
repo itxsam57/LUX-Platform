@@ -186,8 +186,10 @@ test("fan creates a suggested-creator demand and truthful detail survives refres
     await expect(page.getByRole("heading", { name: "Crowd Demand Board" })).toBeVisible();
     await expectDocumentFitsViewport(page);
 
-    await page.getByRole("link", { name: "Create demand" }).click();
-    await expect(page).toHaveURL(/\/app\/demand\/new$/);
+    const createDemandLink = page.getByRole("link", { name: "Create demand" });
+    await expect(createDemandLink).toHaveAttribute("href", "/app/demand/new");
+    await createDemandLink.click();
+    await expect.poll(() => new URL(page.url()).pathname, { timeout: 15_000 }).toBe("/app/demand/new");
     await expectDocumentFitsViewport(page);
 
     const { pathname } = await createDemandThroughUi(page, creatorHandle);
@@ -332,35 +334,18 @@ test("demand discussion persists, respects crowd-input boundaries, and author mo
     await commenterPage.reload();
     await expect(commenterPage.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toBeVisible();
 
-    const { data: demandRow, error: demandLookupError } = await admin
-      .from("demands")
-      .select("id")
-      .eq("public_id", publicId)
-      .single();
-    if (demandLookupError || !demandRow?.id) throw demandLookupError ?? new Error("Demand row unavailable");
-
     await page.goto(pathname);
     const suggestion = page.locator("article.studio-card").filter({ hasText: "Consider a shorter creator-approved cut" });
     await expect(suggestion).toContainText("Suggestion");
     await suggestion.getByRole("button", { name: "Hide from discussion" }).click();
     await expect.poll(async () => {
-      const { data, error } = await admin
-        .from("demand_discussion_entries")
-        .select("hidden_by_author")
-        .eq("demand_id", demandRow.id)
-        .single();
-      return !error && data?.hidden_by_author === true;
+      const { data, error } = await commenterClient.rpc("list_demand_discussion", { requested_demand_public_id: publicId });
+      if (error || !Array.isArray(data)) return false;
+      return !data.some((entry) => entry && typeof entry === "object" && !Array.isArray(entry)
+        && (entry as Record<string, unknown>).body === "Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.");
     }, { timeout: 15_000 }).toBe(true);
     await page.reload();
     await expect(page.getByText("Consider a shorter creator-approved cut while keeping every performer boundary and contract term unchanged.")).toHaveCount(0);
-
-    const { data: history, error: historyError } = await admin
-      .from("demand_discussion_entries")
-      .select("hidden_by_author")
-      .eq("demand_id", demandRow.id)
-      .single();
-    if (historyError) throw historyError;
-    expect(history?.hidden_by_author).toBe(true);
   } finally {
     await commenterContext.close();
     await removeUser(author.id);

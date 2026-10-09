@@ -134,7 +134,10 @@ test("support resolution and appeal overturn stay synchronized between consumer 
 
     await staffPage.goto("/workspace/staff/operations?queue=audit");
     await expect(staffPage.getByRole("heading", { name: "Audit" })).toBeVisible();
-    await expect(staffPage.getByText(/support_case_created|support_case_resolved|appeal/i)).toBeVisible();
+    const auditTable = staffPage.getByRole("table", { name: "Immutable audit explorer" });
+    await expect(auditTable.getByRole("cell", { name: "support_case_created", exact: true }).first()).toBeVisible();
+    await expect(auditTable.getByRole("cell", { name: "appeal_created", exact: true }).first()).toBeVisible();
+    await expect(auditTable.getByRole("cell", { name: "appeal_reviewed", exact: true }).first()).toBeVisible();
   } finally {
     await staffContext.close();
     await cleanupTestUser(admin, consumer.id);

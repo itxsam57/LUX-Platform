@@ -20,6 +20,12 @@ select ok(
   position('demand_row.author_user_id<>auth.uid()' in replace(lower(pg_get_functiondef('public.set_demand_discussion_entry_hidden(text,text,boolean)'::regprocedure)),' ',''))>0,
   'only the demand author can moderate the public discussion'
 );
+select ok(
+  position('updatepublic.demand_discussion_entries' in replace(lower(pg_get_functiondef('public.set_demand_discussion_entry_hidden(text,text,boolean)'::regprocedure)),' ',''))>0
+  and position('hidden_by_author=' in replace(lower(pg_get_functiondef('public.set_demand_discussion_entry_hidden(text,text,boolean)'::regprocedure)),' ',''))>0
+  and position('deletefrompublic.demand_discussion_entries' in replace(lower(pg_get_functiondef('public.set_demand_discussion_entry_hidden(text,text,boolean)'::regprocedure)),' ',''))=0,
+  'demand moderation hides entries without deleting immutable discussion history'
+);
 
 select * from finish();
 rollback;

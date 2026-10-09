@@ -144,8 +144,10 @@ test("fan funding dashboard preserves private, truthful payment and change state
     await expectNoSensitiveFundingIds(page); await expectNoHorizontalOverflow(page);
     await page.getByRole("link", { name: "Successful" }).click(); await expect(page.getByText("No successful funding yet")).toBeVisible();
     await page.getByRole("link", { name: "Refunded" }).click(); await expect(page.getByText("No refunded funding yet")).toBeVisible();
-    await page.locator('a[href="/app/funding?status=all"]').click();
-    await expect(page).toHaveURL(/\/app\/funding\?status=all$/);
+    const allFundingLink = page.locator('a[href="/app/funding?status=all"]');
+    await expect(allFundingLink).toHaveAttribute("href", "/app/funding?status=all");
+    await allFundingLink.click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("status"), { timeout: 15_000 }).toBe("all");
     await expect(page.getByText("Slice 10 funding lifecycle project")).toBeVisible();
     await page.getByRole("link", { name: "View funding" }).click();
     await expect(page).toHaveURL(new RegExp(`/app/funding/${fixture.commitmentPublicId}$`));
